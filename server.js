@@ -219,3 +219,12 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+fetch('/api/generatePaymentLink', { ... })
+.then(response => response.json())
+.then(data => {
+  console.log(data);  // Print data to ensure it's being received properly
+})
+.catch(err => {
+  console.error(err);  // Print errors to catch issues
+});
