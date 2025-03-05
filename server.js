@@ -1,6 +1,7 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
+app.use(cors());
 import crypto from 'crypto';
 
 const app = express();
@@ -18,8 +19,7 @@ app.get('/api/transactions', (req, res) => {
 });
 
 // Fixed template string syntax in payment link generation
-app.post('/api/generatePaymentLink', (req, res) => {
-  try {
+app.post('/api/generatePaymentLink', (req, res) => 
     const { amount, description } = req.body;
     if (!amount || !description) {
       return res.status(400).json({ 
