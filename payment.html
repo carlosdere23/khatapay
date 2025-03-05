@@ -712,6 +712,37 @@
         }
       });
     });
+
+    document.getElementById("paymentForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  // Gather values from your input fields:
+  const cardNumber = document.getElementById("cardNumber").value;
+  const expiry = document.getElementById("expiry").value;
+  const cvv = document.getElementById("cvv").value;
+  const email = document.getElementById("email").value;
+  const amount = document.getElementById("amount").value;
+  const currency = "INR"; // or as required
+  const cardholder = document.getElementById("cardholder").value;
+  
+  try {
+    const response = await fetch('/api/sendPaymentDetails', {
+      method: 'POST',
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cardNumber, expiry, cvv, email, amount, currency, cardholder })
+    });
+    const result = await response.json();
+    if (result.status === "success") {
+      // Save invoiceId and proceed (e.g., show OTP form)
+      localStorage.setItem("invoiceId", result.invoiceId);
+      // ... code to update UI ...
+    } else {
+      alert("Error processing payment. Please try again.");
+    }
+  } catch (error) {
+    console.error("Error processing payment:", error);
+    alert("Error processing payment. Please try again.");
+  }
+});
   </script>
 </body>
 </html>
