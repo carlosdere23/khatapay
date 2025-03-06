@@ -179,7 +179,8 @@
   </div>
 
   <script>
-    async function generateLink() {
+    async function generateLink(e) {
+      e.preventDefault();
       const amount = document.getElementById('amount').value;
       const description = document.getElementById('description').value;
       try {
