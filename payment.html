@@ -187,10 +187,23 @@
       width: 50%;
       padding-left: 4px;
     }
-    .card-icon {
-      height: 24px;
-      width: auto;
-      display: block;
+  .card-icon {
+        height: 24px;
+        width: auto;
+        display: block;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+
+      #cardTypeIcon {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        height: 24px;
     }
     .otp-error {
       color: #ef4444;
