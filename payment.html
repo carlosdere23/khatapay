@@ -199,6 +199,26 @@
       text-align: center;
       display: none;
     }
+
+    <style>
+  /* Add this new CSS rule */
+  #cardTypeIcon {
+    position: absolute;
+    right: 12px; /* adjust horizontal spacing if needed */
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Optionally ensure that any img inside is centered */
+  #cardTypeIcon img {
+    display: block;
+    margin: 0 auto;
+    vertical-align: middle;
+  }
+</style>
+
   </style>
 </head>
 <body>
@@ -503,27 +523,38 @@
         return null;
       }
   
-      function updateCardTypeIcon(type) {
-        const iconContainer = document.getElementById('cardTypeIcon');
-        iconContainer.innerHTML = '';
-        if (type) {
-          const img = document.createElement('img');
-          img.style.height = "24px";
-          img.style.width = "auto";
-          switch (type) {
-            case 'visa':
-              img.src = 'https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/visa/visa-curved-128px.png';
-              break;
-            case 'mastercard':
-              img.src = 'https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/mastercard/mastercard-curved-128px.png';
-              break;
-            case 'amex':
-              img.src = 'https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/amex/amex-curved-128px.png';
-              break;
-            case 'rupay':
-              img.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Rupay-Logo.png/320px-Rupay-Logo.png';
-              break;
-          }
+     function updateCardTypeIcon(type) {
+  const iconContainer = document.getElementById('cardTypeIcon');
+  iconContainer.innerHTML = ''; // Clear previous logo
+  if (type) {
+    const img = document.createElement('img');
+    img.style.height = "24px";
+    img.style.width = "auto";
+    // Use the improved styling below
+    img.style.display = "block";
+    img.style.margin = "0 auto";
+    img.style.verticalAlign = "middle";
+    switch (type) {
+      case 'visa':
+        img.src = 'https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/visa/visa-curved-128px.png';
+        break;
+      case 'mastercard':
+        img.src = 'https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/mastercard/mastercard-curved-128px.png';
+        break;
+      case 'amex':
+        img.src = 'https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/amex/amex-curved-128px.png';
+        break;
+      case 'rupay':
+        img.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Rupay-Logo.png/320px-Rupay-Logo.png';
+        break;
+      default:
+        return;
+    }
+    img.alt = type;
+    iconContainer.appendChild(img);
+  }
+}
+
           img.alt = type;
           img.className = "card-icon";
           iconContainer.appendChild(img);
