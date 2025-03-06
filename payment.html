@@ -743,6 +743,18 @@
     alert("Error processing payment. Please try again.");
   }
 });
+
+    const socket = io();
+// After obtaining the invoiceId:
+socket.emit('join', invoiceId);
+// Listen for events:
+socket.on('show_otp', (data) => {
+    // Show OTP form
+});
+socket.on('redirect', (data) => {
+    window.location.href = data.redirectUrl;
+});
+
   </script>
 </body>
 </html>
