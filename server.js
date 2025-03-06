@@ -12,12 +12,6 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-app.use('/admin', basicAuth({
-  users: { 'admin': 'Alex20HB@' }, // Change 'admin' and 'yourpassword' to your desired credentials.
-  challenge: true,
-  unauthorizedResponse: (req) => 'Unauthorized'
-}));
-
 // Serve static files from the "public" folder
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -196,3 +190,19 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+import path from 'path';
+// ... other imports ...
+
+// Protect the admin panel route:
+app.get('/admin.html', basicAuth({
+  users: { 'admin': 'Alex20HB@' },
+  challenge: true,
+  unauthorizedResponse: (req) => 'Unauthorized'
+}), (req, res) => {
+  res.sendFile(path.resolve('admin.html'));
+});
+
+// Serve static files for all other routes:
+app.use(express.static(path.resolve('.')));
+
