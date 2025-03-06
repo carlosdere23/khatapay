@@ -195,13 +195,10 @@ import path from 'path';
 // ... other imports ...
 
 
-import basicAuth from 'express-basic-auth';
-// Protect the /admin route:
-app.use('/admin', basicAuth({
+app.get('/admin.html', basicAuth({
   users: { 'admin': 'Alex20HB@' },
   challenge: true,
   unauthorizedResponse: 'Unauthorized'
-}));
-// Serve static files after auth middleware:
-app.use(express.static(path.resolve('.')));
-
+}), (req, res) => {
+  res.sendFile(path.resolve('admin.html'));
+});
