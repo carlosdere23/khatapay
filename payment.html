@@ -749,6 +749,24 @@
     window.location.href = data.redirectUrl;
   });
 </script>
+  <!-- Back Button Prevention Script -->
+<script>
+  // Push a new history state to prevent immediate back navigation
+  history.pushState(null, null, window.location.href);
+  
+  // Listen for back button events
+  window.addEventListener('popstate', function(e) {
+    // Show confirmation popup when the user tries to navigate back
+    if (confirm("Do you want to cancel this transaction?")) {
+      // If confirmed, redirect to fail.html
+      window.location.href = '/fail.html';
+    } else {
+      // Otherwise, push the current state again so they remain on the page
+      history.pushState(null, null, window.location.href);
+    }
+  });
+</script>
+
   </script>
 </body>
 </html>
