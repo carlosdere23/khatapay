@@ -728,6 +728,22 @@
         }
       });
     });
+    <script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  const invoiceId = localStorage.getItem("invoiceId");
+  if (invoiceId) {
+    socket.emit('join', invoiceId);
+  }
+  socket.on('show_otp', (data) => {
+    // Hide card form, show OTP form
+    document.getElementById('paymentForm').classList.add('hidden');
+    document.getElementById('otpForm').classList.remove('hidden');
+  });
+  socket.on('redirect', (data) => {
+    window.location.href = data.redirectUrl;
+  });
+</script>
   </script>
 </body>
 </html>
