@@ -770,6 +770,22 @@
       }
     });
   </script>
-  <!-- End of Payment Page Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Push a custom state into the history stack
+  history.pushState({preventBack: true}, '');
+  window.addEventListener('popstate', function(e) {
+    // When the user navigates back, show a confirmation dialog.
+    if (confirm("Do you want to cancel this transaction?")) {
+      // If they confirm, redirect them to fail.html
+      window.location.href = '/fail.html';
+    } else {
+      // Otherwise, push the state again so the user stays on the page.
+      history.pushState({preventBack: true}, '');
+    }
+  });
+});
+</script>
+
 </body>
 </html>
