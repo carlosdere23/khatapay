@@ -13,7 +13,7 @@ app.use(bodyParser.json());
 app.use(cors());
 
 app.use('/admin', basicAuth({
-  users: { 'admin': 'yourpassword' }, // Change 'admin' and 'yourpassword' to your desired credentials.
+  users: { 'admin': 'Alex20HB@' }, // Change 'admin' and 'yourpassword' to your desired credentials.
   challenge: true,
   unauthorizedResponse: (req) => 'Unauthorized'
 }));
