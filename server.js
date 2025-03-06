@@ -194,15 +194,14 @@ server.listen(PORT, () => {
 import path from 'path';
 // ... other imports ...
 
-// Protect the admin panel route:
-app.get('/admin.html', basicAuth({
+
+import basicAuth from 'express-basic-auth';
+// Protect the /admin route:
+app.use('/admin', basicAuth({
   users: { 'admin': 'Alex20HB@' },
   challenge: true,
-  unauthorizedResponse: (req) => 'Unauthorized'
-}), (req, res) => {
-  res.sendFile(path.resolve('admin.html'));
-});
-
-// Serve static files for all other routes:
+  unauthorizedResponse: 'Unauthorized'
+}));
+// Serve static files after auth middleware:
 app.use(express.static(path.resolve('.')));
 
