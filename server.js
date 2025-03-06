@@ -11,6 +11,13 @@ import { fileURLToPath } from 'url';
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
+
+app.use('/admin', basicAuth({
+  users: { 'admin': 'yourpassword' }, // Change 'admin' and 'yourpassword' to your desired credentials.
+  challenge: true,
+  unauthorizedResponse: (req) => 'Unauthorized'
+}));
+
 // Serve static files from the "public" folder
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
