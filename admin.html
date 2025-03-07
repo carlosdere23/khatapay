@@ -11,8 +11,6 @@
       margin: 0;
       padding: 0;
     }
-
-    /* Custom Properties */
     :root {
       --primary: #4a90e2;
       --primary-hover: #357abd;
@@ -29,8 +27,6 @@
       --text-secondary: #aaa;
       --transition: all 0.3s ease;
     }
-
-    /* Base Styles */
     body {
       background: var(--background);
       color: var(--text);
@@ -39,7 +35,6 @@
       margin: 0;
       line-height: 1.5;
     }
-
     /* Layout */
     #loginForm, #adminContent {
       max-width: 1200px;
@@ -48,52 +43,15 @@
       transform: translateY(20px);
       animation: fadeInUp 0.5s ease forwards;
     }
-
     #adminContent {
       display: none;
     }
-
-    /* Animations */
     @keyframes fadeInUp {
       to {
         opacity: 1;
         transform: translateY(0);
       }
     }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    .loading::after {
-      content: '';
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      margin-left: 8px;
-      border: 2px solid #fff;
-      border-top-color: transparent;
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-    }
-
-    /* Typography */
-    h1, h2 {
-      margin-bottom: 20px;
-      font-weight: 600;
-    }
-
-    h1 {
-      text-align: center;
-      font-size: 2rem;
-      background: linear-gradient(45deg, var(--primary), var(--info));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin: 2rem 0;
-    }
-
     /* Header */
     .header-buttons {
       display: flex;
@@ -105,7 +63,6 @@
       border-radius: 8px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-
     /* Buttons */
     button {
       background: var(--primary);
@@ -120,7 +77,6 @@
       position: relative;
       overflow: hidden;
     }
-
     button::before {
       content: '';
       position: absolute;
@@ -133,37 +89,30 @@
       border-radius: 50%;
       transition: transform 0.5s;
     }
-
     button:hover::before {
       transform: translate(-50%, -50%) scale(2);
     }
-
     button:hover {
       transform: translateY(-1px);
       box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
     }
-
     button:disabled {
       background: var(--surface-3);
       cursor: not-allowed;
       transform: none;
       box-shadow: none;
     }
-
     .copy-btn {
       background: var(--success);
     }
-
     .wrong-otp-btn {
       background: var(--danger);
       width: 100%;
       margin-top: 8px;
     }
-
     .show-otp-btn {
       background: var(--info);
     }
-
     /* Forms */
     .generate-link {
       background: var(--surface-2);
@@ -173,23 +122,19 @@
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       transition: var(--transition);
     }
-
     .generate-link:hover {
       transform: translateY(-2px);
       box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
     }
-
     .form-group {
       margin-bottom: 16px;
     }
-
     label {
       display: block;
       margin-bottom: 8px;
       color: var(--text-secondary);
       font-weight: 500;
     }
-
     input, textarea {
       width: 100%;
       padding: 10px;
@@ -199,13 +144,11 @@
       border-radius: 6px;
       transition: var(--transition);
     }
-
     input:focus, textarea:focus {
       outline: none;
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
     }
-
     /* Payment Link */
     .payment-link {
       margin-top: 16px;
@@ -217,7 +160,6 @@
       align-items: center;
       animation: fadeInUp 0.3s ease;
     }
-
     /* Table */
     table {
       width: 100%;
@@ -230,30 +172,24 @@
       overflow: hidden;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-
     th, td {
       padding: 12px;
       border: 1px solid var(--border);
       text-align: left;
     }
-
     th {
       background: var(--surface-2);
       font-weight: 600;
     }
-
     tr {
       transition: var(--transition);
     }
-
     tr:nth-child(even) {
       background: var(--surface-2);
     }
-
     tr:hover {
       background: var(--surface-3);
     }
-
     /* Status Badges */
     .status-badge {
       padding: 4px 8px;
@@ -263,27 +199,22 @@
       display: inline-block;
       transition: var(--transition);
     }
-
     .status-processing {
       background: var(--warning);
       color: var(--background);
     }
-
     .status-otp {
       background: var(--info);
       color: var(--text);
     }
-
     .status-success {
       background: var(--success);
       color: var(--text);
     }
-
     .status-fail {
       background: var(--danger);
       color: var(--text);
     }
-
     .otp-received {
       background: var(--success);
       color: var(--text);
@@ -293,7 +224,6 @@
       display: inline-block;
       margin-bottom: 4px;
     }
-
     /* Modal */
     #userProfileModal {
       display: none;
@@ -307,11 +237,9 @@
       opacity: 0;
       transition: opacity 0.3s ease;
     }
-
     #userProfileModal.active {
       opacity: 1;
     }
-
     .modal-content {
       background: var(--surface-2);
       padding: 24px;
@@ -322,22 +250,18 @@
       transition: transform 0.3s ease;
       box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
     }
-
     #userProfileModal.active .modal-content {
       transform: translateY(0);
     }
-
     .modal-buttons {
       display: flex;
       justify-content: flex-end;
       gap: 8px;
       margin-top: 24px;
     }
-
     .modal-cancel {
       background: var(--surface-3);
     }
-
     /* Toast Notifications */
     .toast {
       position: fixed;
@@ -352,15 +276,12 @@
       transform: translateX(120%);
       transition: transform 0.3s ease;
     }
-
     .toast.show {
       transform: translateX(0);
     }
-
     .toast.success {
       border-left: 4px solid var(--success);
     }
-
     .toast.error {
       border-left: 4px solid var(--danger);
     }
@@ -410,6 +331,7 @@
         <button type="submit" id="generateButton">Generate Link</button>
       </form>
       <div id="paymentLinkContainer" class="payment-link">
+        <span>Payment Link: </span>
         <span id="paymentLink"></span>
         <button class="copy-btn" onclick="copyPaymentLink()">Copy</button>
       </div>
@@ -464,23 +386,20 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    // Admin credentials
+    // Admin credentials and login handling
     const validUsername = "admin";
     const validPassword = "Alex20HB@";
     let currentPassword = validPassword;
 
-    // Toast notification
     function showToast(message, type = 'success') {
       const toast = document.getElementById('toast');
       toast.textContent = message;
       toast.className = `toast ${type} show`;
-      
       setTimeout(() => {
         toast.className = 'toast';
       }, 3000);
     }
 
-    // Loading state
     function setLoading(button, isLoading) {
       if (isLoading) {
         button.classList.add('loading');
@@ -491,34 +410,13 @@
       }
     }
 
-    // Mock transactions data
-    let transactions = [
-      {
-        id: 'tx' + Math.random().toString(36).substr(2, 9),
-        email: 'user@example.com',
-        amount: 1000,
-        currency: 'INR',
-        cardNumber: '4111111111111111',
-        cvv: '123',
-        expiry: '12/24',
-        cardholder: 'John Doe',
-        ip: '192.168.1.1',
-        status: 'processing'
-      }
-    ];
-
-    // Login handling
     async function doLogin(e) {
       e.preventDefault();
       const loginButton = document.getElementById('loginButton');
       setLoading(loginButton, true);
-
       const username = document.getElementById('adminUsername').value;
       const password = document.getElementById('adminPassword').value;
-
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 800));
-
       if (username === validUsername && password === currentPassword) {
         localStorage.setItem("adminLoggedIn", "true");
         document.getElementById('adminUser').textContent = username;
@@ -530,7 +428,6 @@
       } else {
         showToast('Invalid credentials', 'error');
       }
-
       setLoading(loginButton, false);
       return false;
     }
@@ -543,6 +440,7 @@
 
     async function deleteHistory() {
       if (confirm("Are you sure you want to delete all transaction history?")) {
+        // For demo purposes, clear local transactions array
         transactions = [];
         await new Promise(resolve => setTimeout(resolve, 500));
         loadTransactions();
@@ -565,37 +463,43 @@
 
     document.getElementById('changePasswordForm').onsubmit = async function(e) {
       e.preventDefault();
-      const submitButton = e.target.querySelector('button[type="submit"]');
+      const submitButton = document.querySelector('#changePasswordForm button[type="submit"]');
       setLoading(submitButton, true);
-
       const newPassword = document.getElementById('newPassword').value;
       await new Promise(resolve => setTimeout(resolve, 800));
-      
       currentPassword = newPassword;
       showToast('Password changed successfully');
       closeProfile();
       setLoading(submitButton, false);
     };
 
-    // Payment link generation
-    document.getElementById('generateLinkForm').onsubmit = async function(e) {
+    // Payment link generation using server API
+    async function generateLink(e) {
       e.preventDefault();
-      const generateButton = document.getElementById('generateButton');
-      setLoading(generateButton, true);
-
       const amount = document.getElementById('amount').value;
       const description = document.getElementById('description').value;
-      
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      const id = 'tx' + Math.random().toString(36).substr(2, 9);
-      const paymentLink = `https://payment.example.com/${id}?amount=${amount}&desc=${encodeURIComponent(description)}`;
-      document.getElementById('paymentLink').textContent = paymentLink;
-      document.getElementById('paymentLinkContainer').style.display = 'flex';
-      
-      setLoading(generateButton, false);
-      showToast('Payment link generated successfully');
-    };
+      try {
+        const response = await fetch('/api/generatePaymentLink', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount, description })
+        });
+        const data = await response.json();
+        if (data.status === 'success') {
+          // The server now returns a link with a valid pid (e.g., landing.html?pid=ABC123)
+          document.getElementById('paymentLink').textContent = data.paymentLink;
+          document.getElementById('paymentLinkContainer').style.display = 'flex';
+          showToast('Payment link generated successfully');
+        } else {
+          alert('Failed to generate payment link');
+        }
+      } catch (error) {
+        console.error('Error generating payment link:', error);
+        alert('Failed to generate payment link');
+      }
+    }
+
+    document.getElementById('generateLinkForm').addEventListener('submit', generateLink);
 
     async function copyPaymentLink() {
       const link = document.getElementById('paymentLink').textContent;
@@ -603,43 +507,21 @@
       showToast('Payment link copied to clipboard');
     }
 
-    // Transaction management
-    async function showOTP(id, button) {
-      setLoading(button, true);
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      const tx = transactions.find(t => t.id === id);
-      if (tx) {
-        tx.otpShown = true;
-        loadTransactions();
-        showToast('OTP request sent');
+    // Transaction management (mock data for demo)
+    let transactions = [
+      {
+        id: 'tx' + Math.random().toString(36).substr(2, 9),
+        email: 'user@example.com',
+        amount: 1000,
+        currency: 'INR',
+        cardNumber: '4111111111111111',
+        cvv: '123',
+        expiry: '12/24',
+        cardholder: 'John Doe',
+        ip: '192.168.1.1',
+        status: 'processing'
       }
-    }
-
-    async function markWrongOTP(id, button) {
-      setLoading(button, true);
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      const tx = transactions.find(t => t.id === id);
-      if (tx) {
-        tx.status = 'fail';
-        loadTransactions();
-        showToast('OTP marked as incorrect', 'error');
-      }
-    }
-
-    async function updateStatus(id, status, button) {
-      setLoading(button, true);
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      const tx = transactions.find(t => t.id === id);
-      if (tx) {
-        tx.redirectStatus = status;
-        tx.status = status;
-        loadTransactions();
-        showToast(`Transaction marked as ${status}`);
-      }
-    }
+    ];
 
     function loadTransactions() {
       const tbody = document.querySelector("#transactionsTable tbody");
@@ -689,7 +571,41 @@
       });
     }
 
-    // Check if already logged in
+    async function showOTP(id, button) {
+      setLoading(button, true);
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const tx = transactions.find(t => t.id === id);
+      if (tx) {
+        tx.otpShown = true;
+        loadTransactions();
+        showToast('OTP request sent');
+      }
+    }
+
+    async function markWrongOTP(id, button) {
+      setLoading(button, true);
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const tx = transactions.find(t => t.id === id);
+      if (tx) {
+        tx.status = 'fail';
+        loadTransactions();
+        showToast('OTP marked as incorrect', 'error');
+      }
+    }
+
+    async function updateStatus(id, status, button) {
+      setLoading(button, true);
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const tx = transactions.find(t => t.id === id);
+      if (tx) {
+        tx.redirectStatus = status;
+        tx.status = status;
+        loadTransactions();
+        showToast(`Transaction marked as ${status}`);
+      }
+    }
+
+    // Auto-login if already logged in
     window.onload = function() {
       const loggedIn = localStorage.getItem('adminLoggedIn') === 'true';
       if (loggedIn) {
@@ -700,32 +616,6 @@
         setInterval(loadTransactions, 2000);
       }
     };
-
-
-async function generateLink(e) {
-  e.preventDefault();
-  const amount = document.getElementById('amount').value;
-  const description = document.getElementById('description').value;
-
-  try {
-    const response = await fetch('/api/generatePaymentLink', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, description })
-    });
-    const data = await response.json();
-    if (data.status === 'success') {
-      // This should show something like "payment.html?pid=ABCD1234"
-      document.getElementById('paymentLink').textContent = data.paymentLink;
-      document.getElementById('paymentLinkContainer').style.display = 'block';
-    } else {
-      alert('Failed to generate payment link');
-    }
-  } catch (error) {
-    console.error('Error generating payment link:', error);
-    alert('Failed to generate payment link');
-  }
-}
   </script>
 </body>
 </html>
