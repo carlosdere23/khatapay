@@ -29,9 +29,9 @@
     }
     .container {
       background: white;
-      border-radius: 12px;
-      padding: 24px;
-      width: 400px;
+      border-radius: 8px;
+      padding: 20px;
+      width: 350px;
       max-width: 90%;
       box-shadow: 0 8px 32px rgba(0,0,0,0.1);
       position: relative;
@@ -152,6 +152,27 @@
     .footer-logos img {
       max-height: 40px;
     }
+    /* Mobile-specific adjustments */
+    @media (max-width: 600px) {
+      .footer-logos {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        gap: 10px;
+        background-color: white;
+        padding: 5px 0;
+        width: 100%;
+        justify-content: center;
+        z-index: 100;
+      }
+      .footer-logos img {
+        max-height: 25px;
+      }
+      .container {
+        margin-bottom: 90px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -198,9 +219,7 @@
   <div class="footer-logos">
     <img src="https://maceinnovations.com/wp-content/uploads/2019/04/pci-dss-logo.png" alt="PCI DSS Compliance" />
     <img src="https://latestlogo.com/wp-content/uploads/2024/01/razorpay-logo.svg" alt="Razorpay" />
-    
     <img src="https://logowik.com/content/uploads/images/t_mastercard-line7171.logowik.com.webp" alt="MasterCard Securecode" />
-    
     <img src="https://iconape.com/wp-content/png_logo_vector/visa-verified-by-logo-2.png" alt="Verified by Visa" />
   </div>
   <script>
