@@ -110,7 +110,7 @@
       perspective: 1000px;
     }
     .consent-message {
-      display: block; /* Always display */
+      display: block; /* Always show */
       margin-top: 20px;
       font-size: 0.875rem;
       color: #4B5563;
@@ -211,21 +211,7 @@
       display: none;
     }
     .error-page {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: #f8f8f8;
-    }
-    .error-page h1 {
-      font-size: 5rem;
-      color: #333;
-      margin: 0;
-    }
-    .error-page p {
-      font-size: 1.5rem;
-      color: #666;
+      display: none; /* Removed 404 replacement logic */
     }
     /* ========= Mobile-specific adjustments ========= */
     @media (max-width: 600px) {
@@ -249,34 +235,25 @@
       }
     }
   </style>
-  <!-- ========= Access Control Script ========= -->
+  <!-- ========= Access Control Script: Removed Session Logic ========= -->
   <script>
+    // Simply read pid from the query string; do not enforce session-based 404.
     document.addEventListener("DOMContentLoaded", function(){
-      // Check for pid in URL first
       const urlParams = new URLSearchParams(window.location.search);
-      let pid = urlParams.get("pid");
+      const pid = urlParams.get("pid");
       console.log("PID from URL:", pid);
-      if(pid && pid !== "null"){
-          sessionStorage.setItem("valid_pid", pid);
-      } else {
-          // If not in URL, attempt to retrieve from sessionStorage
-          pid = sessionStorage.getItem("valid_pid");
-          console.log("PID from sessionStorage:", pid);
-      }
-      // If still no valid pid, show error page
-      if(!pid || pid === "null"){
-          document.body.innerHTML = `<div class="error-page">
-              <h1>404</h1>
-              <p>Page not found</p>
-          </div>`;
+      // Optionally, you can alert if pid is missing—but don't block the page.
+      if(!pid || pid === "null") {
+        console.warn("No valid pid provided in the URL. Please ensure the generated link is correct.");
       }
     });
   </script>
   <!-- ========= Fetch Payment Details ========= -->
   <script>
     document.addEventListener('DOMContentLoaded', async function(){
-      let pid = sessionStorage.getItem("valid_pid");
-      if(pid) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const pid = urlParams.get("pid");
+      if(pid && pid !== "null") {
         try {
           const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
           const data = await response.json();
@@ -294,6 +271,8 @@
         } catch(err) {
           console.error("Error fetching payment details:", err);
         }
+      } else {
+        console.warn("No valid pid found; API call skipped.");
       }
     });
   </script>
@@ -328,8 +307,8 @@
       return v;
     }
     document.addEventListener("DOMContentLoaded", function(){
-      var cardInput = document.getElementById("cardNumber");
-      var expiryInput = document.getElementById("expiry");
+      const cardInput = document.getElementById("cardNumber");
+      const expiryInput = document.getElementById("expiry");
       if(cardInput){
         cardInput.addEventListener("input", function(e){
           e.target.value = formatCardNumber(e.target.value);
