@@ -745,5 +745,55 @@
   });
 </script>
   </script>
+  <script>
+  // Push a dummy state so that the back button triggers popstate.
+  window.history.pushState(null, null, window.location.href);
+
+  window.addEventListener('popstate', function(event) {
+    showCancelModal();
+    // Push state again to prevent immediate navigation.
+    window.history.pushState(null, null, window.location.href);
+  });
+
+  function showCancelModal() {
+    let modal = document.getElementById("cancelModal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "cancelModal";
+      // Modal styles
+      modal.style.position = "fixed";
+      modal.style.top = "0";
+      modal.style.left = "0";
+      modal.style.width = "100%";
+      modal.style.height = "100%";
+      modal.style.backgroundColor = "rgba(0,0,0,0.5)";
+      modal.style.display = "flex";
+      modal.style.alignItems = "center";
+      modal.style.justifyContent = "center";
+      modal.style.zIndex = "10000";
+      // Modal inner HTML with two buttons: Yes and No.
+      modal.innerHTML = `
+        <div style="background: #fff; padding: 20px; border-radius: 5px; text-align: center; max-width: 300px;">
+          <p>Do you want to cancel this transaction?</p>
+          <button id="cancelYes" style="margin: 5px; padding: 5px 10px;">Yes</button>
+          <button id="cancelNo" style="margin: 5px; padding: 5px 10px;">No</button>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      document.getElementById("cancelYes").addEventListener("click", function(){
+        // Redirect to fail.html if user chooses "Yes"
+        window.location.href = "/fail.html";
+      });
+      document.getElementById("cancelNo").addEventListener("click", function(){
+        // Hide the modal and keep user on the same page.
+        modal.style.display = "none";
+      });
+    } else {
+      modal.style.display = "flex";
+    }
+  }
+</script>
+  
 </body>
 </html>
