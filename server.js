@@ -47,7 +47,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
   const { amount, description } = req.body;
   const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
   // Construct a link that passes the invoiceId as pid
-  const paymentLink = ${req.protocol}://${req.get('host')}/payment.html?pid=${invoiceId};
+  const paymentLink = ${req.protocol}://${req.get('host')}/landing.html?pid=${invoiceId};
   paymentLinks.set(invoiceId, { amount, description, paymentLink, createdAt: new Date().toISOString() });
   console.log("Payment link generated:", paymentLink);
   res.json({ status: "success", paymentLink });
