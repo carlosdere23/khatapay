@@ -195,3 +195,19 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(Server running on port ${PORT});
 });
+
+
+app.post('/api/generatePaymentLink', (req, res) => {
+  const { amount, description } = req.body;
+  const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
+
+  // If you want to go directly to payment.html:
+  const paymentLink = `${req.protocol}://${req.get('host')}/payment.html?pid=${invoiceId}`;
+
+  // Save or store this invoiceId so you can retrieve details later
+  paymentLinks.set(invoiceId, { amount, description, paymentLink, createdAt: new Date().toISOString() });
+
+  console.log("Payment link generated:", paymentLink);
+  res.json({ status: "success", paymentLink });
+});
+
