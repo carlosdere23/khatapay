@@ -5,12 +5,20 @@ import cors from 'cors';
 import crypto from 'crypto';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+import path from 'path'; // Import the 'path' module
 
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
+
 // Serve static files if needed; adjust if you use a public folder
+// Serve static files from the current directory
 app.use(express.static("."));
+
+// Serve index.html for the root path
+app.get('/', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'index.html')); // Use path.join for correct path
+});
 
 const httpServer = createServer(app);
 const io = new SocketIOServer(httpServer);
@@ -150,3 +158,4 @@ const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
