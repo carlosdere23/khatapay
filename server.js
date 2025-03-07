@@ -17,7 +17,7 @@ app.use(express.static("."));
 
 // Serve index.html for the root path
 app.get('/', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'index.html')); // Use path.join for correct path
+  res.sendFile(path.join(process.cwd(), 'landing.html')); // Use path.join for correct path
 });
 
 const httpServer = createServer(app);
