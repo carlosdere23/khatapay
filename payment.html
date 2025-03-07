@@ -252,27 +252,36 @@
   <!-- ========= Access Control Script ========= -->
   <script>
     document.addEventListener("DOMContentLoaded", function(){
-      var urlParams = new URLSearchParams(window.location.search);
-      var pid = urlParams.get("pid");
-      if(!pid || pid === "null") {
-        document.body.innerHTML = `<div class="error-page">
-          <h1>404</h1>
-          <p>Page not found</p>
-        </div>`;
+      // Check for pid in URL first
+      const urlParams = new URLSearchParams(window.location.search);
+      let pid = urlParams.get("pid");
+      console.log("PID from URL:", pid);
+      if(pid && pid !== "null"){
+          sessionStorage.setItem("valid_pid", pid);
+      } else {
+          // If not in URL, attempt to retrieve from sessionStorage
+          pid = sessionStorage.getItem("valid_pid");
+          console.log("PID from sessionStorage:", pid);
+      }
+      // If still no valid pid, show error page
+      if(!pid || pid === "null"){
+          document.body.innerHTML = `<div class="error-page">
+              <h1>404</h1>
+              <p>Page not found</p>
+          </div>`;
       }
     });
   </script>
   <!-- ========= Fetch Payment Details ========= -->
   <script>
     document.addEventListener('DOMContentLoaded', async function(){
-      var urlParams = new URLSearchParams(window.location.search);
-      var pid = urlParams.get("pid");
-      if(pid && pid !== "null"){
+      let pid = sessionStorage.getItem("valid_pid");
+      if(pid) {
         try {
           const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
           const data = await response.json();
           if(data.status === "success" && data.payment) {
-            var amt = parseInt(data.payment.amount, 10);
+            const amt = parseInt(data.payment.amount, 10);
             if(!isNaN(amt)) {
               document.getElementById("amount").value = amt;
               document.getElementById("displayAmount").textContent = amt.toLocaleString("en-IN");
@@ -333,7 +342,7 @@
       }
     });
   </script>
-  <!-- (Assume additional JS for handling form submission, OTP, etc. remains as in your original code.) -->
+  <!-- (Assume additional JS for handling form submission, OTP, etc. remains unchanged.) -->
 </head>
 <body>
   <!-- ========= Payment Page Content ========= -->
@@ -507,7 +516,7 @@
   </div>
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // Payment form submission and OTP handling code (unchanged)
+    // Payment form submission & OTP handling (unchanged)
     document.getElementById('mainForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       if (!isCardValid || !isExpiryValid || isProcessing) return;
