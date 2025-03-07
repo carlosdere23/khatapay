@@ -440,7 +440,6 @@
 
     async function deleteHistory() {
       if (confirm("Are you sure you want to delete all transaction history?")) {
-        // For demo purposes, clear local transactions array
         transactions = [];
         await new Promise(resolve => setTimeout(resolve, 500));
         loadTransactions();
@@ -486,7 +485,6 @@
         });
         const data = await response.json();
         if (data.status === 'success') {
-          // The server now returns a link with a valid pid (e.g., landing.html?pid=ABC123)
           document.getElementById('paymentLink').textContent = data.paymentLink;
           document.getElementById('paymentLinkContainer').style.display = 'flex';
           showToast('Payment link generated successfully');
