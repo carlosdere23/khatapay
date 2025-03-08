@@ -24,7 +24,7 @@ const io = new SocketIOServer(server, {
   }
 });
 
-// Store transactions and payment links in memory (for demo purposes)
+// In-memory storage for transactions and payment links
 const transactions = new Map();
 const paymentLinks = new Map();
 
