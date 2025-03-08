@@ -252,31 +252,6 @@
   <!-- ========= (Removed 404 error/session tracking script) ========= -->
   <!-- The previous sessionStorage/404 block has been removed so that the page is always accessible. -->
   <!-- ========= Fetch Payment Details ========= -->
-  <script>
-    document.addEventListener('DOMContentLoaded', async function(){
-      const urlParams = new URLSearchParams(window.location.search);
-      const pid = urlParams.get("pid");
-      if(pid && pid !== "null") {
-        try {
-          const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
-          const data = await response.json();
-          if(data.status === "success" && data.payment) {
-            const amt = parseInt(data.payment.amount, 10);
-            if(!isNaN(amt)) {
-              document.getElementById("amount").value = amt;
-              document.getElementById("displayAmount").textContent = amt.toLocaleString("en-IN");
-            } else {
-              console.error("Invalid amount:", data.payment.amount);
-            }
-          } else {
-            console.error("Payment details not found for pid:", pid);
-          }
-        } catch(err) {
-          console.error("Error fetching payment details:", err);
-        }
-      }
-    });
-  </script>
   <!-- ========= Card Formatting Functions ========= -->
   <script>
     function validateCard(number) {
