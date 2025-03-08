@@ -1,15 +1,10 @@
 {
   "name": "khatapay",
   "version": "1.0.0",
-  "description": "Payment gateway project for Khatapay",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
-  "keywords": [],
-  "author": "khatapay",
-  "license": "ISC",
   "dependencies": {
     "body-parser": "^1.20.3",
     "cors": "^2.8.5",
