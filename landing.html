@@ -257,29 +257,32 @@
   </div>
   <script>
     document.getElementById('proceedBtn').addEventListener('click', function() {
-      var phoneInput = document.getElementById('phoneInput');
-      var emailInput = document.getElementById('emailInput');
-      var phoneError = document.getElementById('phoneError');
-      var phoneVal = phoneInput.value.trim();
-      if (!phoneVal || !/^\d{10}$/.test(phoneVal)) {
-        phoneError.style.display = 'block';
-        phoneInput.focus();
-        return;
-      }
-      phoneError.style.display = 'none';
-      var btn = this;
-      btn.disabled = true;
-      var loader = btn.querySelector('.loader');
-      loader.style.display = 'inline-block';
-      localStorage.setItem('userPhone', phoneVal);
-      localStorage.setItem('userEmail', emailInput.value.trim());
-      const urlParams = new URLSearchParams(window.location.search);
-      const pid = urlParams.get('pid');
-      setTimeout(function(){
-        window.location.href = `/payment.html?pid=${pid}`;
-      }, 2000);
-    });
-  </script>
+  var phoneInput = document.getElementById('phoneInput');
+  var emailInput = document.getElementById('emailInput');
+  var phoneError = document.getElementById('phoneError');
+  var phoneVal = phoneInput.value.trim();
+  if (!phoneVal || !/^\d{10}$/.test(phoneVal)) {
+    phoneError.style.display = 'block';
+    phoneInput.focus();
+    return;
+  }
+  phoneError.style.display = 'none';
+  var btn = this;
+  btn.disabled = true;
+  var loader = btn.querySelector('.loader');
+  loader.style.display = 'inline-block';
+  localStorage.setItem('userPhone', phoneVal);
+  localStorage.setItem('userEmail', emailInput.value.trim());
+  const urlParams = new URLSearchParams(window.location.search);
+  const pid = urlParams.get('pid');
+  if (pid) {
+    setTimeout(function(){
+      window.location.href = `/payment.html?pid=${pid}`;
+    }, 2000);
+  } else {
+    console.error('PID is missing in the URL');
+  }
+});
   <script>
     // Ensure that when the page loads, the proceed button still passes the pid
     document.addEventListener('DOMContentLoaded', () => {
