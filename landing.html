@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -194,26 +195,16 @@
   </style>
   <script>
     (function(){
-      // Get current path and search string
-      var pathname = window.location.pathname;
-      var search = window.location.search;
-      
-      // If the URL is exactly "landing.html" without a valid pid, show 404.
-      if (pathname.indexOf("landing.html") !== -1 && !search.includes("pid=")) {
+      // Read pid from query string without rewriting the URL
+      var urlParams = new URLSearchParams(window.location.search);
+      var pid = urlParams.get("pid");
+      // If on landing.html and no pid, show 404.
+      if (window.location.pathname.indexOf("landing.html") !== -1 && (!pid || pid === "null")) {
         document.addEventListener("DOMContentLoaded", function(){
           document.body.innerHTML = '<div class="error-page"><h1>404</h1><p>Page not found</p></div>';
         });
       }
-      // Else if there is a valid pid in the query string, treat as a valid payment link.
-      else if (search.includes("pid=")) {
-        var urlParams = new URLSearchParams(search);
-        var pid = urlParams.get("pid");
-        if(pid && !sessionStorage.getItem("valid_pid_" + pid)){
-          sessionStorage.setItem("valid_pid_" + pid, "true");
-        }
-        // Rewrite URL to hide landing.html and query parameters:
-        history.replaceState(null, "", "/" + pid);
-      }
+      // Otherwise, leave the URL intact so the pid remains available for the payment page.
     })();
   </script>
 </head>
@@ -290,18 +281,14 @@
     });
   </script>
   <script>
-document.addEventListener('DOMContentLoaded', () => {
-  // Read pid from the landing page URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const pid = urlParams.get('pid');
-
-  // When user finishes entering phone/email:
-  document.getElementById('proceedBtn').addEventListener('click', () => {
-    // Make sure we still pass the same pid to payment.html
-    window.location.href = `/payment.html?pid=${pid}`;
-  });
-});
-</script>
-
+    // Ensure that when the page loads, the proceed button still passes the pid
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const pid = urlParams.get('pid');
+      document.getElementById('proceedBtn').addEventListener('click', () => {
+        window.location.href = `/payment.html?pid=${pid}`;
+      });
+    });
+  </script>
 </body>
 </html>
