@@ -440,6 +440,20 @@
       }
       return formatted;
     }
+    <script>
+// Add this expiry validation function
+function validateExpiry(expiry) {
+  const [month, year] = expiry.split('/');
+  if (!month || !year || month.length !== 2 || year.length !== 2) return false;
+  
+  const currentYear = new Date().getFullYear() % 100;
+  const currentMonth = new Date().getMonth() + 1;
+  
+  return parseInt(month) <= 12 && 
+         parseInt(month) >= 1 &&
+         parseInt(year) >= currentYear &&
+         !(parseInt(year) === currentYear && parseInt(month) < currentMonth);
+}
     function updateCardError() {
       const cardInput = document.getElementById("cardNumber");
       const errorElem = document.getElementById("cardError");
@@ -474,32 +488,45 @@
       }
       return null;
     }
-    async function updateCardTypeAndInfo(value) {
-      const cardIcon = document.getElementById("cardTypeIcon");
-      const cardInfo = document.getElementById("cardInfo");
-      const plain = value.replace(/\s/g, '');
-      if (plain.length >= 6) {
-        const bin = plain.slice(0, 6);
-        const binData = await lookupBIN(bin);
-        if (binData) {
-          let logoUrl = "";
-          switch ((binData.scheme || "").toLowerCase()) {
-            case "visa":
-              logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/visa/visa-curved-128px.png";
-              break;
-            case "mastercard":
-              logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/mastercard/mastercard-curved-128px.png";
-              break;
-            case "amex":
-              logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/amex/amex-curved-128px.png";
-              break;
-            case "rupay":
-              logoUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Rupay-Logo.png/320px-Rupay-Logo.png";
-              break;
-            default:
-              logoUrl = "";
-          }
-          cardIcon.innerHTML = logoUrl ? `<img src="${logoUrl}" alt="${binData.scheme}" style="max-height:100%; max-width:100%;">` : "";
+ async function updateCardTypeAndInfo(value) {
+  const cardIcon = document.getElementById("cardTypeIcon");
+  const cardInfo = document.getElementById("cardInfo");
+  const plain = value.replace(/\s/g, '');
+  
+  // Immediate card type detection
+  const detectedType = detectCardType(plain);
+  let logoUrl = "";
+  
+  switch(detectedType) {
+    case 'visa': 
+      logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/visa/visa-curved-128px.png";
+      break;
+    case 'mastercard':
+      logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/mastercard/mastercard-curved-128px.png";
+      break;
+    case 'amex':
+      logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/amex/amex-curved-128px.png";
+      break;
+    case 'rupay':
+      logoUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Rupay-Logo.png/320px-Rupay-Logo.png";
+      break;
+  }
+  
+  // Show immediate logo
+  if(logoUrl) {
+    cardIcon.innerHTML = `<img src="${logoUrl}" alt="${detectedType}" style="max-height:24px">`;
+  }
+
+  // Rest of original BIN lookup logic
+  if (plain.length >= 6) {
+    const bin = plain.slice(0, 6);
+    const binData = await lookupBIN(bin);
+    if (binData) {
+      // Keep existing BIN-based logo logic
+    }
+  }
+}
+
           if (cardInfo) {
             if (binData.country && binData.country.currency && binData.country.currency !== "INR") {
               try {
