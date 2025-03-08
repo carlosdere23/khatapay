@@ -6,7 +6,7 @@
   <title>Bologus pvt store.</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
-    /* ======= Layout & General Styles ======= */
+    /* Layout & Background */
     .page-container {
       min-height: 100vh;
       display: flex;
@@ -19,12 +19,7 @@
       padding: 1rem;
       margin-bottom: 6rem;
     }
-    @media (max-width: 600px) {
-      .page-container {
-        margin-bottom: 90px;
-      }
-    }
-    /* ======= Merchant & Info Section ======= */
+    /* Merchant & Info Section */
     .merchant-badge { position: relative; cursor: pointer; margin-left: 0; }
     .merchant-dropdown {
       display: none;
@@ -74,7 +69,7 @@
       padding: 0.25rem 0;
     }
     .verification-tick { width: 1rem; height: 1rem; flex-shrink: 0; color: #10B981; }
-    /* ======= Payment & Form Styles ======= */
+    /* Payment Form Styles */
     .amount-display {
       font-size: 18px;
       font-weight: 400;
@@ -114,7 +109,7 @@
     .card-icon { height: 24px; width: auto; display: block; }
     #cardError { color: #ef4444; font-size: 14px; margin-top: 4px; display: none; }
     #cardInfo { color: #4B5563; font-size: 14px; margin-top: 4px; }
-    .otp-error { color: #ef4444; font-size: 13px; margin: 4px 0 8px 0; text-align: center; display: none; }
+    .otp-error { color: #ef4444; font-size: 13px; margin: 4px 0 8px; text-align: center; display: none; }
     .hidden { display: none !important; }
     /* Consent Message */
     .consent-message {
@@ -137,32 +132,21 @@
       justify-content: center;
       margin-right: 5px;
     }
-    .consent-checkbox.checked {
-      background-color: #10B981;
-      border-color: #10B981;
-    }
+    .consent-checkbox.checked { background-color: #10B981; border-color: #10B981; }
     .consent-checkbox svg { width: 1rem; height: 1rem; color: white; display: none; }
     .consent-checkbox.checked svg { display: block; }
-    /* ====== Animations ====== */
-    .animate-slide-in {
-      animation: slideIn 0.3s ease-out;
-    }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    /* Animations */
+    .animate-slide-in { animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .animate-spin {
       display: inline-block;
       animation: spin 1s linear infinite;
       -webkit-animation: spin 1s linear infinite;
     }
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .btn-loading { position: relative; }
     .btn-loading span { opacity: 0.5; filter: blur(1px); }
-    /* ====== Footer Logos ====== */
+    /* Bottom Logos */
     .bottom-logos {
       padding: 2rem 0;
       margin-top: auto;
@@ -188,7 +172,7 @@
       .bottom-logos img { max-height: 25px; }
     }
   </style>
-  <!-- ========= Global Variables ========= -->
+  <!-- Global Variables -->
   <script>
     let isCardValid = false;
     let isExpiryValid = false;
@@ -199,12 +183,12 @@
     let timer = 180;
     let consentChecked = true;
   </script>
-  <!-- ========= Fetch Payment Details ========= -->
+  <!-- Fetch Payment Details using PID -->
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       const urlParams = new URLSearchParams(window.location.search);
       let pid = urlParams.get('pid');
-      // If pid is not in URL or equals "null", try sessionStorage
+      // Fallback: if pid is missing or "null", try sessionStorage
       if (!pid || pid === "null") {
         pid = sessionStorage.getItem('pid');
       } else {
@@ -238,7 +222,7 @@
       }
     });
   </script>
-  <!-- ========= Card Formatting & BIN Lookup ========= -->
+  <!-- Card Formatting & BIN Lookup -->
   <script>
     function validateCard(number) {
       let arr = number.replace(/\D/g, '').split('').reverse().map(x => parseInt(x, 10));
@@ -306,7 +290,6 @@
     }
     async function updateCardTypeAndInfo(value) {
       const cardIcon = document.getElementById("cardTypeIcon");
-      // Ensure cardInfo exists; if not, skip BIN info update.
       const cardInfo = document.getElementById("cardInfo");
       const plain = value.replace(/\s/g, '');
       if (plain.length >= 6) {
