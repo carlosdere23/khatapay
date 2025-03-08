@@ -193,21 +193,27 @@
       color: #666;
     }
   </style>
+
+  <!-- This script checks if landing.html is missing pid -->
   <script>
     (function(){
-      // Read pid from query string without rewriting the URL
-      var urlParams = new URLSearchParams(window.location.search);
-      var pid = urlParams.get("pid");
-      // If on landing.html and no pid, show 404.
-      if (window.location.pathname.indexOf("landing.html") !== -1 && (!pid || pid === "null")) {
-        document.addEventListener("DOMContentLoaded", function(){
-          document.body.innerHTML = '<div class="error-page"><h1>404</h1><p>Page not found</p></div>';
-        });
+      var pathname = window.location.pathname;
+      var search = window.location.search;
+      // If the URL is exactly "landing.html" without a valid pid, show 404
+      if (pathname.indexOf("landing.html") !== -1) {
+        var urlParams = new URLSearchParams(search);
+        var pid = urlParams.get("pid");
+        if (!pid || pid === "null") {
+          document.addEventListener("DOMContentLoaded", function(){
+            document.body.innerHTML = '<div class="error-page"><h1>404</h1><p>Page not found</p></div>';
+          });
+        }
       }
-      // Otherwise, leave the URL intact so the pid remains available for the payment page.
+      // Otherwise, do nothing so we preserve the pid in the URL
     })();
   </script>
 </head>
+
 <body>
   <div class="container">
     <div class="header">
@@ -249,47 +255,53 @@
       <span class="loader"></span>
     </button>
   </div>
+
   <div class="footer-logos">
     <img src="https://maceinnovations.com/wp-content/uploads/2019/04/pci-dss-logo.png" alt="PCI DSS Compliance" />
     <img src="https://latestlogo.com/wp-content/uploads/2024/01/razorpay-logo.svg" alt="Razorpay" />
     <img src="https://logowik.com/content/uploads/images/t_mastercard-line7171.logowik.com.webp" alt="MasterCard Securecode" />
     <img src="https://iconape.com/wp-content/png_logo_vector/visa-verified-by-logo-2.png" alt="Verified by Visa" />
   </div>
+
+  <!-- Main landing page logic -->
   <script>
-    document.getElementById('proceedBtn').addEventListener('click', function() {
-  var phoneInput = document.getElementById('phoneInput');
-  var emailInput = document.getElementById('emailInput');
-  var phoneError = document.getElementById('phoneError');
-  var phoneVal = phoneInput.value.trim();
-  if (!phoneVal || !/^\d{10}$/.test(phoneVal)) {
-    phoneError.style.display = 'block';
-    phoneInput.focus();
-    return;
-  }
-  phoneError.style.display = 'none';
-  var btn = this;
-  btn.disabled = true;
-  var loader = btn.querySelector('.loader');
-  loader.style.display = 'inline-block';
-  localStorage.setItem('userPhone', phoneVal);
-  localStorage.setItem('userEmail', emailInput.value.trim());
-  const urlParams = new URLSearchParams(window.location.search);
-  const pid = urlParams.get('pid');
-  if (pid) {
-    setTimeout(function(){
-      window.location.href = `/payment.html?pid=${pid}`;
-    }, 2000);
-  } else {
-    console.error('PID is missing in the URL');
-  }
-});
-  <script>
-    // Ensure that when the page loads, the proceed button still passes the pid
-    document.addEventListener('DOMContentLoaded', () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const pid = urlParams.get('pid');
-      document.getElementById('proceedBtn').addEventListener('click', () => {
-        window.location.href = `/payment.html?pid=${pid}`;
+    document.addEventListener('DOMContentLoaded', function() {
+      const proceedBtn = document.getElementById('proceedBtn');
+      const phoneInput = document.getElementById('phoneInput');
+      const emailInput = document.getElementById('emailInput');
+      const phoneError = document.getElementById('phoneError');
+
+      proceedBtn.addEventListener('click', function() {
+        const phoneVal = phoneInput.value.trim();
+        if (!phoneVal || !/^\d{10}$/.test(phoneVal)) {
+          phoneError.style.display = 'block';
+          phoneInput.focus();
+          return;
+        }
+        phoneError.style.display = 'none';
+
+        // Show loader, disable button
+        proceedBtn.disabled = true;
+        const loader = proceedBtn.querySelector('.loader');
+        loader.style.display = 'inline-block';
+
+        // Store phone/email in localStorage
+        localStorage.setItem('userPhone', phoneVal);
+        localStorage.setItem('userEmail', emailInput.value.trim());
+
+        // Retrieve pid from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const pid = urlParams.get('pid');
+        console.log("Landing page PID:", pid);
+
+        if (pid) {
+          // Wait 2 seconds, then go to payment.html with the same pid
+          setTimeout(function() {
+            window.location.href = `/payment.html?pid=${pid}`;
+          }, 2000);
+        } else {
+          console.error('PID is missing in the URL');
+        }
       });
     });
   </script>
