@@ -293,13 +293,20 @@
         console.error('PID is missing in the URL');
       }
     });
-    document.addEventListener('DOMContentLoaded', () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const pid = urlParams.get('pid');
-      document.getElementById('proceedBtn').addEventListener('click', () => {
-        window.location.href = `/payment.html?pid=${pid}`;
-      });
-    });
-  </script>
+  // In landing.html (inside a <script> tag in head or before </body>):
+document.addEventListener("DOMContentLoaded", function(){
+  const urlParams = new URLSearchParams(window.location.search);
+  const pid = urlParams.get("pid");
+  if (pid && pid !== "null") {
+    // Store the pid so payment page can retrieve it
+    sessionStorage.setItem("pid", pid);
+    // Optionally, you can remove the visible part from the URL
+    // history.replaceState(null, "", "/" + pid);
+  } else {
+    // If no valid pid, show an error page
+    document.body.innerHTML = '<div class="error-page"><h1>404</h1><p>Page not found</p></div>';
+  }
+});
+
 </body>
 </html>
