@@ -6,6 +6,9 @@ import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // Initialize database
 const adapter = new JSONFile('db.json');
@@ -14,33 +17,45 @@ await db.read();
 db.data ||= { 
   transactions: [], 
   paymentLinks: [],
-  users: [], 
-  settings: {} 
+  users: [],
+  settings: {}
 };
 
 const app = express();
 app.use(bodyParser.json());
-app.use(cors());
+app.use(cors({
+  origin: 'https://www.khatapay.me',
+  credentials: true
+}));
 app.use(express.static('public'));
+
+// Force HTTPS
+app.use((req, res, next) => {
+  const proto = req.headers['x-forwarded-proto'];
+  if (proto && proto === 'http') {
+    return res.redirect(301, `https://${req.headers.host}${req.url}`);
+  }
+  next();
+});
 
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
-    origin: '*',
+    origin: 'https://www.khatapay.me',
     methods: ['GET', 'POST']
   }
 });
 
-// Security middleware for Admin Panel
+// Admin authentication middleware
 app.use('/api/admin/*', (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || authHeader !== `Bearer ${process.env.ADMIN_TOKEN}`) {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token !== process.env.ADMIN_TOKEN) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
 });
 
-// Generate Payment Link
+// Generate Payment Link (With Landing Page Redirect)
 app.post('/api/generatePaymentLink', async (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -48,8 +63,8 @@ app.post('/api/generatePaymentLink', async (req, res) => {
     if (!amount || isNaN(amount)) throw new Error('Invalid amount');
     if (!description?.trim()) throw new Error('Description required');
 
-    const invoiceId = crypto.randomBytes(12).toString('hex');
-    const paymentLink = `${req.protocol}://${req.get('host')}/payment.html?pid=${invoiceId}`;
+    const invoiceId = crypto.randomBytes(16).toString('hex');
+    const paymentLink = `https://${req.get('host')}/landing.html?pid=${invoiceId}`;
 
     db.data.paymentLinks.push({
       invoiceId,
@@ -59,6 +74,7 @@ app.post('/api/generatePaymentLink', async (req, res) => {
       createdAt: new Date().toISOString(),
       active: true
     });
+    
     await db.write();
 
     res.json({ status: "success", paymentLink });
@@ -69,28 +85,41 @@ app.post('/api/generatePaymentLink', async (req, res) => {
   }
 });
 
-// Admin Login
+// Landing Page Handler
+app.get('/landing.html', (req, res) => {
+  const pid = req.query.pid;
+  if (!db.data.paymentLinks.some(p => p.invoiceId === pid)) {
+    return res.status(404).send('Invalid payment link');
+  }
+  res.sendFile(process.cwd() + '/public/landing.html');
+});
+
+// Payment Page Redirect
+app.get('/payment.html', (req, res) => {
+  const pid = req.query.pid;
+  if (!db.data.paymentLinks.some(p => p.invoiceId === pid)) {
+    return res.redirect('/404.html');
+  }
+  res.sendFile(process.cwd() + '/public/payment.html');
+});
+
+// Admin Login Endpoint
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body;
   if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
     res.json({ 
       status: "success",
-      token: process.env.ADMIN_TOKEN 
+      token: process.env.ADMIN_TOKEN,
+      user: username
     });
   } else {
     res.status(401).json({ status: "error", message: "Invalid credentials" });
   }
 });
 
-// Get Transactions
-app.get('/api/transactions', (req, res) => {
-  res.json(db.data.transactions);
-});
-
-// Error handling
-app.use((err, req, res, next) => {
-  console.error('Server Error:', err);
-  res.status(500).json({ status: "error", message: "Internal server error" });
+// Get Payment Links
+app.get('/api/payment-links', (req, res) => {
+  res.json(db.data.paymentLinks);
 });
 
 const PORT = process.env.PORT || 3000;
