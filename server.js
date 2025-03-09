@@ -68,17 +68,20 @@ process.env.ADMIN_USER = 'admin';
 process.env.ADMIN_PASS = 'Alex20HB@';
 
 // Updated generatePaymentLink endpoint
-app.post('/api/generatePaymentLink', async (req, res) => {
-  try {
+app.post('/api/generatePaymentLink', (req, res) => {
     const { amount, description } = req.body;
+    if (!amount || !description) {
+        return res.status(400).json({ status: 'error', message: 'Amount and description are required' });
+    }
     
-    // Validate input
-    if (!amount || isNaN(amount) throw new Error('Invalid amount');
-    if (!description?.trim()) throw new Error('Description required');
+    // Generate unique ID for the payment link
+    const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
+    const paymentLink = `${req.protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
+    paymentLinks.set(invoiceId, { amount, description, paymentLink, createdAt: new Date().toISOString() });
 
-    // Generate secure ID
-    const invoiceId = crypto.randomBytes(12).toString('hex');
-    
+    res.json({ status: 'success', paymentLink });
+});
+
     // Construct URL
     const paymentLink = `${req.protocol}://${req.get('host')}/payment.html?pid=${invoiceId}`;
 
