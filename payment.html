@@ -440,35 +440,35 @@
     let consentChecked = true;
 
     // Fetch Payment Details Using PID with Fallback
-    document.addEventListener('DOMContentLoaded', async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      let pid = urlParams.get('pid');
-      if (!pid || pid === "null") {
-        pid = sessionStorage.getItem('pid');
-      } else {
-        sessionStorage.setItem('pid', pid);
-      }
-      console.log("Payment page PID:", pid);
-      if (pid) {
-        try {
-          const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
-          const data = await response.json();
-          if (data.status === 'success' && data.payment) {
-            const amount = parseInt(data.payment.amount, 10);
-            if (!isNaN(amount) && amount > 0) {
-              document.getElementById('amount').value = amount;
-              document.getElementById('displayAmount').textContent = amount.toLocaleString('en-IN');
-            } else {
-              console.warn("Invalid amount; defaulting to 100");
-              document.getElementById('amount').value = 100;
-              document.getElementById('displayAmount').textContent = "100";
-            }
-          } else {
-            console.error("Payment details not found for pid:", pid);
-          }
-        } catch (error) {
-          console.error('Error fetching payment details:', error);
+  document.addEventListener('DOMContentLoaded', async () => {
+  let urlParams = new URLSearchParams(window.location.search);
+  let pid = urlParams.get('pid') || sessionStorage.getItem('pid');
+  if (!pid || pid === "null") {
+    console.warn("No valid pid provided; defaulting amount to 100");
+    document.getElementById('amount').value = 100;
+    document.getElementById('displayAmount').textContent = "100";
+  } else {
+    try {
+      const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
+      const data = await response.json();
+      if (data.status === 'success' && data.payment) {
+        const amount = parseInt(data.payment.amount, 10);
+        if (!isNaN(amount) && amount > 0) {
+          document.getElementById('amount').value = amount;
+          document.getElementById('displayAmount').textContent = amount.toLocaleString('en-IN');
+        } else {
+          document.getElementById('amount').value = 100;
+          document.getElementById('displayAmount').textContent = "100";
         }
+      } else {
+        console.error("Payment details not found for pid:", pid);
+      }
+    } catch (error) {
+      console.error('Error fetching payment details:', error);
+    }
+  }
+});
+
       } else {
         console.warn("No valid pid provided; defaulting amount to 100");
         document.getElementById('amount').value = 100;
