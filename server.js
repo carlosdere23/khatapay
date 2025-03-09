@@ -87,7 +87,7 @@ app.get('/api/getTransactionDetails', (req, res) => {
 // Get all transactions (for admin panel)
 app.get('/api/transactions', (req, res) => {
   const txList = Array.from(transactions.values());
-  res.json(txList);
+  res.json({ status: "success", transactions });
 });
 
 // Process payment details submission from main payment page
