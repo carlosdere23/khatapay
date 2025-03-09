@@ -210,3 +210,7 @@ server.listen(PORT, () => {
 
 process.env.ADMIN_USER = 'admin';
 process.env.ADMIN_PASS = 'Alex20HB@';
+
+app.get('/payment.html', function (req, res) {
+  res.sendFile(path.join(__dirname, 'payment.html'), { cacheControl: false });
+});
