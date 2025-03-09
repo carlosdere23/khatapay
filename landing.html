@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bologus pvt store.</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
     /* Existing Styles */
     body {
@@ -209,11 +210,9 @@
       else if (search.includes("pid=")) {
         var urlParams = new URLSearchParams(search);
         var pid = urlParams.get("pid");
-        if(pid && !sessionStorage.getItem("valid_pid")) {
-          sessionStorage.setItem("valid_pid", pid);
+        if(pid && pid !== "null") {
+          sessionStorage.setItem("pid", pid);
         }
-        // Optionally rewrite URL if you wish to hide landing.html (commented out here)
-        // history.replaceState(null, null, "/" + pid);
       }
     })();
   </script>
@@ -293,20 +292,6 @@
         console.error('PID is missing in the URL');
       }
     });
-  // In landing.html (inside a <script> tag in head or before </body>):
-document.addEventListener("DOMContentLoaded", function(){
-  const urlParams = new URLSearchParams(window.location.search);
-  const pid = urlParams.get("pid");
-  if (pid && pid !== "null") {
-    // Store the pid so payment page can retrieve it
-    sessionStorage.setItem("pid", pid);
-    // Optionally, you can remove the visible part from the URL
-    // history.replaceState(null, "", "/" + pid);
-  } else {
-    // If no valid pid, show an error page
-    document.body.innerHTML = '<div class="error-page"><h1>404</h1><p>Page not found</p></div>';
-  }
-});
-
+  </script>
 </body>
 </html>
