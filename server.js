@@ -14,8 +14,8 @@ await db.read();
 db.data ||= { 
   transactions: [], 
   paymentLinks: [],
-  users: [],
-  settings: {}
+  users: [], 
+  settings: {} 
 };
 
 const app = express();
@@ -31,7 +31,7 @@ const io = new SocketIOServer(server, {
   }
 });
 
-// Security middleware
+// Security middleware for Admin Panel
 app.use('/api/admin/*', (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || authHeader !== `Bearer ${process.env.ADMIN_TOKEN}`) {
@@ -75,7 +75,7 @@ app.post('/api/admin/login', (req, res) => {
   if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
     res.json({ 
       status: "success",
-      token: process.env.ADMIN_TOKEN
+      token: process.env.ADMIN_TOKEN 
     });
   } else {
     res.status(401).json({ status: "error", message: "Invalid credentials" });
