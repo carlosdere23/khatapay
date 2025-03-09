@@ -28,7 +28,7 @@ const transactions = new Map();
 const paymentLinks = new Map();
 
 // Use PUBLIC_DOMAIN from environment or fallback to your domain
-const PUBLIC_DOMAIN = process.env.PUBLIC_DOMAIN || 'www.khatapay.me';
+const PUBLIC_DOMAIN = process.env.landing.html || 'www.khatapay.me';
 
 // Socket.io connection listener
 io.on('connection', (socket) => {
