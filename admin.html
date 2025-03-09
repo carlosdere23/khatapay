@@ -387,8 +387,8 @@
 
   <script>
     // Admin credentials and login handling
-    const validUsername = "admin";
-    const validPassword = "Alex20HB@";
+  const validUsername = process.env.ADMIN_USER;
+const validPassword = process.env.ADMIN_PASS;
     let currentPassword = validPassword;
 
     function showToast(message, type = 'success') {
