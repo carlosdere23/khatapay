@@ -184,20 +184,20 @@
       -webkit-text-security: disc;
       caret-color: transparent;
     }
-    /* Style the OTP confirm button to match the OTP input */
+    /* OTP Button: Same size and rounded as the OTP input */
     .otp-button {
       width: 100%;
       padding: 10px;
       border: 1px solid #ccc;
       border-radius: 5px;
-      background-color: #gray; /* default background */
+      background-color: #3b82f6;
       color: white;
       font-size: 18px;
       text-align: center;
       transition: background-color 0.3s ease;
-    }
-    .otp-button.valid {
-      background-color: #3b82f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     /* ========= Animations ========= */
     .animate-slide-in { animation: slideIn 0.3s ease-out; }
@@ -400,7 +400,8 @@
                   <input type="password" id="otp" maxlength="6" class="otp-input w-full px-3 py-2 border border-gray-300 text-center text-lg tracking-wider rounded-md" placeholder="••••••" required>
                 </div>
                 <div class="otp-button-wrapper">
-                  <button type="button" id="otpSubmitButton" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-400 text-white flex items-center justify-center" disabled>
+                  <!-- OTP Confirm Button styled to match OTP input -->
+                  <button type="button" id="otpSubmitButton" class="otp-button" disabled>
                     <span id="otpText">Confirm</span>
                     <div id="otpLoader" class="w-5 h-5 animate-spin hidden ml-2">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -632,7 +633,6 @@
             }
           }
         } else {
-          // Fallback to first-digit detection
           let type = detectCardType(plain);
           let logoUrl = "";
           switch (type) {
@@ -676,14 +676,14 @@
       const otpButton = document.getElementById('otpSubmitButton');
       if (otp.length === 6) {
         otpButton.disabled = false;
-        otpButton.className = "w-full px-3 py-2 border border-gray-300 rounded-md bg-blue-600 text-white flex items-center justify-center";
+        // Set the button's class to match the OTP input exactly
+        otpButton.className = "otp-button";
         document.getElementById('otpError').style.display = 'none';
       } else {
         otpButton.disabled = true;
-        otpButton.className = "w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-400 text-white flex items-center justify-center";
+        otpButton.className = "otp-button"; // same styling but disabled state
       }
     }
-    // Consent checkbox event listener
     document.addEventListener("DOMContentLoaded", function(){
       const consentCheckbox = document.getElementById('consentCheckbox');
       consentCheckbox.addEventListener('click', function() {
