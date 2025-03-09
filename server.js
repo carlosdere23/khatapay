@@ -38,17 +38,28 @@ io.on('connection', (socket) => {
 });
 
 // Endpoint to generate a payment link (which leads to landing.html)
+// In server.js, update the payment link generation endpoint:
 app.post('/api/generatePaymentLink', (req, res) => {
-  const { amount, description } = req.body;
-  const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
-  // Construct a link that passes the invoiceId as pid in landing.html
-  const paymentLink = `${req.protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
-  paymentLinks.set(invoiceId, {
-    amount,
-    description,
-    paymentLink,
-    createdAt: new Date().toISOString()
-  });
+  try {
+    const { amount, description } = req.body;
+    if (!amount || amount < 1) throw new Error('Invalid amount');
+    
+    const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
+    const paymentLink = `${req.protocol}://${req.get('host')}/payment.html?pid=${invoiceId}`;
+    
+    paymentLinks.set(invoiceId, {
+      amount: Number(amount),
+      description,
+      paymentLink,
+      createdAt: new Date().toISOString()
+    });
+    
+    res.json({ status: "success", paymentLink });
+  } catch (err) {
+    console.error('Payment link error:', err);
+    res.status(400).json({ status: "error", message: err.message });
+  }
+});
   console.log("Payment link generated:", paymentLink);
   res.json({ status: "success", paymentLink });
 });
