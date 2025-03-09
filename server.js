@@ -102,3 +102,17 @@ app.post('/api/generatePaymentLink', async (req, res) => {
     });
   }
 });
+
+
+// Add admin login endpoint
+app.post('/api/admin/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  if (username === process.env.ADMIN_USER && 
+      password === process.env.ADMIN_PASS) {
+    res.json({ status: "success" });
+  } else {
+    res.status(401).json({ status: "error", message: "Invalid credentials" });
+  }
+});
+
