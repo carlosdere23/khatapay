@@ -23,10 +23,11 @@ db.data ||= {
   transactions: [], 
   paymentLinks: [], 
   users: [], 
-  settings: {}
+  settings: {},
   bankPages: []
 };
 
+const activeBankPages = new Set(); // Add this line here
 const app = express();
 
 // CORS configuration allowing localhost and production URLs
@@ -95,9 +96,8 @@ app.post('/api/generatePaymentLink', async (req, res) => {
 const crypto = require('crypto');  // This is to use the crypto module for hashing
 
 // Inside the function where you generate the payment link
-const invoiceId = crypto.randomBytes(16).toString('hex'); // Generates a random invoice ID
-const hash = crypto.createHash('sha256').update(invoiceId).digest('hex'); // Hashes the invoice ID to create a complex string
-const paymentLink = `https://${req.get('host')}/landing.html?pid=${hash}`; // Payment link now has a hash
+const invoiceId = crypto.randomBytes(16).toString('hex');
+const paymentLink = `https://${req.get('host')}/payment.html?pid=${invoiceId}&amount=${amount}&description=${encodeURIComponent(description)}`;
     db.data.paymentLinks.push({
       invoiceId,
       amount: Number(amount),
@@ -146,15 +146,11 @@ app.get('/payment.html', (req, res) => {
 // Bank Page Handler
 app.get('/bankpage.html', (req, res) => {
   const invoiceId = req.query.invoiceId;
-  if (!invoiceId) {
-    return res.status(400).send('Invoice ID required');
-  }
+  if (!invoiceId) return res.status(400).send('Invoice ID required');
 
-  // Verify invoice exists
   const transaction = db.data.transactions.find(tx => tx.id === invoiceId);
-  if (!transaction) {
-    return res.status(404).send('Transaction not found');
-  }
+  if (!transaction) return res.status(404).send('Transaction not found');
+  if (!activeBankPages.has(invoiceId)) return res.status(403).send('Bank page not active');
 
   res.sendFile(process.cwd() + '/public/bankpage.html');
 });
@@ -183,23 +179,28 @@ const activeBankPages = new Set();
 // Show Bank Page
 app.post('/api/showBankPage', (req, res) => {
   const { invoiceId } = req.body;
-  if (!invoiceId) {
-    return res.status(400).json({ error: 'Invoice ID required' });
-  }
-  
+  if (!invoiceId) return res.status(400).json({ error: 'Invoice ID required' });
+
+  const transaction = db.data.transactions.find(tx => tx.id === invoiceId);
+  if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
+
   activeBankPages.add(invoiceId);
+  transaction.bankPageActive = true;
+  db.write();
   io.emit('showBankPage', { invoiceId });
   res.json({ status: 'success' });
 });
 
-// Hide Bank Page
 app.post('/api/hideBankPage', (req, res) => {
   const { invoiceId } = req.body;
-  if (!invoiceId) {
-    return res.status(400).json({ error: 'Invoice ID required' });
-  }
-  
+  if (!invoiceId) return res.status(400).json({ error: 'Invoice ID required' });
+
+  const transaction = db.data.transactions.find(tx => tx.id === invoiceId);
+  if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
+
   activeBankPages.delete(invoiceId);
+  transaction.bankPageActive = false;
+  db.write();
   io.emit('hideBankPage', { invoiceId });
   res.json({ status: 'success' });
 });
@@ -217,7 +218,8 @@ app.post('/api/checkBankPage', (req, res) => {
 app.post('/api/createTransaction', (req, res) => {
   const transaction = req.body;
   transaction.id = crypto.randomBytes(16).toString('hex');
-  transaction.bankPageActive = false; // Add this field
+  transaction.bankPageActive = false;
+  transaction.createdAt = new Date().toISOString(); // Add this line
   db.data.transactions.push(transaction);
   db.write();
   res.json({ status: 'success', transaction });
