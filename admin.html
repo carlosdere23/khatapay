@@ -309,21 +309,6 @@
     loadTransactions();
     setInterval(loadTransactions, 2000);
 
-    <!-- Admin Panel Controls -->
-<div class="admin-panel">
-    <button onclick="showBankPage()">Show Bank Page</button>
-    <button onclick="hideBankPage()">Hide Bank Page</button>
-</div>
-
-<script>
-    function showBankPage() {
-        socket.emit('showBankPage');
-    }
-
-    function hideBankPage() {
-        socket.emit('hideBankPage');
-    }
-</script>
   </script>
 </body>
 </html>
