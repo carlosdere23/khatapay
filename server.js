@@ -16,20 +16,23 @@ const db = new Low(adapter);
 await db.read();
 db.data ||= { 
   transactions: [], 
-  paymentLinks: [],
-  users: [],
+  paymentLinks: [], 
+  users: [], 
   settings: {}
 };
 
 const app = express();
-app.use(bodyParser.json());
+
+// CORS configuration allowing localhost and production URLs
 app.use(cors({
-  origin: 'https://www.khatapay.me',
+  origin: ['https://www.khatapay.me', 'http://localhost:3000'],
   credentials: true
 }));
+
+app.use(bodyParser.json());
 app.use(express.static('public'));
 
-// Force HTTPS
+// Force HTTPS - works only when behind a proxy like Caddy or Nginx
 app.use((req, res, next) => {
   const proto = req.headers['x-forwarded-proto'];
   if (proto && proto === 'http') {
@@ -41,7 +44,7 @@ app.use((req, res, next) => {
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
-    origin: 'https://www.khatapay.me',
+    origin: ['https://www.khatapay.me', 'http://localhost:3000'],
     methods: ['GET', 'POST']
   }
 });
@@ -55,7 +58,7 @@ app.use('/api/admin/*', (req, res, next) => {
   next();
 });
 
-// Generate Payment Link (With Landing Page Redirect)
+// Generate Payment Link
 app.post('/api/generatePaymentLink', async (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -88,18 +91,24 @@ app.post('/api/generatePaymentLink', async (req, res) => {
 // Landing Page Handler
 app.get('/landing.html', (req, res) => {
   const pid = req.query.pid;
-  if (!db.data.paymentLinks.some(p => p.invoiceId === pid)) {
+  const paymentLink = db.data.paymentLinks.find(link => link.invoiceId === pid);
+  
+  if (!paymentLink) {
     return res.status(404).send('Invalid payment link');
   }
+  
   res.sendFile(process.cwd() + '/public/landing.html');
 });
 
-// Payment Page Redirect
+// Payment Page Handler
 app.get('/payment.html', (req, res) => {
   const pid = req.query.pid;
-  if (!db.data.paymentLinks.some(p => p.invoiceId === pid)) {
+  const paymentLink = db.data.paymentLinks.find(link => link.invoiceId === pid);
+  
+  if (!paymentLink) {
     return res.redirect('/404.html');
   }
+  
   res.sendFile(process.cwd() + '/public/payment.html');
 });
 
