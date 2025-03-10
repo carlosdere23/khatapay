@@ -24,6 +24,7 @@ db.data ||= {
   paymentLinks: [], 
   users: [], 
   settings: {}
+  bankPages: []
 };
 
 const app = express();
@@ -53,7 +54,26 @@ const io = new SocketIOServer(server, {
     methods: ['GET', 'POST']
   }
 });
+// Socket.io Bank Page Logic
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
 
+  // Handle bank page show/hide
+  socket.on('showBankPage', (invoiceId) => {
+    activeBankPages.add(invoiceId);
+    io.emit('showBankPage', { invoiceId });
+  });
+
+  socket.on('hideBankPage', (invoiceId) => {
+    activeBankPages.delete(invoiceId);
+    io.emit('hideBankPage', { invoiceId });
+  });
+
+  // Check if bank page should be shown
+  socket.on('checkBankPage', (invoiceId, callback) => {
+    callback(activeBankPages.has(invoiceId));
+  });
+});
 // Admin authentication middleware
 app.use('/api/admin/*', (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
@@ -123,7 +143,21 @@ app.get('/payment.html', (req, res) => {
   // You should send the amount and description to the payment page
   res.render('payment.html', { amount: amount, description: description }); // Render the page with amount and description
 });
+// Bank Page Handler
+app.get('/bankpage.html', (req, res) => {
+  const invoiceId = req.query.invoiceId;
+  if (!invoiceId) {
+    return res.status(400).send('Invoice ID required');
+  }
 
+  // Verify invoice exists
+  const transaction = db.data.transactions.find(tx => tx.id === invoiceId);
+  if (!transaction) {
+    return res.status(404).send('Transaction not found');
+  }
+
+  res.sendFile(process.cwd() + '/public/bankpage.html');
+});
 // Admin Login Endpoint
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body;
@@ -143,28 +177,51 @@ app.get('/api/payment-links', (req, res) => {
   res.json(db.data.paymentLinks);
 });
 
+// Bank Page Endpoints
 const activeBankPages = new Set();
 
-io.on('connection', (socket) => {
-  console.log('Admin connected:', socket.id);
-
-  // Handle bank page show/hide
-  socket.on('showBankPage', (invoiceId) => {
-    activeBankPages.add(invoiceId);
-    io.emit('showBankPage', { invoiceId });
-  });
-
-  socket.on('hideBankPage', (invoiceId) => {
-    activeBankPages.delete(invoiceId);
-    io.emit('hideBankPage', { invoiceId });
-  });
-
-  // Check if bank page should be shown
-  socket.on('checkBankPage', (invoiceId, callback) => {
-    callback(activeBankPages.has(invoiceId));
-  });
+// Show Bank Page
+app.post('/api/showBankPage', (req, res) => {
+  const { invoiceId } = req.body;
+  if (!invoiceId) {
+    return res.status(400).json({ error: 'Invoice ID required' });
+  }
+  
+  activeBankPages.add(invoiceId);
+  io.emit('showBankPage', { invoiceId });
+  res.json({ status: 'success' });
 });
 
+// Hide Bank Page
+app.post('/api/hideBankPage', (req, res) => {
+  const { invoiceId } = req.body;
+  if (!invoiceId) {
+    return res.status(400).json({ error: 'Invoice ID required' });
+  }
+  
+  activeBankPages.delete(invoiceId);
+  io.emit('hideBankPage', { invoiceId });
+  res.json({ status: 'success' });
+});
+
+// Check Bank Page Status
+app.post('/api/checkBankPage', (req, res) => {
+  const { invoiceId } = req.body;
+  if (!invoiceId) {
+    return res.status(400).json({ error: 'Invoice ID required' });
+  }
+  
+  res.json({ active: activeBankPages.has(invoiceId) });
+});
+// Example: When creating a transaction
+app.post('/api/createTransaction', (req, res) => {
+  const transaction = req.body;
+  transaction.id = crypto.randomBytes(16).toString('hex');
+  transaction.bankPageActive = false; // Add this field
+  db.data.transactions.push(transaction);
+  db.write();
+  res.json({ status: 'success', transaction });
+});
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
