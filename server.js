@@ -6,7 +6,7 @@ import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import dotenv from 'dotenv';
 import { Low } from 'lowdb';
-import { JSONFile } from 'lowdb/node';
+import { JSONFile } from 'lowdb';
 
 // Load environment variables
 dotenv.config();
