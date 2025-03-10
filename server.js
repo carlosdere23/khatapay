@@ -117,12 +117,7 @@ app.get('/payment.html', (req, res) => {
   }
 
   // You should send the amount and description to the payment page
-  res.sendFile(process.cwd() + '/public/payment.html', { 
-    headers: {
-      'amount': amount, 
-      'description': description
-    }
-  });
+  res.render('payment.html', { amount: amount, description: description }); // Render the page with amount and description
 });
 
 // Admin Login Endpoint
