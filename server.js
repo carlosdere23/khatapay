@@ -4,16 +4,16 @@ import cors from 'cors';
 import crypto from 'crypto';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
-import { Low } from 'lowdb';
-import { JSONFile } from 'lowdb';
 import dotenv from 'dotenv';
+import low from 'lowdb';  // Default import for CommonJS
+import { JSONFile } from 'lowdb/node';  // Named import from lowdb/node
 
 // Load environment variables from .env file
 dotenv.config();
 
 // Initialize database
 const adapter = new JSONFile('db.json');
-const db = new Low(adapter);
+const db = new low(adapter);
 await db.read();
 db.data ||= { 
   transactions: [], 
