@@ -200,7 +200,10 @@
     socket.on('hideBankPage', () => loadTransactions());
 
     // Generate Payment Link
-
+// In admin.html's script section
+socket.on('refreshTransactions', () => {
+  loadTransactions();
+});
     // Replace the form submit handler with this corrected version
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
         e.preventDefault(); // Prevent default form submission
