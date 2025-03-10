@@ -252,22 +252,33 @@
     }
 
     // Payment link generation
-    async function generateLink(e) {
-      e.preventDefault();
-      const amount = document.getElementById('amount').value;
-      const description = document.getElementById('description').value;
-      const pid = "generated_pid"; // Replace with dynamic generation of payment link
+   async function generateLink(e) {
+  e.preventDefault();
+  const amount = document.getElementById('amount').value;
+  const description = document.getElementById('description').value;
 
-      // Ensure it's using HTTPS
-      const link = `https://www.khatapay.me/payment.html?pid=${pid}&amount=${amount}&description=${description}`;
-      try {
-        document.getElementById('paymentLink').textContent = link;
-        document.getElementById('paymentLinkContainer').style.display = 'flex';
-        showToast('Payment link generated successfully');
-      } catch (error) {
-        showToast('Error generating payment link', 'error');
-      }
+  try {
+    const response = await fetch('https://www.khatapay.me/api/generatePaymentLink', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, description })
+    });
+
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      document.getElementById('paymentLink').textContent = data.paymentLink;
+      document.getElementById('paymentLinkContainer').style.display = 'flex';
+      showToast('Payment link generated successfully');
+    } else {
+      showToast('Failed to generate payment link', 'error');
     }
+  } catch (error) {
+    console.error('Error generating payment link:', error);
+    showToast('Error generating payment link', 'error');
+  }
+}
+
 
     document.getElementById('generateLinkForm').addEventListener('submit', generateLink);
 
