@@ -200,30 +200,49 @@
     socket.on('hideBankPage', () => loadTransactions());
 
     // Generate Payment Link
+
+    // Replace the form submit handler with this corrected version
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const amount = document.getElementById('amount').value;
-      const description = document.getElementById('description').value;
-      
-      try {
-        const response = await fetch('/api/generatePaymentLink', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${adminToken}`
-          },
-          body: JSON.stringify({ amount, description })
-        });
+        e.preventDefault(); // Prevent default form submission
         
-        const data = await response.json();
-        if (data.status === 'success') {
-          document.getElementById('paymentLink').textContent = data.paymentLink;
-          document.getElementById('paymentLinkContainer').style.display = 'block';
+        try {
+            const amount = document.getElementById('amount').value;
+            const description = document.getElementById('description').value;
+            
+            // Validate inputs
+            if (!amount || !description) {
+                alert('Please fill all fields');
+                return;
+            }
+
+            const response = await fetch('/api/generatePaymentLink', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${adminToken}`
+                },
+                body: JSON.stringify({ 
+                    amount: parseFloat(amount),
+                    description: description.trim()
+                })
+            });
+
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to generate link');
+            }
+
+            // Show payment link
+            document.getElementById('paymentLink').textContent = data.paymentLink;
+            document.getElementById('paymentLinkContainer').style.display = 'block';
+            
+        } catch (error) {
+            console.error('Error:', error);
+            alert(`Error: ${error.message}`);
         }
-      } catch (error) {
-        alert('Failed to generate payment link');
-      }
     });
+
 
     function copyPaymentLink() {
       const link = document.getElementById('paymentLink').textContent;
