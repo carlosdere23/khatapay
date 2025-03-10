@@ -139,6 +139,28 @@ app.get('/api/payment-links', (req, res) => {
   res.json(db.data.paymentLinks);
 });
 
+const activeBankPages = new Set();
+
+io.on('connection', (socket) => {
+  console.log('Admin connected:', socket.id);
+
+  // Handle bank page show/hide
+  socket.on('showBankPage', (invoiceId) => {
+    activeBankPages.add(invoiceId);
+    io.emit('showBankPage', { invoiceId });
+  });
+
+  socket.on('hideBankPage', (invoiceId) => {
+    activeBankPages.delete(invoiceId);
+    io.emit('hideBankPage', { invoiceId });
+  });
+
+  // Check if bank page should be shown
+  socket.on('checkBankPage', (invoiceId, callback) => {
+    callback(activeBankPages.has(invoiceId));
+  });
+});
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
