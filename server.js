@@ -6,7 +6,8 @@ import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { createRequire } from 'module'; // Import createRequire for CommonJS compatibility
 import dotenv from 'dotenv';
-
+import { Low } from 'lowdb'; 
+import { JSONFile } from 'lowdb/node';
 dotenv.config();
 
 // Create `require` method for CommonJS modules
