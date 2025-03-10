@@ -81,11 +81,17 @@ io.on('connection', (socket) => {
 });
 
 app.get('/bankpage.html', (req, res) => {
-  // ...
+  const invoiceId = req.query.invoiceId;
+  if (!invoiceId) return res.status(400).send('Invoice ID required');
+  
+  const transaction = db.data.transactions.find(tx => tx.id === invoiceId);
   if (!transaction) {
-    return res.status(404).send('Transaction not found'); // ✅ HTML response
+    return res.status(404).send('Transaction not found');
   }
-  // ...
+  
+  if (!activeBankPages.has(invoiceId)) return res.status(403).send('Bank page not active'); // ✅ Correct placement
+
+  res.sendFile(process.cwd() + '/public/bankpage.html');
 });
 // Admin Authentication Middleware
 const adminAuth = (req, res, next) => {
@@ -137,17 +143,12 @@ app.get('/landing.html', (req, res) => {
   res.sendFile(process.cwd() + '/public/landing.html');
 });
 
-app.get('/payment.html', (req, res) => {
-  const pid = req.query.pid;
-  const paymentLink = db.data.paymentLinks.find(link => link.invoiceId === pid);
-  if (!paymentLink) return res.redirect('/404.html');
-  res.sendFile(process.cwd() + '/public/payment.html');
-});
 
 app.get('/payment.html', (req, res) => {
   const invoiceId = req.query.invoiceId; // ✅ Correct parameter
   const paymentLink = db.data.paymentLinks.find(link => link.invoiceId === invoiceId);
-  // ...
+  if (!paymentLink) return res.redirect('/404.html');
+  res.sendFile(process.cwd() + '/public/payment.html');
 });
   if (!activeBankPages.has(invoiceId)) return res.status(403).send('Bank page not active');
 
