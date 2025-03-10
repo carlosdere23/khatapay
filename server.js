@@ -80,6 +80,13 @@ io.on('connection', (socket) => {
   // ======== END OF ADDITION ========
 });
 
+app.get('/bankpage.html', (req, res) => {
+  // ...
+  if (!transaction) {
+    return res.status(404).send('Transaction not found'); // ✅ HTML response
+  }
+  // ...
+});
 // Admin Authentication Middleware
 const adminAuth = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
@@ -137,17 +144,11 @@ app.get('/payment.html', (req, res) => {
   res.sendFile(process.cwd() + '/public/payment.html');
 });
 
-app.get('/bankpage.html', (req, res) => {
-  const invoiceId = req.query.invoiceId;
-  if (!invoiceId) return res.status(400).send('Invoice ID required');
-  
-  const transaction = db.data.transactions.find(tx => tx.id === invoiceId);
-if (!transaction) {
-  return res.status(404).json({ 
-    error: 'Transaction not found',
-    message: 'No transaction exists with the provided ID' 
-  });
-}
+app.get('/payment.html', (req, res) => {
+  const invoiceId = req.query.invoiceId; // ✅ Correct parameter
+  const paymentLink = db.data.paymentLinks.find(link => link.invoiceId === invoiceId);
+  // ...
+});
   if (!activeBankPages.has(invoiceId)) return res.status(403).send('Bank page not active');
 
   res.sendFile(process.cwd() + '/public/bankpage.html');
@@ -191,9 +192,16 @@ app.post('/api/createTransaction', adminAuth, (req, res) => {
   transaction.createdAt = new Date().toISOString();
   db.data.transactions.push(transaction);
   db.write();
+  io.emit('transactionUpdate');
   res.json({ status: 'success', transaction });
 });
-
+app.delete('/api/transactions/:id', adminAuth, (req, res) => {
+  const { id } = req.params;
+  db.data.transactions = db.data.transactions.filter(tx => tx.id !== id);
+  db.write();
+  io.emit('transactionUpdate');
+  res.json({ status: 'success' });
+});
 // Start Server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
