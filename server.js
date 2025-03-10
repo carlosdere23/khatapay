@@ -4,16 +4,12 @@ import cors from 'cors';
 import crypto from 'crypto';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
-import { createRequire } from 'module'; // Import createRequire for CommonJS compatibility
-import dotenv from 'dotenv';
-import { Low } from 'lowdb'; 
+import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb';
-dotenv.config();
+import dotenv from 'dotenv';
 
-// Create `require` method for CommonJS modules
-const require = createRequire(import.meta.url);
-const { Low } = require('lowdb');  // Use require to load lowdb
-const { JSONFile } = require('lowdb/node'); // Use require for lowdb node
+// Load environment variables from .env file
+dotenv.config();
 
 // Initialize database
 const adapter = new JSONFile('db.json');
