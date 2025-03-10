@@ -4,16 +4,15 @@ import cors from 'cors';
 import crypto from 'crypto';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
-import { createRequire } from 'module'; // Import createRequire for CommonJS compatibility
+import { createRequire } from 'module';
 import dotenv from 'dotenv';
-import { Low } from 'lowdb'; 
+import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb';
 dotenv.config();
 
-// Create `require` method for CommonJS modules
 const require = createRequire(import.meta.url);
-const { Low } = require('lowdb');  // Use require to load lowdb
-const { JSONFile } = require('lowdb/node'); // Use require for lowdb node
+const { Low } = require('lowdb');
+const { JSONFile } = require('lowdb/node');
 
 // Initialize database
 const adapter = new JSONFile('db.json');
@@ -24,27 +23,24 @@ db.data ||= {
   paymentLinks: [], 
   users: [], 
   settings: {},
-  bankPages: []
+  bankPages: [] 
 };
 
-const activeBankPages = new Set(); // Add this line here
+const activeBankPages = new Set();
 const app = express();
 
-// CORS configuration allowing localhost and production URLs
+// Middlewares
 app.use(cors({
   origin: ['https://www.khatapay.me', 'http://localhost:3000'],
   credentials: true
 }));
-
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
-// Force HTTPS - works only when behind a proxy like Caddy or Nginx
+// Force HTTPS
 app.use((req, res, next) => {
   const proto = req.headers['x-forwarded-proto'];
-  if (proto && proto === 'http') {
-    return res.redirect(301, `https://${req.headers.host}${req.url}`);
-  }
+  if (proto === 'http') return res.redirect(301, `https://${req.headers.host}${req.url}`);
   next();
 });
 
@@ -55,11 +51,11 @@ const io = new SocketIOServer(server, {
     methods: ['GET', 'POST']
   }
 });
-// Socket.io Bank Page Logic
+
+// Socket.io Logic
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
-  // Handle bank page show/hide
   socket.on('showBankPage', (invoiceId) => {
     activeBankPages.add(invoiceId);
     io.emit('showBankPage', { invoiceId });
@@ -70,34 +66,28 @@ io.on('connection', (socket) => {
     io.emit('hideBankPage', { invoiceId });
   });
 
-  // Check if bank page should be shown
   socket.on('checkBankPage', (invoiceId, callback) => {
     callback(activeBankPages.has(invoiceId));
   });
 });
-// Admin authentication middleware
-app.use('/api/admin/*', (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (token !== process.env.ADMIN_TOKEN) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  next();
-});
 
-// Generate Payment Link
-app.post('/api/generatePaymentLink', async (req, res) => {
+// Admin Authentication Middleware
+const adminAuth = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token !== process.env.ADMIN_TOKEN) return res.status(401).json({ error: 'Unauthorized' });
+  next();
+};
+
+// Payment Link Generation
+app.post('/api/generatePaymentLink', adminAuth, async (req, res) => {
   try {
     const { amount, description } = req.body;
-    
     if (!amount || isNaN(amount)) throw new Error('Invalid amount');
     if (!description?.trim()) throw new Error('Description required');
 
     const invoiceId = crypto.randomBytes(16).toString('hex');
-const crypto = require('crypto');  // This is to use the crypto module for hashing
+    const paymentLink = `https://${req.get('host')}/payment.html?pid=${invoiceId}&amount=${amount}&description=${encodeURIComponent(description)}`;
 
-// Inside the function where you generate the payment link
-const invoiceId = crypto.randomBytes(16).toString('hex');
-const paymentLink = `https://${req.get('host')}/payment.html?pid=${invoiceId}&amount=${amount}&description=${encodeURIComponent(description)}`;
     db.data.paymentLinks.push({
       invoiceId,
       amount: Number(amount),
@@ -108,7 +98,6 @@ const paymentLink = `https://${req.get('host')}/payment.html?pid=${invoiceId}&am
     });
     
     await db.write();
-
     res.json({ status: "success", paymentLink });
     
   } catch (err) {
@@ -117,67 +106,34 @@ const paymentLink = `https://${req.get('host')}/payment.html?pid=${invoiceId}&am
   }
 });
 
-// Landing Page Handler
+// Pages Handlers
 app.get('/landing.html', (req, res) => {
   const pid = req.query.pid;
   const paymentLink = db.data.paymentLinks.find(link => link.invoiceId === pid);
-  
-  if (!paymentLink) {
-    return res.status(404).send('Invalid payment link');
-  }
-  
+  if (!paymentLink) return res.status(404).send('Invalid payment link');
   res.sendFile(process.cwd() + '/public/landing.html');
 });
 
-// Payment Page Handler
 app.get('/payment.html', (req, res) => {
   const pid = req.query.pid;
-  const amount = req.query.amount;  // Retrieve the amount from the query parameters
-  const description = req.query.description;  // Retrieve description from the query parameters
   const paymentLink = db.data.paymentLinks.find(link => link.invoiceId === pid);
-  
-  if (!paymentLink) {
-    return res.redirect('/404.html');
-  }
-
-  // You should send the amount and description to the payment page
-  res.render('payment.html', { amount: amount, description: description }); // Render the page with amount and description
+  if (!paymentLink) return res.redirect('/404.html');
+  res.sendFile(process.cwd() + '/public/payment.html');
 });
-// Bank Page Handler
+
 app.get('/bankpage.html', (req, res) => {
   const invoiceId = req.query.invoiceId;
   if (!invoiceId) return res.status(400).send('Invoice ID required');
-
+  
   const transaction = db.data.transactions.find(tx => tx.id === invoiceId);
   if (!transaction) return res.status(404).send('Transaction not found');
   if (!activeBankPages.has(invoiceId)) return res.status(403).send('Bank page not active');
 
   res.sendFile(process.cwd() + '/public/bankpage.html');
 });
-// Admin Login Endpoint
-app.post('/api/admin/login', (req, res) => {
-  const { username, password } = req.body;
-  if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
-    res.json({ 
-      status: "success",
-      token: process.env.ADMIN_TOKEN,
-      user: username
-    });
-  } else {
-    res.status(401).json({ status: "error", message: "Invalid credentials" });
-  }
-});
-
-// Get Payment Links
-app.get('/api/payment-links', (req, res) => {
-  res.json(db.data.paymentLinks);
-});
 
 // Bank Page Endpoints
-const activeBankPages = new Set();
-
-// Show Bank Page
-app.post('/api/showBankPage', (req, res) => {
+app.post('/api/showBankPage', adminAuth, (req, res) => {
   const { invoiceId } = req.body;
   if (!invoiceId) return res.status(400).json({ error: 'Invoice ID required' });
 
@@ -191,7 +147,7 @@ app.post('/api/showBankPage', (req, res) => {
   res.json({ status: 'success' });
 });
 
-app.post('/api/hideBankPage', (req, res) => {
+app.post('/api/hideBankPage', adminAuth, (req, res) => {
   const { invoiceId } = req.body;
   if (!invoiceId) return res.status(400).json({ error: 'Invoice ID required' });
 
@@ -205,25 +161,18 @@ app.post('/api/hideBankPage', (req, res) => {
   res.json({ status: 'success' });
 });
 
-// Check Bank Page Status
-app.post('/api/checkBankPage', (req, res) => {
-  const { invoiceId } = req.body;
-  if (!invoiceId) {
-    return res.status(400).json({ error: 'Invoice ID required' });
-  }
-  
-  res.json({ active: activeBankPages.has(invoiceId) });
-});
-// Example: When creating a transaction
-app.post('/api/createTransaction', (req, res) => {
+// Transaction Handling
+app.post('/api/createTransaction', adminAuth, (req, res) => {
   const transaction = req.body;
   transaction.id = crypto.randomBytes(16).toString('hex');
   transaction.bankPageActive = false;
-  transaction.createdAt = new Date().toISOString(); // Add this line
+  transaction.createdAt = new Date().toISOString();
   db.data.transactions.push(transaction);
   db.write();
   res.json({ status: 'success', transaction });
 });
+
+// Start Server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
