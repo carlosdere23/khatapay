@@ -844,5 +844,17 @@ is 100% safe. Your transaction is processed through a secure https connection.
     };
     history.pushState(null, null, window.location.href);
   </script>
+
+  <script>
+  window.onpopstate = function(event) {
+    if (confirm("Do you want to cancel this transaction?")) {
+      window.location.href = '/fail.html?reason=canceled';  // Redirects to fail.html if they choose 'yes'
+    } else {
+      history.pushState(null, null, window.location.href);  // Keeps the user on the same page if they choose 'no'
+    }
+  };
+
+  history.pushState(null, null, window.location.href);  // Prevents the default back behavior
+  </script>
 </body>
 </html>
