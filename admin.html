@@ -310,6 +310,26 @@
         console.error('Error loading transactions:', error);
       }
     }
+    async function showBankPage(id) {
+  try {
+    // Open bank page in new tab
+    const bankPageUrl = `/bankpage.html?invoiceId=${id}`;
+    window.open(bankPageUrl, '_blank');
+
+    // Send show command
+    const response = await fetch("/api/showBankPage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoiceId: id })
+    });
+    
+    if (!response.ok) throw new Error('Failed to show bank page');
+    loadTransactions();
+  } catch (error) {
+    console.error('Error showing bank page:', error);
+    alert('Failed to show bank page. Please try again.');
+  }
+}
 
     loadTransactions();
     setInterval(loadTransactions, 2000);
