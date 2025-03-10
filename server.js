@@ -5,8 +5,8 @@ import crypto from 'crypto';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import dotenv from 'dotenv';
-import { Low } from 'lowdb';
-import { JSONFile } from 'lowdb';
+import lowdb from 'lowdb';
+import lowdbNode from 'lowdb/node';
 
 // Load environment variables
 dotenv.config();
