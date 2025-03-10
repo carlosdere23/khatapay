@@ -5,15 +5,15 @@ import crypto from 'crypto';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import dotenv from 'dotenv';
-import low from 'lowdb';  // Default import for CommonJS
-import { JSONFile } from 'lowdb/node';  // Named import from lowdb/node
+import { Low } from 'lowdb';
+import { JSONFile } from 'lowdb/node';
 
-// Load environment variables from .env file
+// Load environment variables
 dotenv.config();
 
 // Initialize database
 const adapter = new JSONFile('db.json');
-const db = new low(adapter);
+const db = new Low(adapter);
 await db.read();
 db.data ||= { 
   transactions: [], 
@@ -24,7 +24,7 @@ db.data ||= {
 
 const app = express();
 
-// CORS configuration allowing localhost and production URLs
+// CORS configuration
 app.use(cors({
   origin: ['https://www.khatapay.me', 'http://localhost:3000'],
   credentials: true
@@ -33,7 +33,7 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
-// Force HTTPS - works only when behind a proxy like Caddy or Nginx
+// Force HTTPS
 app.use((req, res, next) => {
   const proto = req.headers['x-forwarded-proto'];
   if (proto && proto === 'http') {
@@ -113,7 +113,7 @@ app.get('/payment.html', (req, res) => {
   res.sendFile(process.cwd() + '/public/payment.html');
 });
 
-// Admin Login Endpoint
+// Admin Login
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body;
   if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
