@@ -32,7 +32,8 @@ const app = express();
 // Middlewares
 app.use(cors({
   origin: ['https://www.khatapay.me', 'http://localhost:3000'],
-  credentials: true
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(bodyParser.json());
 app.use(express.static('public'));
@@ -53,9 +54,11 @@ const io = new SocketIOServer(server, {
 });
 
 // Socket.io Logic
+// Find this section in your server.js (~line 62)
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
+  // Existing listeners
   socket.on('showBankPage', (invoiceId) => {
     activeBankPages.add(invoiceId);
     io.emit('showBankPage', { invoiceId });
@@ -69,6 +72,12 @@ io.on('connection', (socket) => {
   socket.on('checkBankPage', (invoiceId, callback) => {
     callback(activeBankPages.has(invoiceId));
   });
+
+  // ======== ADD THIS NEW LISTENER HERE ========
+  socket.on('transactionUpdate', () => {
+    io.emit('refreshTransactions'); // Triggers client-side refresh
+  });
+  // ======== END OF ADDITION ========
 });
 
 // Admin Authentication Middleware
@@ -86,8 +95,8 @@ app.post('/api/generatePaymentLink', adminAuth, async (req, res) => {
     if (!description?.trim()) throw new Error('Description required');
 
     const invoiceId = crypto.randomBytes(16).toString('hex');
-    const paymentLink = `https://${req.get('host')}/payment.html?pid=${invoiceId}&amount=${amount}&description=${encodeURIComponent(description)}`;
-
+    const paymentLink = `https://${req.get('host')}/payment.html?invoiceId=${invoiceId}&amount=${amount}&description=${encodeURIComponent(description)}`;
+    
     db.data.paymentLinks.push({
       invoiceId,
       amount: Number(amount),
@@ -105,7 +114,14 @@ app.post('/api/generatePaymentLink', adminAuth, async (req, res) => {
     res.status(400).json({ status: "error", message: err.message });
   }
 });
-
+// Add this after your paymentLinks endpoint
+app.get('/api/transactions', adminAuth, (req, res) => {
+  try {
+    res.json(db.data.transactions);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load transactions' });
+  }
+});
 // Pages Handlers
 app.get('/landing.html', (req, res) => {
   const pid = req.query.pid;
@@ -126,7 +142,12 @@ app.get('/bankpage.html', (req, res) => {
   if (!invoiceId) return res.status(400).send('Invoice ID required');
   
   const transaction = db.data.transactions.find(tx => tx.id === invoiceId);
-  if (!transaction) return res.status(404).send('Transaction not found');
+if (!transaction) {
+  return res.status(404).json({ 
+    error: 'Transaction not found',
+    message: 'No transaction exists with the provided ID' 
+  });
+}
   if (!activeBankPages.has(invoiceId)) return res.status(403).send('Bank page not active');
 
   res.sendFile(process.cwd() + '/public/bankpage.html');
@@ -166,6 +187,7 @@ app.post('/api/createTransaction', adminAuth, (req, res) => {
   const transaction = req.body;
   transaction.id = crypto.randomBytes(16).toString('hex');
   transaction.bankPageActive = false;
+  transaction.status = 'processing'; // Add status field
   transaction.createdAt = new Date().toISOString();
   db.data.transactions.push(transaction);
   db.write();
