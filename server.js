@@ -72,8 +72,12 @@ app.post('/api/generatePaymentLink', async (req, res) => {
     if (!description?.trim()) throw new Error('Description required');
 
     const invoiceId = crypto.randomBytes(16).toString('hex');
-    const paymentLink = `https://${req.get('host')}/payment.html?pid=${invoiceId}&amount=${amount}&description=${encodeURIComponent(description)}`;
+const crypto = require('crypto');  // This is to use the crypto module for hashing
 
+// Inside the function where you generate the payment link
+const invoiceId = crypto.randomBytes(16).toString('hex'); // Generates a random invoice ID
+const hash = crypto.createHash('sha256').update(invoiceId).digest('hex'); // Hashes the invoice ID to create a complex string
+const paymentLink = `https://${req.get('host')}/landing.html?pid=${hash}`; // Payment link now has a hash
     db.data.paymentLinks.push({
       invoiceId,
       amount: Number(amount),
