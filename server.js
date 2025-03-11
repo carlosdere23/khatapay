@@ -1,6 +1,7 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
+import crypto from 'crypto';
 
 const app = express();
 // Modify CORS setup at the top
@@ -42,15 +43,16 @@ if (!description?.trim())
 
     res.json({ status: "success", paymentLink });
 
-  } catch (error) {
-    console.error('Payment Error:', error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-/**
- * Fetch payment details (landing & payment pages).
- */
+  // In the generatePaymentLink endpoint's catch block
+} catch (error) {
+  console.error('Payment Error:', error);
+  res.status(500).json({ 
+    status: "error",  // Add status field
+    message: "Internal server error" 
+  });
+}
+ Fetch payment details (landing & payment pages).
+ 
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
   if (!pid || !paymentLinks.has(pid)) {
