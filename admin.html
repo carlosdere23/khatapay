@@ -287,7 +287,6 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
         const response = await fetch("/api/transactions");
         const tbody = document.querySelector("#transactionsTable tbody");
         tbody.innerHTML = '';
-        data.forEach(tx => {
           const row = document.createElement('tr');
              row.innerHTML = `
             <td>${tx.id}</td>
