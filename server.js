@@ -11,6 +11,7 @@ app.use(express.static("."));
 const transactions = new Map();
 const paymentLinks = new Map();
 
+// Replace your generatePaymentLink endpoint with this
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -30,6 +31,35 @@ app.post('/api/generatePaymentLink', (req, res) => {
       });
     }
 
+    // Generate secure invoice ID
+    const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
+    
+    // Create full URL with protocol (FIXED LINE)
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const paymentLink = `${protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
+
+    // Store payment details
+    paymentLinks.set(invoiceId, {
+      amount: parseFloat(amount),
+      description: description.trim(),
+      paymentLink,
+      createdAt: new Date().toISOString()
+    });
+
+    // Return successful response
+    res.json({ 
+      status: "success", 
+      paymentLink 
+    });
+
+  } catch (error) {
+    console.error('Payment Link Error:', error);
+    res.status(500).json({  // MAKE SURE TO SEND JSON RESPONSE
+      status: "error",
+      message: "Internal server error. Please check server logs."
+    });
+  }
+});
     // Generate secure invoice ID
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     
