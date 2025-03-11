@@ -24,11 +24,19 @@ app.post('/api/generatePaymentLink', (req, res) => {
 
     // Validation
     // In generatePaymentLink endpoint, change error response format
-if (!amount || isNaN(amount)) 
-  return res.status(400).json({ status: "error", message: "Invalid amount" });
-if (!description?.trim()) 
-  return res.status(400).json({ status: "error", message: "Description required" });
-    // Create payment link
+// In the generatePaymentLink validation
+if (!amount || isNaN(amount)) {
+  return res.status(400).json({ 
+    status: "error",
+    message: "Invalid amount. Must be a positive number" 
+  });
+}
+if (!description?.trim()) {
+  return res.status(400).json({ 
+    status: "error",
+    message: "Description required" 
+  });
+} 
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const paymentLink = `${protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
