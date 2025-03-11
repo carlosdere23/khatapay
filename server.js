@@ -29,7 +29,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
     
     // Create full URL with proper protocol (if behind a proxy, use x-forwarded-proto)
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const paymentLink = `${protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
+    const paymentLink = `${req.protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
     
     paymentLinks.set(invoiceId, { amount, description, paymentLink, createdAt: new Date().toISOString() });
     
@@ -44,9 +44,6 @@ app.post('/api/generatePaymentLink', (req, res) => {
     // Generate secure invoice ID
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     
-    // Create full URL with protocol
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const paymentLink = `${protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
 
     // Store payment details
     paymentLinks.set(invoiceId, {
