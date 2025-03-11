@@ -191,29 +191,47 @@
     
 document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const amount = document.getElementById('amount').value;
-  const description = document.getElementById('description').value;
+  const amountInput = document.getElementById('amount');
+  const descInput = document.getElementById('description');
+  const linkContainer = document.getElementById('paymentLinkContainer');
+  
   try {
+    const amount = parseFloat(amountInput.value);
+    const description = descInput.value.trim();
+
+    // Client-side validation
+    if (!amount || amount <= 0) {
+      throw new Error('Please enter a valid positive amount');
+    }
+    
+    if (!description) {
+      throw new Error('Description cannot be empty');
+    }
+
     const response = await fetch('/api/generatePaymentLink', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: parseFloat(amount), description: description.trim() })
+      body: JSON.stringify({ amount, description })
     });
+
     const data = await response.json();
-    if (data.status === 'success') {
-      document.getElementById('paymentLink').textContent = data.paymentLink;
-      document.getElementById('paymentLinkContainer').style.display = 'block';
-      alert('Payment link generated successfully');
-    } else {
-      throw new Error(data.message || 'Failed to generate link');
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Payment link generation failed');
     }
+
+    document.getElementById('paymentLink').textContent = data.paymentLink;
+    linkContainer.style.display = 'block';
+    alert('Payment link created successfully!');
+
   } catch (error) {
-    console.error('Error generating payment link:', error);
+    console.error('Error:', error);
     alert(`ERROR: ${error.message}`);
-    document.getElementById('paymentLinkContainer').style.display = 'none';
+    linkContainer.style.display = 'none';
+    amountInput.value = '';
+    descInput.value = '';
   }
 });
-
 
     function copyPaymentLink() {
       const link = document.getElementById('paymentLink').textContent;
