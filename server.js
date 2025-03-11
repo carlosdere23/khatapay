@@ -4,6 +4,13 @@ import cors from 'cors';
 import crypto from 'crypto';
 
 const app = express();
+// Modify CORS setup at the top
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
+
 app.use(bodyParser.json());
 app.use(cors());
 app.use(express.static(".")); // Serves static files from current directory
@@ -14,32 +21,23 @@ const paymentLinks = new Map();
 /**
  * Single, corrected generatePaymentLink route (no duplicate code).
  */
+// Keep ONLY THIS generatePaymentLink endpoint - delete any others
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
 
-    // Validate inputs
-    if (!amount || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({
-        status: "error",
-        message: "Invalid amount. Must be a positive number"
-      });
-    }
-    if (!description || !description.trim()) {
-      return res.status(400).json({
-        status: "error",
-        message: "Description cannot be empty"
-      });
-    }
+    // Validation
+    if (!amount || isNaN(amount)) 
+      return res.status(400).json({ error: "Invalid amount" });
+    if (!description?.trim()) 
+      return res.status(400).json({ error: "Description required" });
 
-    // Generate secure invoice ID
+    // Create payment link
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
-
-    // Create full URL with protocol (helpful if behind proxy)
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const paymentLink = `${protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
 
-    // Store payment details
+    // Store in Map
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
       description: description.trim(),
@@ -47,18 +45,11 @@ app.post('/api/generatePaymentLink', (req, res) => {
       createdAt: new Date().toISOString()
     });
 
-    // Return successful response
-    res.json({
-      status: "success",
-      paymentLink
-    });
+    res.json({ status: "success", paymentLink });
 
   } catch (error) {
-    console.error('Payment Link Error:', error);
-    res.status(500).json({
-      status: "error",
-      message: "Internal server error. Please check server logs."
-    });
+    console.error('Payment Error:', error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
