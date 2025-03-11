@@ -226,10 +226,17 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
     document.getElementById('paymentLink').textContent = data.paymentLink;
     linkContainer.style.display = 'block';
     
-  } catch (error) {
-    console.error('Error:', error);
-    alert(`ERROR: ${error.message}`);
-    linkContainer.style.display = 'none';
+} catch (error) {
+  console.error('Error:', error);
+  let errorMessage = error.message;
+  
+  // Handle cases where response isn't JSON
+  if (error instanceof SyntaxError) {
+    errorMessage = 'Invalid server response';
+  }
+  
+  alert(`ERROR: ${errorMessage}`);
+  linkContainer.style.display = 'none';
   }
 });
 
