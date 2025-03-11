@@ -1,7 +1,6 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-import crypto from 'crypto';
 
 const app = express();
 // Modify CORS setup at the top
@@ -12,15 +11,11 @@ app.use(cors({
 }));
 
 app.use(bodyParser.json());
-app.use(cors());
 app.use(express.static(".")); // Serves static files from current directory
 
 const transactions = new Map();
 const paymentLinks = new Map();
 
-/**
- * Single, corrected generatePaymentLink route (no duplicate code).
- */
 // Keep ONLY THIS generatePaymentLink endpoint - delete any others
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
