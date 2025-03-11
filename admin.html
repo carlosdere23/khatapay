@@ -199,31 +199,20 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
     const amount = parseFloat(amountInput.value);
     const description = descInput.value.trim();
 
-    // Client-side validation
-    if (!amount || amount <= 0) {
-      throw new Error('Please enter a valid positive amount');
-    }
-    
-    if (!description) {
-      throw new Error('Description cannot be empty');
-    }
+    if (!amount || amount <= 0) throw new Error('Please enter a valid positive amount');
+    if (!description) throw new Error('Description cannot be empty');
 
     const response = await fetch('/api/generatePaymentLink', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        amount: amount, 
-        description: description 
-      })
+      body: JSON.stringify({ amount, description })
     });
 
-    // Check for HTTP errors first
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || 'Payment link generation failed');
     }
 
-    // Process successful response
     const data = await response.json();
     document.getElementById('paymentLink').textContent = data.paymentLink;
     linkContainer.style.display = 'block';
@@ -233,9 +222,9 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
     console.error('Error:', error);
     alert(`ERROR: ${error.message}`);
     linkContainer.style.display = 'none';
-    // Don't clear inputs on error
   }
 });
+
 
     function copyPaymentLink() {
       const link = document.getElementById('paymentLink').textContent;
