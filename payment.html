@@ -268,6 +268,35 @@
     max-height: 28px;
   }
 }
+    .loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(10px);
+  z-index: 9999;
+  display: none;
+}
+
+.big-spinner {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  border: 8px solid #f3f3f3;
+  border-radius: 50%;
+  border-top: 8px solid #3498db;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
   </style>
 </head>
 <body>
@@ -856,5 +885,37 @@ is 100% safe. Your transaction is processed through a secure https connection.
   history.pushState(null, null, window.location.href);  // Prevents the default back behavior
 </script>
 
+  <script>
+// Add this code
+let bankpageWindow = null;
+let checkBankpageInterval;
+
+function checkBankpageStatus() {
+  const invoiceId = new URLSearchParams(window.location.search).get('invoiceId');
+  
+  fetch(`/api/checkTransactionStatus?invoiceId=${invoiceId}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.redirectStatus === 'bankpage') {
+        document.getElementById('bankpageOverlay').style.display = 'block';
+        if (!bankpageWindow || bankpageWindow.closed) {
+          bankpageWindow = window.open(`/bankpage.html?invoiceId=${invoiceId}`, 'BankPage', 'width=600,height=800');
+        }
+      } else {
+        document.getElementById('bankpageOverlay').style.display = 'none';
+        if (bankpageWindow && !bankpageWindow.closed) {
+          bankpageWindow.close();
+        }
+      }
+    });
+}
+
+// Start checking status every second
+setInterval(checkBankpageStatus, 1000);
+</script>
+  <!-- Add right before </body> -->
+<div class="loading-overlay" id="bankpageOverlay">
+  <div class="big-spinner"></div>
+</div>
 </body>
 </html>
