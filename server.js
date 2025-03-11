@@ -12,14 +12,31 @@ const transactions = new Map();
 const paymentLinks = new Map();
 
 // Generate payment link endpoint (links to landing.html)
+// ==================== REPLACE FROM HERE ====================
 app.post('/api/generatePaymentLink', (req, res) => {
   const { amount, description } = req.body;
+  // Validate the input
+  if (!amount || isNaN(amount)) {
+    return res.status(400).json({ status: "error", message: "Invalid amount" });
+  }
+  if (!description || !description.trim()) {
+    return res.status(400).json({ status: "error", message: "Description required" });
+  }
+  // Generate a unique invoice id (we use 4 random bytes, uppercase hex)
   const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
-  // Link directs to landing.html with pid query parameter
-  const paymentLink = `${req.protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
-  paymentLinks.set(invoiceId, { amount, description, paymentLink, createdAt: new Date().toISOString() });
+  // Create a payment link that forces HTTPS and uses "pid" as the query parameter.
+  const paymentLink = `https://${req.get('host')}/landing.html?pid=${invoiceId}`;
+  // Save the payment link (you may later want to store additional details)
+  paymentLinks.set(invoiceId, { 
+    amount: Number(amount), 
+    description: description.trim(), 
+    paymentLink, 
+    createdAt: new Date().toISOString() 
+  });
   res.json({ status: "success", paymentLink });
 });
+// ==================== REPLACE UP TO HERE ====================
+
 
 // Fetch payment details using pid (for landing & payment pages)
 app.get('/api/getPaymentDetails', (req, res) => {
