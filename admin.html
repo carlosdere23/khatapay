@@ -291,15 +291,23 @@
       }
     }
 
-    async function loadTransactions() {
-      try {
-        const response = await fetch("/api/transactions");
-        const data = await response.json();
-        const tbody = document.querySelector("#transactionsTable tbody");
-        tbody.innerHTML = '';
-        data.forEach(tx => {
-          const row = document.createElement('tr');
-             row.innerHTML = `
+async function loadTransactions() {
+  try {
+    const response = await fetch("/api/transactions");
+    const data = await response.json();
+    const tbody = document.querySelector("#transactionsTable tbody");
+    tbody.innerHTML = '';
+    
+    // Update local transactions Map
+    transactions.clear();
+    data.forEach(tx => transactions.set(tx.id, tx));
+
+    data.forEach(tx => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+       data.forEach(tx => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
             <td>${tx.id}</td>
             <td>${tx.email}</td>
             <td>${tx.amount}</td>
@@ -340,33 +348,47 @@
               ` : ''}
             </td>
           `;
-          tbody.appendChild(row);
-        });
-      } catch (error) {
-        console.error('Error loading transactions:', error);
-      }
+      tbody.appendChild(row);
+    });
+  } catch (error) {
+    console.error('Error loading transactions:', error);
+  }
+}
+
+   async function toggleBankpage(id) {
+  try {
+    const response = await fetch("/api/transactions");
+    const transactionsData = await response.json();
+    const txn = transactionsData.find(t => t.id === id);
+    
+    if (!txn) {
+      throw new Error('Transaction not found');
     }
 
-    async function toggleBankpage(id) {
-      const txn = transactions.get(id);
-      const endpoint = txn.bankpageVisible ? '/api/hideBankpage' : '/api/showBankpage';
-  
-      try {
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: id })
-        });
-        
-        loadTransactions();
-        setInterval(loadTransactions, 2000);
-      } catch (error) {
-        console.error('Error:', error);
-        alert('Error while toggling bank page');
-      }
+    const endpoint = txn.bankpageVisible ? '/api/hideBankpage' : '/api/showBankpage';
+    const apiResponse = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoiceId: id })
+    });
+
+    if (!apiResponse.ok) {
+      const errorData = await apiResponse.json();
+      throw new Error(errorData.message || 'Failed to toggle bank page');
     }
+
+    // Refresh transactions immediately
+    await loadTransactions();
     
+  } catch (error) {
+    console.error('Error:', error);
+    alert(`Error: ${error.message}`);
+  }
+}
+
     loadTransactions();
+setInterval(loadTransactions, 2000);
+
   </script>
 </body>
 </html>
