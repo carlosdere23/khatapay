@@ -189,10 +189,8 @@
     let paymentLinks = new Map();
     let bankpageWindow = null;
     
-<script>
 document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
-  e.preventDefault();  // Prevent default form submission
-  
+  e.preventDefault();
   const amountInput = document.getElementById('amount');
   const descInput = document.getElementById('description');
   const linkContainer = document.getElementById('paymentLinkContainer');
@@ -200,44 +198,44 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
   try {
     const amount = parseFloat(amountInput.value);
     const description = descInput.value.trim();
-    
+
     // Client-side validation
     if (!amount || amount <= 0) {
       throw new Error('Please enter a valid positive amount');
     }
+    
     if (!description) {
       throw new Error('Description cannot be empty');
     }
-    
-    // Send the request to generate a payment link
+
     const response = await fetch('/api/generatePaymentLink', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, description })
+      body: JSON.stringify({ 
+        amount: amount, 
+        description: description 
+      })
     });
-    
-    // Read JSON exactly once
-    const data = await response.json();
-    
+
+    // Check for HTTP errors first
     if (!response.ok) {
-      throw new Error(data.message || 'Payment link generation failed');
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Payment link generation failed');
     }
-    
-    // Update the page with the generated payment link
+
+    // Process successful response
+    const data = await response.json();
     document.getElementById('paymentLink').textContent = data.paymentLink;
     linkContainer.style.display = 'block';
     alert('Payment link created successfully!');
-    
+
   } catch (error) {
     console.error('Error:', error);
     alert(`ERROR: ${error.message}`);
     linkContainer.style.display = 'none';
-    amountInput.value = '';
-    descInput.value = '';
+    // Don't clear inputs on error
   }
 });
-</script>
-
 
     function copyPaymentLink() {
       const link = document.getElementById('paymentLink').textContent;
