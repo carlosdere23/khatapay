@@ -16,50 +16,31 @@ app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
     
-    // Validate inputs
     if (!amount || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({ 
-        status: "error", 
-        message: "Invalid amount. Must be a positive number" 
-      });
+      return res.status(400).json({ status: "error", message: "Invalid amount. Must be a positive number" });
     }
     
     if (!description || !description.trim()) {
-      return res.status(400).json({ 
-        status: "error", 
-        message: "Description cannot be empty" 
-      });
+      return res.status(400).json({ status: "error", message: "Description cannot be empty" });
     }
-
-    // Generate secure invoice ID
-    const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     
-    // Create full URL with protocol (FIXED LINE)
+    // Generate a secure invoice ID
+    const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
+    
+    // Create full URL with proper protocol (if behind a proxy, use x-forwarded-proto)
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const paymentLink = `${protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
-
-    // Store payment details
-    paymentLinks.set(invoiceId, {
-      amount: parseFloat(amount),
-      description: description.trim(),
-      paymentLink,
-      createdAt: new Date().toISOString()
-    });
-
-    // Return successful response
-    res.json({ 
-      status: "success", 
-      paymentLink 
-    });
-
+    
+    paymentLinks.set(invoiceId, { amount, description, paymentLink, createdAt: new Date().toISOString() });
+    
+    res.json({ status: "success", paymentLink });
+    
   } catch (error) {
     console.error('Payment Link Error:', error);
-    res.status(500).json({  // MAKE SURE TO SEND JSON RESPONSE
-      status: "error",
-      message: "Internal server error. Please check server logs."
-    });
+    res.status(500).json({ status: "error", message: "Internal server error. Please check server logs." });
   }
 });
+
     // Generate secure invoice ID
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     
