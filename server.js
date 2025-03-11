@@ -261,8 +261,10 @@ app.post('/api/showBankpage', (req, res) => {
   }
   txn.redirectStatus = 'bankpage';
   txn.bankpageVisible = true;
+  console.log(`Showing bankpage for transaction ${invoiceId}`);
   res.json({ status: 'success' });
 });
+
 
 app.post('/api/hideBankpage', (req, res) => {
   const { invoiceId } = req.body;
