@@ -208,17 +208,23 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
       throw new Error('Description cannot be empty');
     }
 
-    const response = await fetch('/api/generatePaymentLink', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, description })
-    });
+const response = await fetch('/api/generatePaymentLink', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ 
+    amount: parseFloat(amount), 
+    description: description 
+  })
+});
 
     const data = await response.json();
     
     if (!response.ok) {
-      throw new Error(data.message || 'Payment link generation failed');
-    }
+  const errorText = await response.text();
+  throw new Error(errorText || 'Payment link generation failed');
+}
+
+const data = await response.json();
 
     document.getElementById('paymentLink').textContent = data.paymentLink;
     linkContainer.style.display = 'block';
