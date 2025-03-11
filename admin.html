@@ -216,15 +216,12 @@ const response = await fetch('/api/generatePaymentLink', {
     description: description 
   })
 });
-
-    const data = await response.json();
     
     if (!response.ok) {
   const errorText = await response.text();
   throw new Error(errorText || 'Payment link generation failed');
 }
-
-const data = await response.json();
+  
 
     document.getElementById('paymentLink').textContent = data.paymentLink;
     linkContainer.style.display = 'block';
