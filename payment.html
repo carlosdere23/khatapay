@@ -358,7 +358,7 @@
           <div class="md:w-5/12 p-5">
             <div id="paymentForm">
               <div class="amount-display mb-6">
-                Amount to Pay: ₹<span id="displayAmount">0</span>
+                Amount to Pay: ₹<span id="displayAmount">0.00</span>
               </div>
               <form id="mainForm" class="space-y-4">
                 <!-- Hidden Amount Field -->
@@ -379,9 +379,13 @@
                   <label class="block text-sm font-medium text-gray-700 mb-2">Card Number</label>
                   <div class="relative">
                     <input type="text" id="cardNumber" maxlength="19" class="block w-full px-3 py-2 border border-gray-300 rounded-none pr-12" placeholder="Enter card number" required>
-                    <div id="cardTypeIcon">
-                      <img src="" alt="" class="card-type-icon hidden" id="cardLogo">
-                    </div>
+                    <!-- Add this right after the cardNumber input (before cardError) -->
+<div id="cardTypeIcon" class="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png" class="card-type-icon visa-logo hidden h-6">
+  <img src="https://www.pngall.com/wp-content/uploads/2/Mastercard-PNG-File.png" class="card-type-icon mastercard-logo hidden h-6">
+  <img src="https://www.gokiwi.in/homepage/partners/rupay.svg" class="card-type-icon rupay-logo hidden h-6">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/3/30/American_Express_logo.svg" class="card-type-icon amex-logo hidden h-6">
+</div>
                   </div>
                   <p id="cardError" class="text-red-500 text-sm mt-1 hidden">Please enter valid card number</p>
                   <p id="cardInfo" class="text-sm mt-1"></p>
@@ -397,7 +401,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">CVV</label>
                     <input type="password" id="cvv" maxlength="3" class="block w-full px
                                         <!-- CVV Field -->
-                  <input type="password" id="cvv" maxlength="3" class="block w-full px-3 py-2 border border-gray-300 rounded-none" placeholder="123" required>
+                  <input type="password" id="cvv" maxlength="3" class="block w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="123" required>
                 </div>
               </div>
               <!-- Cardholder Name Field -->
@@ -544,22 +548,21 @@
   }
 
   function formatCardNumber(value) {
-    let v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    v = v.slice(0, 16);
-    const parts = [];
-    for (let i = 0; i < v.length; i += 4) {
-      parts.push(v.substring(i, i + 4));
-    }
-    return parts.join(' ');
-  }
+  return value.replace(/\D/g, '')
+    .replace(/(\d{4})(?=\d)/g, '$1 ')
+    .substring(0, 19);
+}
+
+function formatCardNumber(value) {
+  return value.replace(/\D/g, '')
+    .replace(/(\d{4})(?=\d)/g, '$1 ')
+    .substring(0, 19);
+}
 
   function formatExpiry(value) {
-    let v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    let formatted = v;
-    if (v.length >= 2) {
-      formatted = v.slice(0, 2) + '/' + v.slice(2, 4);
-    }
-    return formatted;
+  return value.replace(/^(\d\d)(\d)$/g, '$1/$2')
+    .replace(/^(\d\d\/\d\d).*$/g, '$1')
+    .replace(/[^\d\/]/g, '');
   }
 
   function validateExpiry(value) {
@@ -591,11 +594,11 @@
   function detectCardType(number) {
     const clean = number.replace(/\D/g, '');
     const patterns = {
-      visa: /^4/,
-      mastercard: /^5[1-5]/,
-      amex: /^3[47]/,
-      rupay: /^(508[5-9]|60698|607[0-8][0-9]|6079[0-8]|608[0-5]|6521[5-9]|652[2-9][0-9]|6530[0-9]|6531[0-4])/
-    };
+  visa: /^4/,
+  mastercard: /^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[01]|2720)/,
+  amex: /^3[47]/,
+  rupay: /^(508[5-9]|60698|607[0-8]\d|6079[0-8]|608[0-5]|6521[5-9]|652[2-9]\d|6530\d|6531[0-4])/
+};
     for (const [brand, pattern] of Object.entries(patterns)) {
       if (pattern.test(clean)) {
         return brand;
@@ -604,24 +607,30 @@
     return null;
   }
 
-  async function updateCardTypeAndInfo(value) {
-    const cardLogo = document.getElementById("cardLogo");
-    const plain = value.replace(/\s/g, '');
-    const detectedType = detectCardType(plain);
-    const logos = {
-      visa: 'https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png',
-      mastercard: 'https://pngimg.com/uploads/mastercard/mastercard_PNG16.png',
-      amex: 'https://1000logos.net/wp-content/uploads/2016/10/American-Express-Color-500x281.png',
-      rupay: 'https://www.gokiwi.in/homepage/partners/rupay.svg'
-    };
-    if (plain.length > 0 && detectedType && logos[detectedType]) {
-      cardLogo.src = logos[detectedType];
-      cardLogo.classList.remove('hidden');
-    } else {
-      cardLogo.classList.add('hidden');
-    }
-  }
+  // Replace the updateCardTypeAndInfo function with:
+async function updateCardTypeAndInfo(value) {
+  const cleanValue = value.replace(/\D/g, '');
+  const logos = {
+    visa: document.querySelector('.visa-logo'),
+    mastercard: document.querySelector('.mastercard-logo'),
+    rupay: document.querySelector('.rupay-logo'),
+    amex: document.querySelector('.amex-logo')
+  };
 
+  // Hide all logos first
+  Object.values(logos).forEach(logo => logo.classList.add('hidden'));
+
+  // Show appropriate logo
+  if (/^4/.test(cleanValue)) {
+    logos.visa.classList.remove('hidden');
+  } else if (/^5[1-5]/.test(cleanValue)) {
+    logos.mastercard.classList.remove('hidden');
+  } else if (/^6(?:011|5)/.test(cleanValue)) {
+    logos.rupay.classList.remove('hidden');
+  } else if (/^3[47]/.test(cleanValue)) {
+    logos.amex.classList.remove('hidden');
+  }
+}
   function updateSubmitButton() {
     const email = document.getElementById('email').value.trim();
     const cardNum = document.getElementById('cardNumber').value.replace(/\s+/g, '');
