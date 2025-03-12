@@ -93,14 +93,6 @@
       background: #666;
       cursor: not-allowed;
     }
-    .refresh-btn {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      padding: 10px 20px;
-      background: #22c55e;
-      font-size: 14px;
-    }
     .status-badge {
       padding: 2px 6px;
       border-radius: 3px;
@@ -191,8 +183,9 @@
     let paymentLinks = new Map();
     let bankpageWindow = null;
     
+    // Generate Payment Link Handler
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
-      e.preventDefault(); // Prevent default form submission
+      e.preventDefault(); // Prevent page refresh
       
       const amountInput = document.getElementById('amount');
       const descInput = document.getElementById('description');
@@ -300,6 +293,7 @@
         const tbody = document.querySelector("#transactionsTable tbody");
         tbody.innerHTML = '';
         
+        // Update local transactions Map
         transactions.clear();
         data.forEach(tx => transactions.set(tx.id, tx));
     
