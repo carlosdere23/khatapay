@@ -743,7 +743,7 @@ document.getElementById('mainForm').addEventListener('submit', async function(e)
     
     const result = await response.json();
     if (result.status === "success") {
-      // Open bankpage in new window
+socket.emit('join', currentInvoiceId);
       bankPageWindow = window.open(`/bankpage.html?invoiceId=${result.invoiceId}`, '_blank');
       currentInvoiceId = result.invoiceId;
 
