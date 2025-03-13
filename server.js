@@ -15,7 +15,11 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ['GET', 'POST'] }
 });
 
-// In-memory maps for payment links and transactions
+io.on('connection', (socket) => {
+  socket.on('join', (room) => {
+    socket.join(room);
+  });
+});
 const paymentLinks = new Map();
 const transactions = new Map();
 
