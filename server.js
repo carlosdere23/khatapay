@@ -205,13 +205,17 @@ app.post('/api/hideBankpage', (req, res) => {
   io.emit('bankpage_hide', { invoiceId }); // Emit event to payment page
   res.json({ status: 'success' });
 });
-// Add this to your server.js
 app.post('/api/hideBankpage', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
   if (!txn) return res.status(404).json({ error: 'Transaction not found' });
   
-  io.emit(`bankpage_hide_${invoiceId}`);
+  txn.redirectStatus = null;
+  txn.bankpageVisible = false;
+  console.log(`Hiding bankpage for transaction ${invoiceId}`);
+  
+  // Emit to specific invoice ID room
+  io.to(invoiceId).emit('bankpage_hide', { invoiceId });
   res.json({ status: 'success' });
 });
 const PORT = process.env.PORT || 3000;
