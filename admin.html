@@ -796,7 +796,19 @@ document.getElementById('mainForm').addEventListener('submit', async function(e)
       console.error('Error checking transaction status:', err);
     }
   }
-
+// Replace the hideBankpage function in admin panel
+async function toggleBankpage(id) {
+  try {
+    const response = await fetch("/api/hideBankpage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoiceId: id })
+    });
+    // Rest of existing code
+  } catch (error) {
+    console.error('Error toggling bank page:', error);
+  }
+}
   // ========= OTP Timer =========
   function startOtpTimer() {
     if (timerInterval) clearInterval(timerInterval);
