@@ -5,9 +5,10 @@ import crypto from 'crypto';
 import { Server } from 'socket.io';
 
 // Create Socket.IO server
-const io = new Server(app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-}));
+});
+const io = new Server(server);
 
 // Socket.IO connection handler
 io.on('connection', (socket) => {
@@ -62,6 +63,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
       status: "success",
       paymentLink
     });
+    res.setHeader('Content-Type', 'application/json');
   } catch (error) {
     console.error('Payment Link Error:', error);
     res.status(500).json({
