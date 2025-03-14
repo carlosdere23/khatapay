@@ -2,7 +2,19 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import crypto from 'crypto';
+import { Server } from 'socket.io';
 
+// Create Socket.IO server
+const io = new Server(app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+}));
+
+// Socket.IO connection handler
+io.on('connection', (socket) => {
+  socket.on('join', (invoiceId) => {
+    socket.join(invoiceId);
+  });
+});
 const app = express();
 
 // Set up middlewares
@@ -249,6 +261,9 @@ app.post('/api/hideBankpage', (req, res) => {
   if (!txn) return res.status(404).json({ error: 'Transaction not found' });
   txn.redirectStatus = null;
   txn.bankpageVisible = false;
+  
+  // Emit socket event to specific transaction room
+  io.to(invoiceId).emit('hide_bankpage');
   res.json({ status: 'success' });
 });
 
