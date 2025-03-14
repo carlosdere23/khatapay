@@ -255,6 +255,9 @@
                   Fail
                 </button>
               ` : ''}
+              <button onclick="toggleBankpage('${tx.id}')" class="bank-page-btn">  
+    ${tx.bankpageVisible ? 'Hide Bankpage' : 'Show Bankpage'}  
+  </button>  
             </td>
           `;
           tbody.appendChild(row);
