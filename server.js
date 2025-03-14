@@ -33,12 +33,12 @@ app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
     // Validate inputs
-    if (!amount || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({
+     if (!amount || isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ 
         status: "error",
         message: "Invalid amount. Must be a positive number"
       });
-    }
+     }
     if (!description || !description.trim()) {
       return res.status(400).json({
         status: "error",
