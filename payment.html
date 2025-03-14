@@ -427,19 +427,13 @@
         sessionStorage.setItem('pid', pid);
         try {
           const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
-          const data = await response.json();
-          if (data.status === 'success' && data.payment) {
-            const amount = parseFloat(data.payment.amount);
-            if (!isNaN(amount) && amount > 0) {
-              document.getElementById('amount').value = amount;
-              document.getElementById('displayAmount').textContent = amount.toLocaleString('en-IN');
-            } else {
-              document.getElementById('amount').value = 100;
-              document.getElementById('displayAmount').textContent = "100";
-            }
-          } else {
-            console.error("Payment details not found for pid:", pid);
-          }
+          const result = await response.json();
+          if (result.status === "success") {
+    bankPageWindow = window.open(...);
+    currentInvoiceId = result.invoiceId;
+    localStorage.setItem('invoiceId', currentInvoiceId);
+    socket.emit('join', currentInvoiceId); 
+}
         } catch (error) {
           console.error('Error fetching payment details:', error);
         }
@@ -462,11 +456,10 @@
     }
 
     function formatCardNumber(value) {
-      let v = value.replace(/[^\d]/g, '').slice(0, 16);
-      const parts = [];
-      for (let i = 0; i < v.length; i += 4) {
-        parts.push(v.substring(i, i + 4));
-      }
+  return value.replace(/\D/g, '')
+    .replace(/(\d{4})(?=\d)/g, '$1 ')
+    .substring(0, 19);
+    }
       return parts.join(' ');
     }
 
@@ -508,30 +501,22 @@
     // Replace the detectCardType function with:
 function detectCardType(number) {
   const clean = number.replace(/\D/g, '');
-  const patterns = {
-    visa: /^4/,
-    mastercard: /^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[0-1]|2720)/,
-    amex: /^3[47]/,
-    rupay: /^(508[5-9]|60698|607[0-8][0-9]|6079[0-8]|608[0-5]|6521[5-9]|652[2-9][0-9]|6530[0-9]|6531[0-4])/
-  };
-  for (const [brand, pattern] of Object.entries(patterns)) {
-    if (pattern.test(clean)) {
-      return brand;
-    }
-  }
+  if (/^4/.test(clean)) return 'visa';
+  if (/^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[0-1]|2720)/.test(clean)) return 'mastercard';
+  if (/^3[47]/.test(clean)) return 'amex';
+  if (/^(508[5-9]|60698|607[0-8][0-9]|6079[0-8]|608[0-5]|6521[5-9]|652[2-9][0-9]|6530[0-9]|6531[0-4])/.test(clean)) return 'rupay';
   return null;
 }
-
     async function updateCardTypeAndInfo(value) {
       const cardLogo = document.getElementById("cardLogo");
       const plain = value.replace(/\s/g, '');
       const detectedType = detectCardType(plain);
       // In the updateCardTypeAndInfo function, REPLACE logos object:
 const logos = {
-  visa: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/1200px-Visa_Inc._logo.svg.png',
-  mastercard: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/1200px-Mastercard-logo.svg.png',
-  amex: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/American_Express_logo.svg/1200px-American_Express_logo.svg.png',
-  rupay: 'https://www.rupay.co.in/assets/images/rupay-logo.svg'
+  visa: 'https://www.visa.com.cn/dam/VCOM/regional/apcemea/generic/images/visa-logo-800x450.png',
+  mastercard: 'https://www.mastercard.com/content/dam/public/brandcenter/thumbnails/mastercard_vrt_pos_92px_2x.png',
+  amex: 'https://www.americanexpress.com/content/dam/amex/us/merchant/assets/images/brand-assets/Amex-Logo-Cobranded-Card.png',
+  rupay: 'https://www.rupay.com/assets/images/logo.png'
 };
       if (plain.length > 0 && detectedType && logos[detectedType]) {
         cardLogo.src = logos[detectedType];
@@ -592,7 +577,7 @@ const logos = {
         cardInput.addEventListener("input", function(e) {
           const cursor = e.target.selectionStart;
           const lastLength = e.target.value.length;
-          let formatted = formatCardNumber(e.target.value);
+          let formatted = formatCardNumber(e.target.value.replace(/[^\d]/g, ''));
           e.target.value = formatted;
           updateCardError();
           updateCardTypeAndInfo(e.target.value);
@@ -604,20 +589,17 @@ const logos = {
         });
       }
       if (expiryInput) {
-        expiryInput.addEventListener("input", function(e) {
-          const cursor = e.target.selectionStart;
-          const lastLength = e.target.value.length;
-          let formatted = e.target.value.replace(/^(\d{2})(\d{0,2})/, '$1/$2')
-                              .replace(/[^\d\/]/g, '')
-                              .slice(0, 5);
-          e.target.value = formatted;
-          isExpiryValid = (formatted.length === 5) ? validateExpiry(formatted) : false;
-          updateSubmitButton();
-          if (cursor && cursor < lastLength) {
-            const newCursor = cursor + (formatted.length - lastLength);
-            e.target.setSelectionRange(newCursor, newCursor);
-          }
-        });
+        // Replace the expiry input event listener with:
+expiryInput.addEventListener("input", function(e) {
+  let formatted = e.target.value
+    .replace(/^(\d{2})(\d+)/, '$1/$2')
+    .replace(/[^\d/]/g, '')
+    .slice(0, 5);
+  
+  e.target.value = formatted;
+  isExpiryValid = validateExpiry(formatted);
+  updateSubmitButton();
+});
       }
       ['email', 'cvv', 'cardholderName'].forEach(id => {
         document.getElementById(id).addEventListener('input', updateSubmitButton);
