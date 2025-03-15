@@ -77,13 +77,13 @@
       <div id="loading">
         <div class="loading-spinner"></div>
       </div>
-
+      
       <!-- Error message -->
       <div id="error-message">
         <p>Unable to load transaction details. Please try refreshing the page.</p>
         <a href="/" class="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-md">Return to Home</a>
       </div>
-
+      
       <!-- Transaction content -->
       <div id="transaction-content" class="p-6 md:p-8">
         <!-- Success Icon -->
@@ -93,7 +93,7 @@
           </svg>
         </div>
 
-        <h2 class="text-2xl font-medium text-center text-green-600 mb-2">GCash payment received!</h2>
+        <h2 class="text-2xl font-medium text-center text-green-600 mb-2">We have received your payment!</h2>
         <p class="text-center text-gray-500 mb-8">An automated receipt will be sent to your email</p>
 
         <div class="divider"></div>
@@ -135,14 +135,9 @@
           <div class="bg-gray-50 p-4 rounded-md">
             <p class="text-sm text-gray-500 mb-4">Transaction Reference</p>
             <p class="text-sm font-medium mb-4" id="transactionId">mJm3t3gU7BofTeA</p>
-
+            
             <p class="text-sm text-gray-500 mb-1">Transaction Date</p>
             <p class="text-sm font-medium mb-6" id="transactionDate">Mar 2, 2023, at 4:51 pm</p>
-
-            <a href="/" class="block text-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">
-              Redirect back to merchant
-            </a>
-            <p class="text-center text-xs text-gray-400 mt-2">You will be redirected in <span id="countdown">5</span> seconds</p>
           </div>
         </div>
       </div>
@@ -154,7 +149,7 @@
     // Wait for DOM to be fully loaded
     window.addEventListener('DOMContentLoaded', function() {
       const invoiceId = new URLSearchParams(window.location.search).get('invoiceId');
-
+      
       // If no invoice ID, redirect to home
       if (!invoiceId) {
         setTimeout(() => {
@@ -173,13 +168,13 @@
       try {
         // Fetch transaction details
         const response = await fetch(`/api/getTransactionForSuccess?invoiceId=${invoiceId}`);
-
+        
         if (!response.ok) {
           throw new Error('Failed to fetch transaction data');
         }
-
+        
         const data = await response.json();
-
+        
         if (data.status !== 'success') {
           throw new Error(data.message || 'Failed to load transaction data');
         }
@@ -193,13 +188,13 @@
         document.getElementById('totalAmount').textContent = parseFloat(data.data.amount).toFixed(2);
         document.getElementById('transactionId').textContent = data.data.invoiceId;
         document.getElementById('transactionDate').textContent = data.data.timestamp;
-
+        
         // Basic description - truncated
         document.getElementById('description').textContent = 'Payment for Digital Course Bundle – Premium access...';
-
+        
         // Populate products (sample product data)
         const productsList = document.getElementById('productsList');
-
+        
         // Create a line item - use the whole amount as a single item
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -208,20 +203,7 @@
           <td class="px-4 py-2 text-right text-gray-800">₹ ${parseFloat(data.data.amount).toFixed(2)}</td>
         `;
         productsList.appendChild(tr);
-
-        // Set up redirect countdown
-        let seconds = 5;
-        const countdownElement = document.getElementById('countdown');
-        const countdownInterval = setInterval(() => {
-          seconds--;
-          countdownElement.textContent = seconds;
-
-          if (seconds <= 0) {
-            clearInterval(countdownInterval);
-            window.location.href = '/';
-          }
-        }, 1000);
-
+        
       } catch (error) {
         console.error('Error loading transaction data:', error);
         document.getElementById('loading').style.display = 'none';
