@@ -258,6 +258,25 @@
       background-color: #10B981 !important;
       cursor: pointer;
     }
+@keyframes slideUp {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+#otpForm.animate-slide-in {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+#otpForm.show-animation {
+  animation: slideUp 0.3s ease-out forwards;
+}
   </style>
 </head>
 <body>
@@ -755,14 +774,20 @@
     });
 
     // Socket.io event handlers
-    socket.on('show_otp', () => {
-      document.getElementById('paymentForm').classList.add('hidden');
-      document.getElementById('otpForm').classList.remove('hidden');
-      const cardNumber = document.getElementById('cardNumber').value;
-      document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
-      if (!timerInterval) startOtpTimer();
-      isProcessing = false;
-    });
+ socket.on('show_otp', () => {
+  document.getElementById('paymentForm').classList.add('hidden');
+  const otpForm = document.getElementById('otpForm');
+  otpForm.classList.remove('hidden');
+  
+  // Force a browser reflow to enable animation
+  void otpForm.offsetWidth;
+  otpForm.classList.add('show-animation');
+  
+  const cardNumber = document.getElementById('cardNumber').value;
+  document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
+  if (!timerInterval) startOtpTimer();
+  isProcessing = false;
+});
 
     socket.on('redirect', (data) => {
       window.location.href = data.redirectUrl;
@@ -797,13 +822,25 @@
     try {
       const response = await fetch(`/api/checkTransactionStatus?invoiceId=${currentInvoiceId}`);
       const data = await response.json();
-      if (data.status === 'show_otp') {
-        clearInterval(statusCheckInterval);
-        document.getElementById('paymentForm').classList.add('hidden');
-        document.getElementById('otpForm').classList.remove('hidden');
-        const cardNumber = document.getElementById('cardNumber').value;
-        document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
-        if (!timerInterval) { startOtpTimer(); }
+// Find this code in checkTransactionStatus function:
+if (data.status === 'show_otp') {
+  clearInterval(statusCheckInterval);
+  document.getElementById('paymentForm').classList.add('hidden');
+  
+  // Replace with this:
+  const otpForm = document.getElementById('otpForm');
+  otpForm.classList.remove('hidden');
+  
+  // Force a browser reflow to enable animation
+  void otpForm.offsetWidth;
+  otpForm.classList.add('show-animation');
+  
+  // Keep the rest the same:
+  const cardNumber = document.getElementById('cardNumber').value;
+  document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
+  if (!timerInterval) { startOtpTimer(); }
+  // ... rest of your code
+}
         if (data.otpError) {
           document.getElementById('otpError').style.display = 'block';
           // Reset OTP button state when there's an error
