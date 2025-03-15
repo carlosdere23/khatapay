@@ -28,29 +28,30 @@ const paymentLinks = new Map();
 // ======================== API ENDPOINTS ========================
 
 // Generate Payment Link
+// Generate Payment Link Endpoint
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
-    res.setHeader('Content-Type', 'application/json');
-    
     const { amount, description } = req.body;
     
-    // Validation
+    // Validate inputs
     if (!amount || isNaN(amount) || amount <= 0) {
       return res.status(400).json({ 
-        status: "error",
-        message: "Invalid amount. Must be a positive number"
+        status: "error", 
+        message: "Invalid amount. Must be a positive number" 
       });
     }
     
-    if (!description?.trim()) {
-      return res.status(400).json({
-        status: "error",
-        message: "Description cannot be empty"
+    if (!description || !description.trim()) {
+      return res.status(400).json({ 
+        status: "error", 
+        message: "Description cannot be empty" 
       });
     }
 
-    // Generate payment link
+    // Generate secure invoice ID
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
+    
+    // Create full URL with proper protocol
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const paymentLink = `${protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
 
@@ -62,6 +63,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
       createdAt: new Date().toISOString()
     });
 
+    // Return successful JSON response
     res.json({ status: "success", paymentLink });
 
   } catch (error) {
@@ -72,6 +74,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
     });
   }
 });
+
 
 // Get Payment Details
 app.get('/api/getPaymentDetails', (req, res) => {
