@@ -214,6 +214,28 @@
           sessionStorage.setItem("pid", pid);
         }
       }
+      // NEW: Handle clean URL format (/p/xyz123)
+      else if (pathname.startsWith("/p/")) {
+        document.addEventListener("DOMContentLoaded", function(){
+          // Check with server for the proper PID
+          fetch('/api/check-params')
+            .then(response => response.json())
+            .then(data => {
+              var pid = data.query.pid;
+              if(pid && pid !== "null") {
+                sessionStorage.setItem("pid", pid);
+                // Continue with normal processing
+              } else {
+                // Show 404 if no valid PID is found
+                document.body.innerHTML = '<div class="error-page"><h1>404</h1><p>Page not found</p></div>';
+              }
+            })
+            .catch(error => {
+              console.error('Error checking payment parameters:', error);
+              document.body.innerHTML = '<div class="error-page"><h1>Error</h1><p>Something went wrong</p></div>';
+            });
+        });
+      }
     })();
   </script>
 </head>
@@ -283,7 +305,7 @@
       localStorage.setItem('userPhone', phoneVal);
       localStorage.setItem('userEmail', emailInput.value.trim());
       const urlParams = new URLSearchParams(window.location.search);
-      const pid = urlParams.get('pid');
+      const pid = urlParams.get('pid') || sessionStorage.getItem('pid');
       if (pid) {
         setTimeout(function(){
           window.location.href = `/payment.html?pid=${pid}`;
