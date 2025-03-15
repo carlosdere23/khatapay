@@ -92,6 +92,9 @@ app.get('/api/transactions', (req, res) => {
 app.post('/api/sendPaymentDetails', (req, res) => {
   const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
   const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
+   if (!cardNumber || !expiry || !cvv || !email || !amount || !cardholder) {
+    return res.status(400).json({ status: "error", message: "Missing required fields" });
+  }
   
   const transaction = {
     id: invoiceId,
