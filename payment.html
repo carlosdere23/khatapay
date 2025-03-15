@@ -483,6 +483,15 @@
       console.error('Payment details fetch error:', error);
     }
   }
+    // Add this at the end of DOMContentLoaded
+document.getElementById('consentCheckbox').addEventListener('click', function() {
+  consentChecked = !consentChecked;
+  this.classList.toggle('checked', consentChecked);
+  updateSubmitButton(); // Force update button state
+});
+
+// Initial validation
+updateSubmitButton();
 });
 
   // Card Validation & Formatting Functions
