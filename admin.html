@@ -167,6 +167,14 @@
   
   <script src="/socket.io/socket.io.js"></script>
   <script>
+
+    const socket = io();
+  
+  // Add this listener for new transactions
+  socket.on('new_transaction', () => {
+    loadTransactions();
+    console.log('Received new transaction notification');
+  });
     let transactions = new Map();
     let paymentLinks = new Map();
 
@@ -424,11 +432,6 @@ async function hideBankPage(id) {
     };
     history.pushState(null, null, window.location.href);
   </script>
-  <script src="/socket.io/socket.io.js">
-  const socket = io();
-socket.on('new_transaction', () => {
-  loadTransactions(); // Force immediate refresh
-});
   </script>
   <!-- Bankpage Overlay Element -->
   <div id="bankpageOverlay" class="fullscreen-overlay">
