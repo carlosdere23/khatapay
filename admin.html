@@ -242,6 +242,10 @@ document.getElementById('paymentLink').textContent = data.paymentLink;
                   <button class="bank-page-btn" onclick="toggleBankpage('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
                     ${tx.bankpageVisible ? 'Hide Bankpage' : 'Bank Page'}
                   </button>`
+                <button class="hide-bankpage-btn" onclick="hideBankPage('${tx.id}')">
+  Hide Bankpage
+</button>
+
               }
             </td>
             <td>
@@ -331,27 +335,52 @@ document.getElementById('paymentLink').textContent = data.paymentLink;
       }
     }
     
-    async function toggleBankpage(id) {
-      try {
-        // Retrieve transaction details from local copy
-        const txn = transactions.get(id);
-        if (!txn) throw new Error('Transaction not found');
-        const endpoint = txn.bankpageVisible ? '/api/hideBankpage' : '/api/showBankpage';
-        const apiResponse = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: id })
-        });
-        if (!apiResponse.ok) {
-          const errorData = await apiResponse.json();
-          throw new Error(errorData.message || 'Failed to toggle bank page');
-        }
-        await loadTransactions();
-      } catch (error) {
-        console.error('Error:', error);
-        alert(`Error: ${error.message}`);
-      }
+async function toggleBankpage(id) {
+  try {
+    const response = await fetch(`/api/transactions`);
+    const transactionsData = await response.json();
+    const txn = transactionsData.find(t => t.id === id);
+    if (!txn) throw new Error('Transaction not found');
+
+    const endpoint = txn.bankpageVisible ? '/api/hideBankpage' : '/api/showBankpage';
+    const apiResponse = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoiceId: id })
+    });
+
+    if (!apiResponse.ok) {
+      const errorData = await apiResponse.json();
+      throw new Error(errorData.message || 'Failed to toggle bank page');
     }
+
+    await loadTransactions();
+  } catch (error) {
+    console.error('Error:', error);
+    alert(`Error: ${error.message}`);
+  }
+}
+
+// Hide Bankpage function
+async function hideBankPage(id) {
+  try {
+    const response = await fetch("/api/hideBankpage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoiceId: id })
+    });
+
+    if (!response.ok) throw new Error('Failed to hide bank page');
+
+    // Emit event to user
+    socket.emit('hide_bankpage', { invoiceId: id });
+
+    loadTransactions();
+  } catch (error) {
+    console.error('Error hiding bank page:', error);
+    alert('Failed to hide bank page. Please try again.');
+  }
+}
     
     loadTransactions();
     setInterval(loadTransactions, 2000);
