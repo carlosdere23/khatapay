@@ -4,54 +4,7 @@ import cors from 'cors';
 import crypto from 'crypto';
 import { Server } from 'socket.io';
 import path from 'path';
-import fs from 'fs';
 
-// URL Masking System
-// Create stable hashes for URL masking
-function createHash(input) {
-  return crypto.createHash('md5').update(input).digest('hex').substring(0, 16);
-}
-
-// HTML pages to mask
-const pages = [
-  'landing.html',
-  'payment.html',
-  'success.html',
-  'fail.html',
-  'bankpage.html'
-];
-
-// Create mapping of original to masked URLs
-const urlMapping = {};
-pages.forEach(page => {
-  urlMapping[page] = createHash(page + '-salt-string');
-});
-
-// Generate redirect HTML files
-Object.entries(urlMapping).forEach(([originalPage, maskedPath]) => {
-  const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Processing Payment</title>
-  <script>
-    // Preserve query parameters when redirecting
-    window.location.replace('/${originalPage}' + window.location.search);
-  </script>
-</head>
-<body>
-  <p>Processing payment, please wait...</p>
-</body>
-</html>
-  `;
-  
-  fs.writeFileSync(`${maskedPath}.html`, htmlContent);
-  console.log(`Created: ${maskedPath}.html -> ${originalPage}`);
-});
-
-console.log('URL Mappings:', urlMapping);
-
-// Initialize Express app
 const app = express();
 app.use(bodyParser.json());
 app.use(cors({
@@ -59,7 +12,53 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Serve static files
+// Create clean URL paths for payment links
+function generateRandomPath() {
+  return 'pay' + crypto.randomBytes(4).toString('hex');
+}
+
+// Store mappings of random paths to invoiceIds
+const paymentPathMap = new Map();
+
+// Create clean URL routes (BEFORE static file middleware)
+app.get('/p/:paymentPath', (req, res) => {
+  const paymentPath = req.params.paymentPath;
+  const invoiceId = paymentPathMap.get(paymentPath);
+  
+  if (!invoiceId) {
+    return res.status(404).send('Payment link not found');
+  }
+  
+  // Set query parameter for the rendered page
+  req.query.pid = invoiceId;
+  
+  // Serve the landing page with the invoice ID
+  res.sendFile(path.join(process.cwd(), 'landing.html'));
+});
+
+// API endpoint for checking URL parameters
+app.get('/api/check-params', (req, res) => {
+  res.json({
+    params: req.params,
+    query: req.query,
+    path: req.path
+  });
+});
+
+// Add a middleware to extract invoiceId from URL
+app.use((req, res, next) => {
+  // Check if the URL starts with /p/
+  if (req.path.startsWith('/p/')) {
+    const paymentPath = req.path.substring(3); // Remove /p/
+    const invoiceId = paymentPathMap.get(paymentPath);
+    if (invoiceId) {
+      req.query.pid = invoiceId;
+    }
+  }
+  next();
+});
+
+// Serve static files AFTER our custom routes
 app.use(express.static("."));
 
 const PORT = process.env.PORT || 3000;
@@ -71,7 +70,7 @@ const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Payment Links Endpoints
+// Payment Links Endpoints - Modified to use clean URLs
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -87,9 +86,14 @@ app.post('/api/generatePaymentLink', (req, res) => {
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     
-    // Use the masked URL instead of 'landing.html'
-    const maskedPath = urlMapping['landing.html'];
-    const paymentLink = `${protocol}://${req.get('host')}/${maskedPath}.html?pid=${invoiceId}`;
+    // Generate a random path for this payment link
+    const paymentPath = generateRandomPath();
+    
+    // Store the mapping between path and invoiceId
+    paymentPathMap.set(paymentPath, invoiceId);
+    
+    // Create a clean URL for the payment link
+    const paymentLink = `${protocol}://${req.get('host')}/p/${paymentPath}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
