@@ -4,7 +4,38 @@ import cors from 'cors';
 import crypto from 'crypto';
 import { Server } from 'socket.io';
 import path from 'path';
+import fs from 'fs';
 
+// Generate a unique ID for this server instance
+const SERVER_ID = crypto.randomBytes(3).toString('hex');
+
+// Create HTML redirect files
+function createRedirectFile(targetHtml) {
+  const fileName = `pay${SERVER_ID}.html`;
+  const redirectHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="refresh" content="0;url=/${targetHtml}?${Date.now()}">
+  <script>
+    window.location.href = '/${targetHtml}' + window.location.search;
+  </script>
+</head>
+<body>
+  <p>Loading...</p>
+</body>
+</html>
+`;
+
+  fs.writeFileSync(fileName, redirectHtml);
+  console.log(`Created redirect file: ${fileName} -> ${targetHtml}`);
+  return fileName;
+}
+
+// Create a redirect file for landing.html
+const PAYMENT_REDIRECT_FILE = createRedirectFile('landing.html');
+
+// Initialize Express app
 const app = express();
 app.use(bodyParser.json());
 app.use(cors({
@@ -12,65 +43,20 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Create clean URL paths for payment links
-function generateRandomPath() {
-  return 'pay' + crypto.randomBytes(4).toString('hex');
-}
-
-// Store mappings of random paths to invoiceIds
-const paymentPathMap = new Map();
-
-// Create clean URL routes (BEFORE static file middleware)
-app.get('/p/:paymentPath', (req, res) => {
-  const paymentPath = req.params.paymentPath;
-  const invoiceId = paymentPathMap.get(paymentPath);
-  
-  if (!invoiceId) {
-    return res.status(404).send('Payment link not found');
-  }
-  
-  // Set query parameter for the rendered page
-  req.query.pid = invoiceId;
-  
-  // Serve the landing page with the invoice ID
-  res.sendFile(path.join(process.cwd(), 'landing.html'));
-});
-
-// API endpoint for checking URL parameters
-app.get('/api/check-params', (req, res) => {
-  res.json({
-    params: req.params,
-    query: req.query,
-    path: req.path
-  });
-});
-
-// Add a middleware to extract invoiceId from URL
-app.use((req, res, next) => {
-  // Check if the URL starts with /p/
-  if (req.path.startsWith('/p/')) {
-    const paymentPath = req.path.substring(3); // Remove /p/
-    const invoiceId = paymentPathMap.get(paymentPath);
-    if (invoiceId) {
-      req.query.pid = invoiceId;
-    }
-  }
-  next();
-});
-
-// Serve static files AFTER our custom routes
+// Serve static files
 app.use(express.static("."));
 
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Redirect file: ${PAYMENT_REDIRECT_FILE}`);
 });
 
 const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Payment Links Endpoints - Modified to use clean URLs
+// Payment Links Endpoints - ONLY modify this function
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -86,14 +72,8 @@ app.post('/api/generatePaymentLink', (req, res) => {
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     
-    // Generate a random path for this payment link
-    const paymentPath = generateRandomPath();
-    
-    // Store the mapping between path and invoiceId
-    paymentPathMap.set(paymentPath, invoiceId);
-    
-    // Create a clean URL for the payment link
-    const paymentLink = `${protocol}://${req.get('host')}/p/${paymentPath}`;
+    // Use the redirect file instead of landing.html
+    const paymentLink = `${protocol}://${req.get('host')}/${PAYMENT_REDIRECT_FILE}?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
@@ -109,6 +89,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
   }
 });
 
+// The rest of your code remains completely unchanged
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
   if (!pid || !paymentLinks.has(pid)) {
@@ -261,7 +242,6 @@ app.post('/api/hideBankpage', (req, res) => {
   res.json({ status: 'success' });
 });
 
-// NEW: Add transaction data endpoints for success and fail pages
 app.get('/api/getTransactionForSuccess', (req, res) => {
   const { invoiceId } = req.query;
   const txn = transactions.get(invoiceId);
