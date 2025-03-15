@@ -170,11 +170,9 @@
     let transactions = new Map();
     let paymentLinks = new Map();
 
-    // Generate Payment Link Handler – DO NOT REMOVE any existing code; just replace this block
-   <script>
-  // Generate Payment Link Handler – DO NOT remove any other parts of your code
+    // Generate Payment Link Handler – DO NOT remove any other parts of your code
 document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
-  e.preventDefault(); // Prevent form from refreshing the page
+  e.preventDefault();
 
   const amountInput = document.getElementById('amount');
   const descInput = document.getElementById('description');
@@ -218,7 +216,6 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
     linkContainer.style.display = 'none';
   }
 });
-
   
   function copyPaymentLink() {
     const link = document.getElementById('paymentLink').textContent;
@@ -260,10 +257,6 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
                   <button class="bank-page-btn" onclick="toggleBankpage('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
                     ${tx.bankpageVisible ? 'Hide Bankpage' : 'Bank Page'}
                   </button>`
-                <button class="hide-bankpage-btn" onclick="hideBankPage('${tx.id}')">
-  Hide Bankpage
-</button>
-
               }
             </td>
             <td>
