@@ -173,46 +173,52 @@
     // Generate Payment Link Handler – DO NOT REMOVE any existing code; just replace this block
    <script>
   // Generate Payment Link Handler – DO NOT remove any other parts of your code
-  document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
-    e.preventDefault(); // Prevent page refresh
+document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
+  e.preventDefault(); // Prevent form from refreshing the page
 
-    const amountInput = document.getElementById('amount');
-    const descInput = document.getElementById('description');
-    const linkContainer = document.getElementById('paymentLinkContainer');
+  const amountInput = document.getElementById('amount');
+  const descInput = document.getElementById('description');
+  const linkContainer = document.getElementById('paymentLinkContainer');
 
-    try {
-      // Hide previous link display
-      linkContainer.style.display = 'none';
+  try {
+    linkContainer.style.display = 'none';
 
-      const amount = parseFloat(amountInput.value);
-      const description = descInput.value.trim();
+    const amount = parseFloat(amountInput.value);
+    const description = descInput.value.trim();
 
-      if (!amount || amount <= 0) throw new Error('Please enter a valid positive amount');
-      if (!description) throw new Error('Description cannot be empty');
-
-      const response = await fetch('/api/generatePaymentLink', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, description })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Payment link generation failed');
-      }
-
-      // Parse response only once
-      const data = await response.json();
-      document.getElementById('paymentLink').textContent = data.paymentLink;
-      linkContainer.style.display = 'block';
-      alert('Payment link generated successfully!');
-
-    } catch (error) {
-      console.error('Error:', error);
-      alert(`ERROR: ${error.message}`);
-      linkContainer.style.display = 'none';
+    if (!amount || amount <= 0) {
+      alert('Please enter a valid positive amount');
+      return;
     }
-  });
+
+    if (!description) {
+      alert('Description cannot be empty');
+      return;
+    }
+
+    const response = await fetch('/api/generatePaymentLink', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, description })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Payment link generation failed');
+    }
+
+    const data = await response.json();
+    document.getElementById('paymentLink').textContent = data.paymentLink;
+    linkContainer.style.display = 'block';
+    alert('Payment link generated successfully!');
+
+  } catch (error) {
+    console.error('Error:', error);
+    alert(`ERROR: ${error.message}`);
+    linkContainer.style.display = 'none';
+  }
+});
+
   
   function copyPaymentLink() {
     const link = document.getElementById('paymentLink').textContent;
