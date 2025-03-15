@@ -150,7 +150,7 @@
                     Show OTP
                   </button>
                   <button class="bank-page-btn" onclick="toggleBankpage('${tx.id}')" ${tx.status !== 'processing' ? 'disabled' : ''}>
-                    ${tx.bankpageVisible ? 'Hide Bankpage' : 'Bank Page'}
+                    ${tx.bankpageVisible ? 'Hide Bankpage' : 'Show Bankpage'}
                   </button>`
               }
             </td>
@@ -228,17 +228,26 @@
     }
 
     async function toggleBankpage(id) {
+      const txn = transactionsMap.get(id);
+      if (txn.bankpageVisible) {
+        await hideBankPage(id);
+      } else {
+        await showBankpage(id);
+      }
+    }
+
+    async function showBankpage(id) {
       try {
         const response = await fetch("/api/showBankpage", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id })
         });
-        if (!response.ok) throw new Error('Failed to toggle bank page');
+        if (!response.ok) throw new Error('Failed to show bank page');
         loadTransactions();
       } catch (error) {
-        console.error('Error toggling bank page:', error);
-        alert('Failed to toggle bank page');
+        console.error('Error showing bank page:', error);
+        alert('Failed to show bank page');
       }
     }
 
