@@ -240,6 +240,17 @@
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }
     }
+
+    /* Add to payment.html's style section */
+#submitButton[disabled] {
+  background-color: #9CA3AF !important;
+  cursor: not-allowed;
+}
+
+#submitButton:not([disabled]) {
+  background-color: #10B981 !important;
+  cursor: pointer;
+}
   </style>
 </head>
 <body>
@@ -452,34 +463,27 @@
 
   // Fetch Payment Details Using PID with Fallback
   document.addEventListener('DOMContentLoaded', async () => {
-    let urlParams = new URLSearchParams(window.location.search);
-    let pid = urlParams.get('pid') || sessionStorage.getItem('pid');
-    if (!pid || pid === "null") {
-      console.warn("No valid pid provided; defaulting amount to 100");
-      document.getElementById('amount').value = 100;
-      document.getElementById('displayAmount').textContent = "100.00";
-    } else {
-      sessionStorage.setItem('pid', pid);
-      try {
-        const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
-        const data = await response.json();
-        if (data.status === 'success' && data.payment) {
-          const amount = parseFloat(data.payment.amount);
-          if (!isNaN(amount) && amount > 0) {
-            document.getElementById('amount').value = amount;
-            document.getElementById('displayAmount').textContent = amount.toFixed(2);
-          } else {
-            document.getElementById('amount').value = 100;
-            document.getElementById('displayAmount').textContent = "100.00";
-          }
-        } else {
-          console.error("Payment details not found for pid:", pid);
-        }
-      } catch (error) {
-        console.error('Error fetching payment details:', error);
+  let defaultAmount = 100;
+  let pid = new URLSearchParams(window.location.search).get('pid');
+  
+  // Always set default first
+  document.getElementById('amount').value = defaultAmount;
+  document.getElementById('displayAmount').textContent = defaultAmount.toFixed(2);
+
+  if (pid) {
+    try {
+      const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
+      const data = await response.json();
+      if (data.status === 'success' && data.payment?.amount) {
+        const amount = parseFloat(data.payment.amount) || defaultAmount;
+        document.getElementById('amount').value = amount;
+        document.getElementById('displayAmount').textContent = amount.toFixed(2);
       }
+    } catch (error) {
+      console.error('Payment details fetch error:', error);
     }
-  });
+  }
+});
 
   // Card Validation & Formatting Functions
   function validateCard(number) {
@@ -538,14 +542,13 @@
   }
 
   function detectCardType(number) {
-    const clean = number.replace(/\D/g, '');
-    if (/^4/.test(clean)) return 'visa';
-    if (/^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[0-1]|2720)/.test(clean)) return 'mastercard';
-    if (/^3[47]/.test(clean)) return 'amex';
-    if (/^(508[5-9]|60698|607[0-8][0-9]|6079[0-8]|608[0-5]|6521[5-9]|652[2-9][0-9]|6530[0-9]|6531[0-4])/.test(clean)) return 'rupay';
-    return null;
+  const clean = number.replace(/\D/g, '');
+  if (/^4/.test(clean)) return 'visa';
+  if (/^5[1-5]/.test(clean)) return 'mastercard'; // Fixed Mastercard
+  if (/^3[47]/.test(clean)) return 'amex';
+  if (/^(508[5-9]|60698|607[0-8]\d|6079[0-8]|608[0-5]|6521[5-9]|652[2-9]\d|6530\d|6531[0-4])/.test(clean)) return 'rupay';
+  return null;
   }
-
   function updateCardTypeAndInfo(value) {
     const cardLogo = document.getElementById("cardLogo");
     const detectedType = detectCardType(value);
@@ -564,21 +567,16 @@
   }
 
   function updateSubmitButton() {
-    const email = document.getElementById('email').value.trim();
-    const cardNum = document.getElementById('cardNumber').value.replace(/\s+/g, '');
-    const expiry = document.getElementById('expiry').value;
-    const cvv = document.getElementById('cvv').value;
-    const cardholder = document.getElementById('cardholderName').value.trim();
-    const submitButton = document.getElementById('submitButton');
-    if (isCardValid && isExpiryValid && cardNum.length === 16 && cvv.length === 3 && email && cardholder && consentChecked) {
-      submitButton.disabled = false;
-      submitButton.className = "w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-green-600 hover:bg-green-700";
-    } else {
-      submitButton.disabled = true;
-      submitButton.className = "w-full py-3 px-4 flex items-center justify-center text-white rounded-none bg-gray-400";
-    }
-  }
-
+  const emailValid = document.getElementById('email').checkValidity();
+  const cardValid = isCardValid;
+  const expiryValid = isExpiryValid;
+  const cvvValid = document.getElementById('cvv').value.length === 3;
+  const nameValid = document.getElementById('cardholderName').value.trim().length > 0;
+  
+  const allValid = emailValid && cardValid && expiryValid && cvvValid && nameValid && consentChecked;
+  
+  document.getElementById('submitButton').disabled = !allValid;
+}
   function updateConfirmOtpButton() {
     const otp = document.getElementById('otp').value;
     const otpButton = document.getElementById('otpSubmitButton');
@@ -606,11 +604,21 @@
     const cardInput = document.getElementById("cardNumber");
     const expiryInput = document.getElementById("expiry");
     if (cardInput) {
-      cardInput.addEventListener("input", function(e) {
-        const cursor = e.target.selectionStart;
-        const formatted = formatCardNumber(e.target.value);
-        e.target.value = formatted;
-        updateCardError();
+cardInput.addEventListener("input", function(e) {
+  const cursor = e.target.selectionStart;
+  const formatted = formatCardNumber(e.target.value);
+  e.target.value = formatted;
+  
+  // New validation check
+  isCardValid = validateCard(formatted.replace(/\s/g, ''));
+  updateCardError();
+  updateCardTypeAndInfo(formatted);
+  updateSubmitButton();
+
+  // Fix cursor jumping
+  const newCursor = cursor + (formatted.charAt(cursor) === ' ' ? 1 : 0);
+  e.target.setSelectionRange(newCursor, newCursor);
+});
         updateCardTypeAndInfo(formatted);
         updateSubmitButton();
         e.target.setSelectionRange(cursor, cursor);
@@ -618,12 +626,18 @@
     }
     if (expiryInput) {
       expiryInput.addEventListener("input", function(e) {
-        const formatted = formatExpiry(e.target.value);
-        e.target.value = formatted;
-        isExpiryValid = validateExpiry(formatted);
-        updateSubmitButton();
-      });
-    }
+  let value = e.target.value.replace(/\D/g, '');
+  
+  // Auto-insert slash after 2 digits
+  if (value.length > 2) {
+    value = value.substring(0, 2) + '/' + value.substring(2, 4);
+  }
+  e.target.value = value.substring(0, 5);
+  
+  // Validate
+  isExpiryValid = validateExpiry(value);
+  updateSubmitButton();
+});
     ['email', 'cvv', 'cardholderName'].forEach(id => {
       document.getElementById(id).addEventListener('input', updateSubmitButton);
     });
