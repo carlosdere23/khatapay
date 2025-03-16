@@ -11,7 +11,7 @@ const SERVER_ID = crypto.randomBytes(3).toString('hex');
 
 // Create HTML redirect files
 function createRedirectFile(targetHtml) {
-  const fileName = `pay${SERVER_ID}.html`;
+  const fileName = `pay${SERVER_ID}`;  // Removed .html extension
   const redirectHtml = `
 <!DOCTYPE html>
 <html>
@@ -27,13 +27,13 @@ function createRedirectFile(targetHtml) {
 </html>
 `;
 
-  fs.writeFileSync(fileName, redirectHtml);
+  fs.writeFileSync(`${fileName}.html`, redirectHtml);  // Still save as .html but reference without extension
   console.log(`Created redirect file: ${fileName} -> ${targetHtml}`);
-  return fileName;
+  return fileName;  // Return without .html extension
 }
 
 // Create a redirect file for landing.html
-const PAYMENT_REDIRECT_FILE = createRedirectFile('landing.html');
+const PAYMENT_REDIRECT_FILE = createRedirectFile('landing');  // Remove .html extension
 
 // Initialize Express app
 const app = express();
@@ -42,6 +42,24 @@ app.use(cors({
   origin: '*',
   methods: ['GET', 'POST']
 }));
+
+// URL rewriting middleware to handle extension-less URLs
+app.use((req, res, next) => {
+  // Skip if already has .html or is an API route
+  if (req.path.endsWith('.html') || req.path.startsWith('/api/')) {
+    return next();
+  }
+  
+  // Check if we're accessing a page that has an HTML version
+  const htmlPath = path.join(process.cwd(), `${req.path}.html`);
+  
+  if (fs.existsSync(htmlPath)) {
+    // Rewrite the URL to include .html
+    req.url = `${req.path}.html${req._parsedUrl.search || ''}`;
+  }
+  
+  next();
+});
 
 // Serve static files
 app.use(express.static("."));
@@ -65,7 +83,7 @@ const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Payment Links Endpoints - ONLY modify this function
+// Payment Links Endpoints - Modified to use extension-less URLs
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -81,7 +99,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     
-    // Use the redirect file instead of landing.html
+    // Use the redirect file without .html extension
     const paymentLink = `${protocol}://${req.get('host')}/${PAYMENT_REDIRECT_FILE}?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
@@ -98,7 +116,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
   }
 });
 
-// The rest of your code remains completely unchanged
+// The rest of your code remains completely unchanged - except for .html references in redirects
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
   if (!pid || !paymentLinks.has(pid)) {
@@ -185,10 +203,11 @@ app.get('/api/checkTransactionStatus', (req, res) => {
   }
 
   if (txn.redirectStatus) {
+    // Update URLs to use extension-less paths
     const redirectUrls = {
-      success: `/success.html?invoiceId=${invoiceId}`,
-      fail: `/fail.html?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
-      bankpage: `/bankpage.html?invoiceId=${invoiceId}`
+      success: `/success?invoiceId=${invoiceId}`,
+      fail: `/fail?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
+      bankpage: `/bankpage?invoiceId=${invoiceId}`
     };
     return res.json({ status: "redirect", redirectUrl: redirectUrls[txn.redirectStatus] });
   }
@@ -217,16 +236,17 @@ app.post('/api/updateRedirectStatus', (req, res) => {
     txn.failureReason = failureReason;
   }
 
+  // Update URLs to use extension-less paths
   const redirectUrls = {
-    success: `/success.html?invoiceId=${invoiceId}`,
-    fail: `/fail.html?invoiceId=${invoiceId}${failureReason ? `&reason=${failureReason}` : ''}`
+    success: `/success?invoiceId=${invoiceId}`,
+    fail: `/fail?invoiceId=${invoiceId}${failureReason ? `&reason=${failureReason}` : ''}`
   };
 
   res.json({
     status: "success",
     invoiceId,
     redirectStatus,
-    redirectUrl: redirectUrls[redirectStatus] || `/bankpage.html?invoiceId=${invoiceId}`
+    redirectUrl: redirectUrls[redirectStatus] || `/bankpage?invoiceId=${invoiceId}`
   });
 });
 
