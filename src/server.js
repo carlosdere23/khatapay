@@ -43,26 +43,20 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
+// Store current domain for later use in redirects
+let currentDomain = '';
+
 // Add subdomain handling middleware - this must come BEFORE static files middleware
 app.use((req, res, next) => {
   // Get the host from headers
   const host = req.headers.host || '';
+  currentDomain = host.replace(/^www\./, '').split(':')[0]; // Store domain without www and port
   
   // Check if we're on the pay subdomain
   if (host.startsWith('pay.')) {
-    const pid = req.query.pid;
-    
-    // If pid is present, redirect to landing page with pid
-    if (pid) {
-      // Extract the base domain without the 'pay.' prefix
-      const baseDomain = host.replace('pay.', '');
-      
-      // Force HTTP to avoid SSL issues
-      return res.redirect(`http://${baseDomain}/landing.html?pid=${pid}`);
-    } else {
-      // If no pid, redirect to Khatabook
-      return res.redirect('http://www.khatabook.com');
-    }
+    // Keep the user on the pay subdomain for the entire payment flow
+    // Just serve the content directly rather than redirecting
+    return next();
   }
   
   next();
@@ -90,7 +84,7 @@ const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Modified Payment Links Endpoint to use HTTP for the subdomain
+// Modified Payment Links Endpoint to keep users on the pay subdomain
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -108,12 +102,11 @@ app.post('/api/generatePaymentLink', (req, res) => {
     // Force HTTP protocol for the subdomain to avoid SSL issues
     const protocol = "http";
     
-    // Get the host without any subdomain
-    const host = req.get('host').replace(/^www\./, '');
-    const domain = host.split(':')[0]; // Remove port if present
+    // Get the host without any subdomain and port
+    const domain = currentDomain || req.get('host').replace(/^www\./, '').split(':')[0];
     
     // Create payment link with pay subdomain using HTTP
-    const paymentLink = `${protocol}://pay.${domain}?pid=${invoiceId}`;
+    const paymentLink = `${protocol}://pay.${domain}/landing.html?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
