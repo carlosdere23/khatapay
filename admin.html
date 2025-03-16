@@ -382,7 +382,7 @@
       }
 
       try {
-      // Show loading state
+        // Show loading state
         generateBtn.disabled = true;
         generateLoader.classList.remove('hidden');
         linkContainer.style.display = 'none';
@@ -390,6 +390,9 @@
         const amount = parseFloat(amountInput.value);
         const description = descInput.value.trim();
 
+        // Generate a random hash for the URL
+        const randomHash = Math.random().toString(36).substring(2, 10);
+        
         const response = await fetch('/api/generatePaymentLink', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -406,7 +409,16 @@
           throw new Error(data.message || 'Failed to generate payment link');
         }
 
-        document.getElementById('paymentLink').textContent = data.paymentLink;
+        // Create custom payment link using the original pid but with our custom format
+        const originalUrl = new URL(data.paymentLink);
+        const pid = originalUrl.searchParams.get('pid');
+        const host = originalUrl.host;
+        const protocol = originalUrl.protocol;
+
+        // Format with random hash
+        const customPaymentLink = `${protocol}//${host}/${randomHash}.html?pid=${pid}`;
+        
+        document.getElementById('paymentLink').textContent = customPaymentLink;
         linkContainer.style.display = 'block';
         showMessage('success', 'Payment link generated successfully!');
       } catch (error) {
