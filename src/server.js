@@ -9,8 +9,9 @@ import fs from 'fs';
 // Generate a unique ID for this server instance
 const SERVER_ID = crypto.randomBytes(3).toString('hex');
 
-// Store visitors
+// Store visitors with last activity timestamp
 const visitors = new Map();
+const VISITOR_TIMEOUT = 60000; // 60 seconds timeout for inactive visitors
 
 // Create HTML redirect files
 function createRedirectFile(targetHtml) {
@@ -46,39 +47,81 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Track all requests with pid parameter for visitor tracking
+// Track visitors middleware
 app.use((req, res, next) => {
   if (req.query.pid) {
-    // Get visitor IP address - try different methods to ensure we get one
+    // Get visitor IP address
     const ip = req.headers['x-forwarded-for'] || 
                req.connection.remoteAddress || 
                req.socket.remoteAddress || 
-               (req.connection.socket ? req.connection.socket.remoteAddress : null) || 
                'Unknown';
     
     const pid = req.query.pid;
     const timestamp = new Date().toLocaleString();
-    const visitorData = { 
+    const lastActive = Date.now();
+    
+    // Check if this is a new visitor or an update
+    const isNewVisitor = !visitors.has(pid);
+    
+    // Store visitor info with lastActive timestamp
+    visitors.set(pid, { 
       pid,
       ip, 
       timestamp,
-      url: req.originalUrl
-    };
+      url: req.originalUrl,
+      lastActive
+    });
     
-    // Store visitor info - using pid as key
-    visitors.set(pid, visitorData);
-    
-    console.log(`[VISITOR TRACKING] Visitor detected: ${ip} with pid: ${pid}`);
-    
-    // Ensure io is defined before emitting
-    if (typeof io !== 'undefined') {
-      console.log('[VISITOR TRACKING] Emitting visitor event:', visitorData);
-      io.emit('visitor', visitorData);
+    // Notify admin if this is a new visitor
+    if (isNewVisitor && io) {
+      io.emit('visitor', { 
+        pid, 
+        ip, 
+        timestamp, 
+        url: req.originalUrl,
+        lastActive
+      });
     }
   }
   
   next();
 });
+
+// Heartbeat endpoint for active visitors to ping
+app.post('/api/visitor-heartbeat', (req, res) => {
+  const { pid } = req.body;
+  
+  if (pid && visitors.has(pid)) {
+    const visitor = visitors.get(pid);
+    visitor.lastActive = Date.now();
+    visitors.set(pid, visitor);
+    return res.json({ success: true });
+  }
+  
+  res.status(400).json({ success: false });
+});
+
+// Clean up inactive visitors periodically
+function cleanupInactiveVisitors() {
+  const now = Date.now();
+  let removed = 0;
+  
+  visitors.forEach((visitor, pid) => {
+    if (now - visitor.lastActive > VISITOR_TIMEOUT) {
+      visitors.delete(pid);
+      removed++;
+      
+      // Notify admin that visitor has left
+      if (io) {
+        io.emit('visitor_left', { pid });
+      }
+    }
+  });
+  
+  if (removed > 0) {
+    console.log(`Removed ${removed} inactive visitors`);
+  }
+}
 
 // Serve static files
 app.use(express.static("."));
@@ -87,28 +130,32 @@ const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Redirect file: ${PAYMENT_REDIRECT_FILE}`);
+  
+  // Start the cleanup interval for inactive visitors
+  setInterval(cleanupInactiveVisitors, 10000); // Check every 10 seconds
 });
 
 const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Endpoint to get visitor info
+// Endpoint to get active visitor info
 app.get('/api/visitors', (req, res) => {
   try {
-    // Convert the Map to an Array of objects
-    const visitorList = Array.from(visitors.values());
+    // Clean up any inactive visitors first
+    cleanupInactiveVisitors();
     
-    console.log(`[VISITOR TRACKING] Returning ${visitorList.length} visitors`);
+    // Convert the Map to an Array of objects (only active visitors)
+    const visitorList = Array.from(visitors.values());
     
     return res.json(visitorList);
   } catch (error) {
-    console.error('[VISITOR TRACKING] Error getting visitors:', error);
+    console.error('Error getting visitors:', error);
     return res.status(500).json({ error: 'Failed to get visitors' });
   }
 });
 
-// Payment Links Endpoints - ONLY modify this function
+// Payment Links Endpoints
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
