@@ -15,6 +15,25 @@
       padding: 1rem;
       color: white;
     }
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .powered-by-text {
+      font-size: 11px;
+      color: #E5E7EB;
+      font-weight: 300;
+    }
+    .logo-img {
+      height: 20px;
+      width: auto;
+    }
     .success-check {
       width: 80px;
       height: 80px;
@@ -67,7 +86,13 @@
 <body>
   <div class="header">
     <div class="container mx-auto px-4">
-      <h1 class="text-xl font-medium">Bologus pvt store.</h1>
+      <div class="header-content">
+        <h1 class="text-xl font-medium">Bologus pvt store.</h1>
+        <div class="logo-container">
+          <span class="powered-by-text">Powered by</span>
+          <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Khatabook.svg" alt="Khatabook" class="logo-img">
+        </div>
+      </div>
     </div>
   </div>
 
