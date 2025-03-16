@@ -221,13 +221,22 @@
 .bottom-logos {
   padding: 2rem 0;
   margin-top: auto;
-  background: linear-gradient(45deg, #ff0000 50%, #ffffff 50%);
+  background: transparent; /* Remove the separate background */
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 10px;
   position: relative;
   z-index: 1;
+}
+
+.page-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding-top: 1.5rem;
+  padding-bottom: 0;
+  background: linear-gradient(45deg, #ff0000 50%, #ffffff 50%);
 }
     .fullscreen-overlay {
       position: fixed;
