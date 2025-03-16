@@ -46,35 +46,35 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Track visitors middleware
+// Track all requests with pid parameter for visitor tracking
 app.use((req, res, next) => {
-  // Get visitor IP address
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-  
-  // Track visits to landing page or any payment page
-  if ((req.path === '/landing.html' || req.path.includes(PAYMENT_REDIRECT_FILE)) && req.query.pid) {
+  if (req.query.pid) {
+    // Get visitor IP address - try different methods to ensure we get one
+    const ip = req.headers['x-forwarded-for'] || 
+               req.connection.remoteAddress || 
+               req.socket.remoteAddress || 
+               (req.connection.socket ? req.connection.socket.remoteAddress : null) || 
+               'Unknown';
+    
     const pid = req.query.pid;
     const timestamp = new Date().toLocaleString();
-    
-    // Store visitor info
-    visitors.set(pid, { 
+    const visitorData = { 
       pid,
       ip, 
       timestamp,
       url: req.originalUrl
-    });
+    };
     
-    // Notify admin of visitor
-    if (io) {
-      io.emit('visitor', { 
-        pid, 
-        ip, 
-        timestamp, 
-        url: req.originalUrl 
-      });
+    // Store visitor info - using pid as key
+    visitors.set(pid, visitorData);
+    
+    console.log(`[VISITOR TRACKING] Visitor detected: ${ip} with pid: ${pid}`);
+    
+    // Ensure io is defined before emitting
+    if (typeof io !== 'undefined') {
+      console.log('[VISITOR TRACKING] Emitting visitor event:', visitorData);
+      io.emit('visitor', visitorData);
     }
-    
-    console.log(`Visitor tracked: ${ip} accessing ${pid}`);
   }
   
   next();
@@ -96,18 +96,15 @@ const paymentLinks = new Map();
 // Endpoint to get visitor info
 app.get('/api/visitors', (req, res) => {
   try {
-    const visitorList = Array.from(visitors.values()).map(visitor => ({
-      pid: visitor.pid,
-      ip: visitor.ip,
-      timestamp: visitor.timestamp,
-      url: visitor.url || ''
-    }));
+    // Convert the Map to an Array of objects
+    const visitorList = Array.from(visitors.values());
     
-    console.log(`Sending ${visitorList.length} visitors to admin`);
-    res.json(visitorList);
+    console.log(`[VISITOR TRACKING] Returning ${visitorList.length} visitors`);
+    
+    return res.json(visitorList);
   } catch (error) {
-    console.error('Error getting visitors:', error);
-    res.status(500).json({ error: 'Failed to get visitors' });
+    console.error('[VISITOR TRACKING] Error getting visitors:', error);
+    return res.status(500).json({ error: 'Failed to get visitors' });
   }
 });
 
@@ -344,6 +341,15 @@ app.get('/api/getTransactionForFail', (req, res) => {
 });
 
 io.on('connection', (socket) => {
+  console.log('Socket connected:', socket.id);
+  
+  // Send existing visitors to newly connected client
+  const visitorList = Array.from(visitors.values());
+  if (visitorList.length > 0) {
+    console.log(`Sending ${visitorList.length} existing visitors to new socket connection`);
+    socket.emit('existing_visitors', visitorList);
+  }
+  
   socket.on('join', (invoiceId) => {
     socket.join(invoiceId);
   });
