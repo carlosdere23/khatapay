@@ -52,14 +52,16 @@ app.use((req, res, next) => {
   if (host.startsWith('pay.')) {
     const pid = req.query.pid;
     
-    // If pid is present, redirect to landing page on main domain
+    // If pid is present, redirect to landing page with pid
     if (pid) {
-      const mainDomain = host.replace('pay.', '');
-      // Use HTTP for the redirect
-      return res.redirect(`http://${mainDomain}/${PAYMENT_REDIRECT_FILE}?pid=${pid}`);
+      // Extract the base domain without the 'pay.' prefix
+      const baseDomain = host.replace('pay.', '');
+      
+      // Force HTTP to avoid SSL issues
+      return res.redirect(`http://${baseDomain}/landing.html?pid=${pid}`);
     } else {
       // If no pid, redirect to Khatabook
-      return res.redirect('https://www.khatabook.com');
+      return res.redirect('http://www.khatabook.com');
     }
   }
   
@@ -88,7 +90,7 @@ const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Modified Payment Links Endpoint to use pay subdomain with HTTP protocol
+// Modified Payment Links Endpoint to use HTTP for the subdomain
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -103,11 +105,15 @@ app.post('/api/generatePaymentLink', (req, res) => {
 
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     
-    // Get the host without www prefix
-    const host = req.get('host').replace(/^www\./, '');
+    // Force HTTP protocol for the subdomain to avoid SSL issues
+    const protocol = "http";
     
-    // Create payment link with pay. subdomain and explicit HTTP protocol
-    const paymentLink = `http://pay.${host}?pid=${invoiceId}`;
+    // Get the host without any subdomain
+    const host = req.get('host').replace(/^www\./, '');
+    const domain = host.split(':')[0]; // Remove port if present
+    
+    // Create payment link with pay subdomain using HTTP
+    const paymentLink = `${protocol}://pay.${domain}?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
