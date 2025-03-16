@@ -9,9 +9,9 @@ import fs from 'fs';
 // Generate a unique ID for this server instance
 const SERVER_ID = crypto.randomBytes(3).toString('hex');
 
-// Create HTML redirect files
+// Create HTML redirect files - Keep the .html extension for file system
 function createRedirectFile(targetHtml) {
-  const fileName = `pay${SERVER_ID}`;  // Removed .html extension
+  const fileName = `pay${SERVER_ID}.html`;  // Keep .html for the file
   const redirectHtml = `
 <!DOCTYPE html>
 <html>
@@ -27,13 +27,13 @@ function createRedirectFile(targetHtml) {
 </html>
 `;
 
-  fs.writeFileSync(`${fileName}.html`, redirectHtml);  // Still save as .html but reference without extension
+  fs.writeFileSync(fileName, redirectHtml);
   console.log(`Created redirect file: ${fileName} -> ${targetHtml}`);
-  return fileName;  // Return without .html extension
+  return fileName;  // Return with .html
 }
 
 // Create a redirect file for landing.html
-const PAYMENT_REDIRECT_FILE = createRedirectFile('landing');  // Remove .html extension
+const PAYMENT_REDIRECT_FILE = createRedirectFile('landing.html');
 
 // Initialize Express app
 const app = express();
@@ -43,19 +43,41 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// URL rewriting middleware to handle extension-less URLs
-app.use((req, res, next) => {
-  // Skip if already has .html or is an API route
-  if (req.path.endsWith('.html') || req.path.startsWith('/api/')) {
-    return next();
-  }
+// Special handling for clean URLs - must come before static files
+app.get('/payment', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'payment.html'));
+});
+
+app.get('/success', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'success.html'));
+});
+
+app.get('/fail', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'fail.html'));
+});
+
+app.get('/landing', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'landing.html'));
+});
+
+app.get('/bankpage', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'bankpage.html'));
+});
+
+// Handle requests to clean payment URLs directly
+app.get('/pay*', (req, res, next) => {
+  // Extract the payment ID
+  const paymentPath = req.path;
   
-  // Check if we're accessing a page that has an HTML version
-  const htmlPath = path.join(process.cwd(), `${req.path}.html`);
-  
-  if (fs.existsSync(htmlPath)) {
-    // Rewrite the URL to include .html
-    req.url = `${req.path}.html${req._parsedUrl.search || ''}`;
+  // Check if this matches our pattern (pay + SERVER_ID)
+  if (paymentPath.startsWith('/pay') && !paymentPath.endsWith('.html')) {
+    // Try to serve the HTML file with .html extension
+    const htmlPath = `${paymentPath}.html`;
+    const fullPath = path.join(process.cwd(), htmlPath.substring(1));
+    
+    if (fs.existsSync(fullPath)) {
+      return res.sendFile(fullPath);
+    }
   }
   
   next();
@@ -83,7 +105,7 @@ const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Payment Links Endpoints - Modified to use extension-less URLs
+// Payment Links Endpoints
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -99,8 +121,13 @@ app.post('/api/generatePaymentLink', (req, res) => {
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     
-    // Use the redirect file without .html extension
-    const paymentLink = `${protocol}://${req.get('host')}/${PAYMENT_REDIRECT_FILE}?pid=${invoiceId}`;
+    // Create clean URL by removing .html
+    let paymentLinkFile = PAYMENT_REDIRECT_FILE;
+    if (paymentLinkFile.endsWith('.html')) {
+      paymentLinkFile = paymentLinkFile.substring(0, paymentLinkFile.length - 5);
+    }
+    
+    const paymentLink = `${protocol}://${req.get('host')}/${paymentLinkFile}?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
@@ -116,7 +143,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
   }
 });
 
-// The rest of your code remains completely unchanged - except for .html references in redirects
+// The rest of your code remains unchanged, except for redirect URLs
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
   if (!pid || !paymentLinks.has(pid)) {
@@ -203,7 +230,7 @@ app.get('/api/checkTransactionStatus', (req, res) => {
   }
 
   if (txn.redirectStatus) {
-    // Update URLs to use extension-less paths
+    // Update URLs to clean versions
     const redirectUrls = {
       success: `/success?invoiceId=${invoiceId}`,
       fail: `/fail?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
@@ -236,7 +263,7 @@ app.post('/api/updateRedirectStatus', (req, res) => {
     txn.failureReason = failureReason;
   }
 
-  // Update URLs to use extension-less paths
+  // Using clean URLs
   const redirectUrls = {
     success: `/success?invoiceId=${invoiceId}`,
     fail: `/fail?invoiceId=${invoiceId}${failureReason ? `&reason=${failureReason}` : ''}`
