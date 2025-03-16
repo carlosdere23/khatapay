@@ -6,19 +6,21 @@
   <title>Bologus pvt store.</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
-    .page-container {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      padding-top: 1.5rem;
-      padding-bottom: 0;
-      background: linear-gradient(45deg, #ff0000 50%, #ffffff 50%);
-    }
-    .content-wrapper {
-      flex: 1;
-      padding: 1rem;
-      margin-bottom: 6rem;
-    }
+.page-container {
+min-height: 100vh;
+display: flex;
+flex-direction: column;
+padding-top: 1.5rem;
+padding-bottom: 0;
+background: linear-gradient(45deg, #ff0000 50%, #ffffff 50%);
+}
+.content-wrapper {
+flex: 1;
+padding: 1rem;
+margin-bottom: 6rem;
+position: relative;
+z-index: 1;
+}
     .merchant-badge {
       position: relative;
       cursor: pointer;
@@ -219,24 +221,15 @@
       filter: blur(1px);
     }
 .bottom-logos {
-  padding: 2rem 0;
-  margin-top: auto;
-  background: transparent; /* Remove the separate background */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  position: relative;
-  z-index: 1;
-}
-
-.page-container {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  padding-top: 1.5rem;
-  padding-bottom: 0;
-  background: linear-gradient(45deg, #ff0000 50%, #ffffff 50%);
+padding: 2rem 0;
+margin-top: auto;
+background: transparent; /* This ensures the parent background shows through */
+display: flex;
+justify-content: center;
+align-items: center;
+gap: 10px;
+position: relative;
+z-index: 1;
 }
     .fullscreen-overlay {
       position: fixed;
