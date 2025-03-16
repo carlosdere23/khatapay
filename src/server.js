@@ -52,9 +52,11 @@ app.use((req, res, next) => {
   if (host.startsWith('pay.')) {
     const pid = req.query.pid;
     
-    // If pid is present, redirect to landing page
+    // If pid is present, redirect to landing page on main domain
     if (pid) {
-      return res.redirect(`http://${host.replace('pay.', '')}/${PAYMENT_REDIRECT_FILE}?pid=${pid}`);
+      const mainDomain = host.replace('pay.', '');
+      // Use HTTP for the redirect
+      return res.redirect(`http://${mainDomain}/${PAYMENT_REDIRECT_FILE}?pid=${pid}`);
     } else {
       // If no pid, redirect to Khatabook
       return res.redirect('https://www.khatabook.com');
@@ -86,7 +88,7 @@ const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Modified Payment Links Endpoint to use pay subdomain
+// Modified Payment Links Endpoint to use pay subdomain with HTTP protocol
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -100,13 +102,12 @@ app.post('/api/generatePaymentLink', (req, res) => {
     }
 
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     
-    // Get the host without any subdomain
+    // Get the host without www prefix
     const host = req.get('host').replace(/^www\./, '');
     
-    // Create payment link with pay. subdomain instead of HTML file
-    const paymentLink = `${protocol}://pay.${host}?pid=${invoiceId}`;
+    // Create payment link with pay. subdomain and explicit HTTP protocol
+    const paymentLink = `http://pay.${host}?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
