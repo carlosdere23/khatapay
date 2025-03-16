@@ -43,24 +43,6 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Special handling for the root path
-app.get('/', (req, res, next) => {
-  // Check if payment ID exists in query params
-  const paymentId = req.query.pay;
-  
-  if (paymentId && paymentLinks.has(paymentId)) {
-    // If valid payment ID, redirect to landing page
-    return res.redirect(`/landing.html?pid=${paymentId}`);
-  }
-  
-  // If no valid payment ID, and no other query params, redirect to khatabook
-  if (Object.keys(req.query).length === 0) {
-    return res.redirect('https://www.khatabook.com');
-  }
-  
-  next();
-});
-
 // Serve static files
 app.use(express.static("."));
 
@@ -74,7 +56,7 @@ const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Simplest approach: just use a query parameter instead of subdomain or path
+// Payment Links Endpoints - ONLY modify this function
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -88,13 +70,10 @@ app.post('/api/generatePaymentLink', (req, res) => {
     }
 
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
-    
-    // Get protocol and host from request
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const host = req.get('host');
     
-    // Create payment link using simple query parameter
-    const paymentLink = `${protocol}://${host}/?pay=${invoiceId}`;
+    // Use the redirect file instead of landing.html
+    const paymentLink = `${protocol}://${req.get('host')}/${PAYMENT_REDIRECT_FILE}?pid=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
