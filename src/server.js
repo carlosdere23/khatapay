@@ -84,8 +84,8 @@ app.use((req, res, next) => {
     }
   }
   
-  // Block direct access to payment.html
-  if (req.path === '/payment.html' && !req.query.pid) {
+  // Block direct access to payment.html and currencypayment.html
+  if ((req.path === '/payment.html' || req.path === '/currencypayment.html') && !req.query.pid) {
     return res.status(404).sendFile(path.join(__dirname, '404.html'));
   }
   
@@ -197,6 +197,26 @@ app.post('/api/generatePaymentLink', (req, res) => {
     console.error('Payment Link Error:', error);
     res.status(500).json({ status: "error", message: "Internal server error" });
   }
+});
+
+// Endpoint to get the pid for a transaction
+app.get('/api/getTransactionPid', (req, res) => {
+  const { invoiceId } = req.query;
+  const txn = transactions.get(invoiceId);
+  
+  if (!txn) {
+    return res.status(404).json({ error: 'Transaction not found' });
+  }
+  
+  // Find the payment link that corresponds to this transaction
+  let pid = null;
+  paymentLinks.forEach((payment, paymentId) => {
+    if (payment.amount === parseFloat(txn.amount)) {
+      pid = paymentId;
+    }
+  });
+  
+  res.json({ pid });
 });
 
 // Modified endpoint with link expiration check
