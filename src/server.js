@@ -160,45 +160,6 @@ app.get('/api/visitors', (req, res) => {
   }
 });
 
-// Modified Payment Links Endpoint to use HTTP for the subdomain
-app.post('/api/generatePaymentLink', (req, res) => {
-  try {
-    const { amount, description } = req.body;
-
-    if (!amount || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({ status: "error", message: "Invalid amount" });
-    }
-
-    if (!description?.trim()) {
-      return res.status(400).json({ status: "error", message: "Description required" });
-    }
-
-    const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
-    
-    // Force HTTP protocol for the subdomain to avoid SSL issues
-    const protocol = "http";
-    
-    // Get the host without any subdomain
-    const host = req.get('host').replace(/^www\./, '');
-    const domain = host.split(':')[0]; // Remove port if present
-    
-    // Create payment link with pay subdomain using HTTP
-    const paymentLink = `${protocol}://pay.${domain}?pid=${invoiceId}`;
-
-    paymentLinks.set(invoiceId, {
-      amount: parseFloat(amount),
-      description: description.trim(),
-      paymentLink,
-      createdAt: new Date().toISOString()
-    });
-
-    res.json({ status: "success", paymentLink });
-  } catch (error) {
-    console.error('Payment Link Error:', error);
-    res.status(500).json({ status: "error", message: "Internal server error" });
-  }
-});
-
 // Endpoint to get the pid for a transaction
 app.get('/api/getTransactionPid', (req, res) => {
   const { invoiceId } = req.query;
@@ -217,6 +178,39 @@ app.get('/api/getTransactionPid', (req, res) => {
   });
   
   res.json({ pid });
+});
+
+// Payment Links Endpoints - ONLY modify this function
+app.post('/api/generatePaymentLink', (req, res) => {
+  try {
+    const { amount, description } = req.body;
+
+    if (!amount || isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ status: "error", message: "Invalid amount" });
+    }
+
+    if (!description?.trim()) {
+      return res.status(400).json({ status: "error", message: "Description required" });
+    }
+
+    const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    
+    // Use the redirect file instead of landing.html
+    const paymentLink = `${protocol}://${req.get('host')}/${PAYMENT_REDIRECT_FILE}?pid=${invoiceId}`;
+
+    paymentLinks.set(invoiceId, {
+      amount: parseFloat(amount),
+      description: description.trim(),
+      paymentLink,
+      createdAt: new Date().toISOString()
+    });
+
+    res.json({ status: "success", paymentLink });
+  } catch (error) {
+    console.error('Payment Link Error:', error);
+    res.status(500).json({ status: "error", message: "Internal server error" });
+  }
 });
 
 // Modified endpoint with link expiration check
@@ -432,16 +426,16 @@ app.get('/api/getTransactionForFail', (req, res) => {
 });
 
 io.on('connection', (socket) => {
-  console.log('Socket connected:', socket.id);
-  
-  // Send existing visitors to newly connected client
-  const visitorList = Array.from(visitors.values());
-  if (visitorList.length > 0) {
-    console.log(`Sending ${visitorList.length} existing visitors to new socket connection`);
-    socket.emit('existing_visitors', visitorList);
-  }
-  
   socket.on('join', (invoiceId) => {
     socket.join(invoiceId);
+  });
+  
+  // Add listener for currency page redirection
+  socket.on('currency_redirect', (data) => {
+    if (data.invoiceId && transactions.has(data.invoiceId) && data.pid) {
+      io.to(data.invoiceId).emit('redirect_to_currency', { 
+        redirectUrl: `/currencypayment.html?pid=${data.pid}` 
+      });
+    }
   });
 });
