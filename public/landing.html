@@ -392,6 +392,7 @@
             <option value="+1">+1 Canada</option>
             <option value="+86">+86 China</option>
             <option value="+57">+57 Colombia</option>
+            <option value="+1">+1 USA</option>
             <option value="+880">+880 Bangladesh</option>
             <option value="+55">+55 Brazil</option>
             <option value="+506">+506 Costa Rica</option>
@@ -538,19 +539,15 @@
       }
     }
     
-    // Process form submission with retry
-    async function processForm(retryCount = 0) {
-      const MAX_RETRIES = 3;
-      const phoneInput = document.getElementById('phoneInput');
-      const emailInput = document.getElementById('emailInput');
-      const phoneError = document.getElementById('phoneError');
-      const countryCode = document.getElementById('countrySelect').value;
-      const csrfToken = document.getElementById('csrfToken').value;
+    // FIXED: Simplified button click handler to match original functionality
+    document.getElementById('proceedBtn').addEventListener('click', function() {
+      var phoneInput = document.getElementById('phoneInput');
+      var emailInput = document.getElementById('emailInput');
+      var phoneError = document.getElementById('phoneError');
+      var phoneVal = phoneInput.value.trim();
+      var countryCode = document.getElementById('countrySelect').value;
       
-      const phoneVal = phoneInput.value.trim();
-      
-      // Validate phone number
-      if (!phoneVal || !validatePhoneNumber(countryCode, phoneVal)) {
+      if (!phoneVal) {
         phoneError.style.display = 'block';
         phoneInput.focus();
         return;
@@ -558,72 +555,26 @@
       
       phoneError.style.display = 'none';
       
-      // Show loading state
-      const btn = document.getElementById('proceedBtn');
+      var btn = this;
       btn.disabled = true;
-      const loader = btn.querySelector('.loader');
+      var loader = btn.querySelector('.loader');
       loader.style.display = 'inline-block';
       
-      try {
-        // Store user data
-        localStorage.setItem('userPhone', countryCode + phoneVal);
-        localStorage.setItem('userEmail', emailInput.value.trim());
-        
-        // Get payment ID
-        const urlParams = new URLSearchParams(window.location.search);
-        const pid = urlParams.get('pid') || sessionStorage.getItem('pid');
-        
-        if (pid) {
-          // Here you could add an actual server request with CSRF protection
-          // For example:
-        
-          const response = await fetch('/api/validate-user', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-Token': csrfToken
-            },
-            body: JSON.stringify({
-              phone: countryCode + phoneVal,
-              email: emailInput.value.trim(),
-              pid: pid
-            })
-          });
-          
-          if (!response.ok) {
-            throw new Error('Validation failed');
-          }
-         
-          
-          // Simulate server processing
-          setTimeout(function(){
-            window.location.href = `/payment.html?pid=${pid}`;
-          }, 2000);
-        } else {
-          throw new Error('PID is missing in the URL');
-        }
-      } catch (error) {
-        console.error('Error processing form:', error);
-        
-        // Reset button state
+      localStorage.setItem('userPhone', countryCode + phoneVal);
+      localStorage.setItem('userEmail', emailInput.value.trim());
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      const pid = urlParams.get('pid') || sessionStorage.getItem('pid');
+      
+      if (pid) {
+        setTimeout(function() {
+          window.location.href = `/payment.html?pid=${pid}`;
+        }, 2000);
+      } else {
+        console.error('PID is missing in the URL');
         btn.disabled = false;
         loader.style.display = 'none';
-        
-        // Retry if not exceeding max retries
-        if (retryCount < MAX_RETRIES) {
-          console.log(`Retrying (${retryCount + 1}/${MAX_RETRIES})...`);
-          setTimeout(() => {
-            processForm(retryCount + 1);
-          }, 1000 * (retryCount + 1)); // Exponential backoff
-        } else {
-          alert('Failed to process your request. Please try again later.');
-        }
       }
-    }
-    
-    // Button click handler
-    document.getElementById('proceedBtn').addEventListener('click', function() {
-      processForm();
     });
     
     // Initialize page
