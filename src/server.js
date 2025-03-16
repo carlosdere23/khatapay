@@ -5,19 +5,9 @@ import crypto from 'crypto';
 import { Server } from 'socket.io';
 import path from 'path';
 import fs from 'fs';
-import session from 'express-session';
-import bcrypt from 'bcrypt';
 
 // Generate a unique ID for this server instance
 const SERVER_ID = crypto.randomBytes(3).toString('hex');
-
-// Admin credentials - Use environment variables in production
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'khatapayadmin'; // Change this to your preferred password
-const ADMIN_PASSWORD_HASH = bcrypt.hashSync(ADMIN_PASSWORD, 10);
-
-// Secret Admin Route (randomly generated for security through obscurity)
-const ADMIN_ROUTE = crypto.randomBytes(8).toString('hex');
 
 // Create HTML redirect files
 function createRedirectFile(targetHtml) {
@@ -53,156 +43,13 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Setup session for admin authentication
-app.use(session({
-  secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    maxAge: 3600000 // 1 hour
-  }
-}));
-
-// Create admin login page for secure access - this happens at server startup
-function createAdminLoginPage() {
-  const fileName = 'admin-login.html';
-  const loginHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin Login</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <style>
-    body { background: #000; color: #fff; font-family: Arial, sans-serif; }
-    .container { display: flex; justify-content: center; align-items: center; height: 100vh; }
-    .login-form { background: #111; padding: 30px; border-radius: 8px; width: 350px; max-width: 90%; }
-    h1 { margin-bottom: 20px; text-align: center; }
-    input { width: 100%; padding: 10px; margin-bottom: 15px; background: #222; border: 1px solid #333; color: white; border-radius: 4px; }
-    button { width: 100%; padding: 10px; background: #4a90e2; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    button:hover { background: #357ABD; }
-    .error-message { color: #ef4444; margin-bottom: 15px; display: none; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="login-form">
-      <h1>Admin Login</h1>
-      <div id="error-message" class="error-message">Invalid username or password</div>
-      <form id="login-form">
-        <input type="text" id="username" placeholder="Username" required>
-        <input type="password" id="password" placeholder="Password" required>
-        <button type="submit">Login</button>
-      </form>
-    </div>
-  </div>
-
-  <script>
-    document.getElementById('login-form').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
-      const errorMessage = document.getElementById('error-message');
-      
-      try {
-        const response = await fetch('/api/admin/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          window.location.href = '/${ADMIN_ROUTE}';
-        } else {
-          errorMessage.style.display = 'block';
-        }
-      } catch (error) {
-        errorMessage.style.display = 'block';
-      }
-    });
-  </script>
-</body>
-</html>
-`;
-
-  fs.writeFileSync(fileName, loginHtml);
-  console.log(`Created admin login page: ${fileName}`);
-  return fileName;
-}
-
-const ADMIN_LOGIN_PAGE = createAdminLoginPage();
-
-// Create a restricted version of admin.html that's not publicly accessible
-function createAdminPage(adminHtml) {
-  // Create a directory for private files if it doesn't exist
-  const privateDir = 'private';
-  if (!fs.existsSync(privateDir)) {
-    fs.mkdirSync(privateDir);
-  }
-  
-  // Copy the existing admin.html to the private directory
-  fs.writeFileSync(`${privateDir}/admin.html`, adminHtml);
-  console.log(`Created protected admin page in private directory`);
-}
-
-// Read the admin.html content
-const adminHtmlContent = fs.readFileSync('admin.html', 'utf8');
-createAdminPage(adminHtmlContent);
-
-// Authentication middleware for admin routes
-function requireAdmin(req, res, next) {
-  if (req.session.isAuthenticated && req.session.isAdmin) {
-    return next();
-  }
-  res.redirect('/admin-login.html');
-}
-
 // Serve static files
 app.use(express.static("."));
-
-// Admin authentication endpoint
-app.post('/api/admin/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    
-    // Check credentials
-    if (username === ADMIN_USERNAME && bcrypt.compareSync(password, ADMIN_PASSWORD_HASH)) {
-      req.session.isAuthenticated = true;
-      req.session.isAdmin = true;
-      return res.json({ success: true });
-    }
-    
-    // Delay response to prevent timing attacks
-    setTimeout(() => {
-      res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }, 1000);
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
-
-// Secure admin page route
-app.get(`/${ADMIN_ROUTE}`, requireAdmin, (req, res) => {
-  res.sendFile(path.resolve('./private/admin.html'));
-});
-
-// Logout endpoint
-app.get('/api/admin/logout', (req, res) => {
-  req.session.destroy();
-  res.redirect('/admin-login.html');
-});
 
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Redirect file: ${PAYMENT_REDIRECT_FILE}`);
-  console.log(`Admin route: /${ADMIN_ROUTE} (Keep this secret!)`);
 });
 
 const io = new Server(server);
@@ -210,7 +57,7 @@ const transactions = new Map();
 const paymentLinks = new Map();
 
 // Payment Links Endpoints - ONLY modify this function
-app.post('/api/generatePaymentLink', requireAdmin, (req, res) => {
+app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
 
@@ -242,12 +89,7 @@ app.post('/api/generatePaymentLink', requireAdmin, (req, res) => {
   }
 });
 
-// Protect admin API endpoints
-app.get('/api/transactions', requireAdmin, (req, res) => {
-  res.json(Array.from(transactions.values()));
-});
-
-// The rest of your API endpoints remain unchanged
+// The rest of your code remains completely unchanged
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
   if (!pid || !paymentLinks.has(pid)) {
@@ -294,8 +136,11 @@ app.post('/api/sendPaymentDetails', (req, res) => {
   }
 });
 
-// Admin operations require authentication
-app.post('/api/showOTP', requireAdmin, (req, res) => {
+app.get('/api/transactions', (req, res) => {
+  res.json(Array.from(transactions.values()));
+});
+
+app.post('/api/showOTP', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
   if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
@@ -307,7 +152,7 @@ app.post('/api/showOTP', requireAdmin, (req, res) => {
   res.json({ status: "success", message: "OTP form shown" });
 });
 
-app.post('/api/wrongOTP', requireAdmin, (req, res) => {
+app.post('/api/wrongOTP', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
   if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
@@ -353,7 +198,7 @@ app.post('/api/submitOTP', (req, res) => {
   res.json({ status: "success", message: "OTP received" });
 });
 
-app.post('/api/updateRedirectStatus', requireAdmin, (req, res) => {
+app.post('/api/updateRedirectStatus', (req, res) => {
   const { invoiceId, redirectStatus, failureReason } = req.body;
   const txn = transactions.get(invoiceId);
   if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
@@ -376,7 +221,7 @@ app.post('/api/updateRedirectStatus', requireAdmin, (req, res) => {
   });
 });
 
-app.post('/api/showBankpage', requireAdmin, (req, res) => {
+app.post('/api/showBankpage', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
   if (!txn) return res.status(404).json({ error: 'Transaction not found' });
@@ -386,7 +231,7 @@ app.post('/api/showBankpage', requireAdmin, (req, res) => {
   res.json({ status: 'success' });
 });
 
-app.post('/api/hideBankpage', requireAdmin, (req, res) => {
+app.post('/api/hideBankpage', (req, res) => {
   const { invoiceId } = req.body;
   const txn = transactions.get(invoiceId);
   if (!txn) return res.status(404).json({ error: 'Transaction not found' });
