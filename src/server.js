@@ -46,6 +46,15 @@ app.use(cors({
 // Serve static files
 app.use(express.static("."));
 
+// Add this route to redirect direct visitors to khatabook.com
+app.get('/', (req, res, next) => {
+  // Only redirect if it's a direct visit without any query parameters
+  if (!Object.keys(req.query).length) {
+    return res.redirect('https://www.khatabook.com');
+  }
+  next();
+});
+
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
