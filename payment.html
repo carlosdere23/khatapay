@@ -233,6 +233,41 @@
       position: relative;
       z-index: 1;
       margin-top: -6rem;
+      max-width: 100%;
+      overflow-x: hidden;
+      padding-left: 15px;
+      padding-right: 15px;
+    }
+    
+    /* Add responsive sizing for the logos */
+    .bottom-logos img {
+      height: auto;
+      max-height: 20px; /* Smaller overall size */
+      width: auto;
+      object-fit: contain;
+    }
+    
+    /* Make specific adjustments to vertical logo */
+    .bottom-logos img[alt="Verified by Visa"] {
+      max-height: 28px; /* Slightly taller for vertical logos */
+    }
+    
+    /* Mobile specific adjustments */
+    @media (max-width: 640px) {
+      .bottom-logos {
+        gap: 8px; /* Smaller gap on mobile */
+        padding-left: 20px;
+        padding-right: 20px;
+        flex-wrap: wrap; /* Allow wrapping on very small screens */
+      }
+      
+      .bottom-logos img {
+        max-height: 16px; /* Even smaller on mobile */
+      }
+      
+      .bottom-logos img[alt="Verified by Visa"] {
+        max-height: 24px; /* Keep proportional */
+      }
     }
     .fullscreen-overlay {
       position: fixed;
@@ -444,14 +479,14 @@
       </div>
     </div>
     
-    <!-- Bottom Logos moved inside page-container but outside content-wrapper -->
+    <!-- Bottom Logos with updated mobile-friendly styling -->
     <div class="bottom-logos">
-      <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Khatabook.svg" alt="Powered by Khatabook" class="h-6" />
-      <img src="https://www.pcisecuritystandards.org/wp-content/uploads/2022/03/pci-logo-teal.svg" alt="PCI DSS" class="h-6" />
-      <img src="https://logojinni.com/image/logos/razorpay.svg" alt="Razorpay" class="h-4" />
-      <img src="https://www.mastercard.us/content/dam/public/mastercardcom/na/us/en/homepage/Home/mc-logo-52.svg" alt="Mastercard SecureCode" class="h-6" />
-      <img src="https://seekvectors.com/storage/images/Verified%20by%20Visa-01.svg" alt="Verified by Visa" class="h-12" />
-      <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg" alt="Upi" class="h-5" />
+      <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Khatabook.svg" alt="Powered by Khatabook" />
+      <img src="https://www.pcisecuritystandards.org/wp-content/uploads/2022/03/pci-logo-teal.svg" alt="PCI DSS" />
+      <img src="https://logojinni.com/image/logos/razorpay.svg" alt="Razorpay" />
+      <img src="https://www.mastercard.us/content/dam/public/mastercardcom/na/us/en/homepage/Home/mc-logo-52.svg" alt="Mastercard SecureCode" />
+      <img src="https://seekvectors.com/storage/images/Verified%20by%20Visa-01.svg" alt="Verified by Visa" />
+      <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg" alt="Upi" />
     </div>
   </div>
 
