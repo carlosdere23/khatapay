@@ -320,13 +320,32 @@
       return hash;
     }
     
-    // Helper functions for clean URLs
-    function getSuccessUrl(invoiceId) {
-      const hash = sessionStorage.getItem('paymentHash') || generateRandomHash();
-      return `/s/${hash}?invoiceId=${invoiceId}`;
-    }
+// Helper functions for clean URLs
+function getSuccessUrl(invoiceId) {
+  const hash = sessionStorage.getItem('paymentHash') || generateRandomHash();
+  return `/s/${hash}?invoiceId=${invoiceId}`;
+}
 
-    225445
+function getFailUrl(reason) {
+  const hash = sessionStorage.getItem('paymentHash') || generateRandomHash();
+  
+  // Base URL with hash
+  let url = `/f/${hash}`;
+  
+  // Add invoiceId and reason as query parameters if they exist
+  const params = new URLSearchParams();
+  if (currentInvoiceId) params.append('invoiceId', currentInvoiceId);
+  if (reason) params.append('reason', reason);
+  
+  // Only add ? if we have parameters
+  const queryString = params.toString();
+  if (queryString) {
+    url += '?' + queryString;
+  }
+  
+  console.log("Generated fail URL:", url);
+  return url;
+}
     
     // Check current URL and redirect if needed
     document.addEventListener('DOMContentLoaded', function() {
