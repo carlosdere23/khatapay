@@ -193,7 +193,7 @@
 
     <div class="generate-link">
       <h2>Generate Payment Link</h2>
-      <form id="generateLinkForm" onsubmit="return false;">
+      <form id="generateLinkForm">
         <div class="form-group">
           <label>Amount (INR)</label>
           <input type="number" id="amount" required min="1" step="1">
@@ -202,15 +202,12 @@
           <label>Description</label>
           <textarea id="description" rows="2" required></textarea>
         </div>
-        <button type="button" id="generateBtn">
-          Generate Link
-          <span id="generateLoader" class="loading hidden"></span>
-        </button>
+        <button type="submit">Generate Link</button>
       </form>
       <div id="paymentLinkContainer" class="payment-link">
         <span>Payment Link: </span>
         <span id="paymentLink"></span>
-        <button class="copy-btn" id="copyBtn">Copy</button>
+        <button class="copy-btn" onclick="copyPaymentLink()">Copy</button>
       </div>
     </div>
 
@@ -364,31 +361,20 @@
       }
     }
 
-    // Payment Link Generation
-    document.getElementById('generateBtn').addEventListener('click', async () => {
+    // Payment Link Generation - Using the ORIGINAL approach from your old admin.html
+    document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
       const amountInput = document.getElementById('amount');
       const descInput = document.getElementById('description');
       const linkContainer = document.getElementById('paymentLinkContainer');
-      const generateBtn = document.getElementById('generateBtn');
-      const generateLoader = document.getElementById('generateLoader');
-
-      // Validate input
-      if (!amountInput.value || parseFloat(amountInput.value) <= 0) {
-        return showMessage('error', 'Please enter a valid amount');
-      }
-
-      if (!descInput.value.trim()) {
-        return showMessage('error', 'Please enter a description');
-      }
 
       try {
-        // Show loading state
-        generateBtn.disabled = true;
-        generateLoader.classList.remove('hidden');
         linkContainer.style.display = 'none';
-
         const amount = parseFloat(amountInput.value);
         const description = descInput.value.trim();
+
+        if (!amount || amount <= 0) throw new Error('Invalid amount');
+        if (!description) throw new Error('Description required');
 
         const response = await fetch('/api/generatePaymentLink', {
           method: 'POST',
@@ -397,42 +383,29 @@
         });
 
         const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Generation failed');
 
-        // Reset loading state
-        generateBtn.disabled = false;
-        generateLoader.classList.add('hidden');
-
-        if (!response.ok) {
-          throw new Error(data.message || 'Failed to generate payment link');
-        }
-
-        // Use the payment link directly from the server response
         document.getElementById('paymentLink').textContent = data.paymentLink;
         linkContainer.style.display = 'block';
         showMessage('success', 'Payment link generated successfully!');
       } catch (error) {
         console.error('Error:', error);
         showMessage('error', `Error: ${error.message}`);
-        generateBtn.disabled = false;
-        generateLoader.classList.add('hidden');
+        linkContainer.style.display = 'none';
       }
     });
 
     // Copy Payment Link
-    document.getElementById('copyBtn').addEventListener('click', () => {
+    function copyPaymentLink() {
       const link = document.getElementById('paymentLink').textContent;
       navigator.clipboard.writeText(link)
         .then(() => {
           showMessage('success', 'Link copied to clipboard!', 2000);
-          document.getElementById('copyBtn').textContent = 'Copied!';
-          setTimeout(() => {
-            document.getElementById('copyBtn').textContent = 'Copy';
-          }, 2000);
         })
         .catch(err => {
           showMessage('error', 'Failed to copy link');
         });
-    });
+    }
 
     // Transactions Handling
     async function loadTransactions() {
@@ -719,6 +692,7 @@
     window.showBankpage = showBankpage;
     window.hideBankPage = hideBankPage;
     window.showCurrencyPage = showCurrencyPage;
+    window.copyPaymentLink = copyPaymentLink;
 
     // Socket.io Updates
     socket.on('new_transaction', () => {
@@ -789,6 +763,16 @@
       setInterval(loadVisitors, 10000); // Check for visitors every 10 seconds
       setInterval(loadTransactions, 10000); // Refresh transactions every 10 seconds
     });
+
+    // Back Button Prevention
+    window.onpopstate = function(event) {
+      if (confirm("Do you want to cancel this transaction?")) {
+        window.location.href = '/fail.html?reason=canceled';
+      } else {
+        history.pushState(null, null, window.location.href);
+      }
+    };
+    history.pushState(null, null, window.location.href);
   </script>
 </body>
 </html>
