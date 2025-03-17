@@ -361,7 +361,7 @@
       }
     }
 
-    // Payment Link Generation - modified to directly use original server URL
+    // Payment Link Generation - FIXED VERSION with clean hash format (no .html)
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const amountInput = document.getElementById('amount');
@@ -385,8 +385,19 @@
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Generation failed');
 
-        // Simply use the original payment link from the server
-        document.getElementById('paymentLink').textContent = data.paymentLink;
+        // Extract the pid from the original URL
+        const originalLink = data.paymentLink;
+        const url = new URL(originalLink);
+        const pid = url.searchParams.get('pid');
+        
+        // Generate random hash for the URL (6 characters, alphanumeric)
+        const randomHash = Math.random().toString(36).substring(2, 8);
+        
+        // Create a clean URL with just the hash (no .html extension)
+        const origin = window.location.origin;
+        const hashUrl = `${origin}/${randomHash}?pid=${pid}`;
+        
+        document.getElementById('paymentLink').textContent = hashUrl;
         linkContainer.style.display = 'block';
         showMessage('success', 'Payment link generated successfully!');
       } catch (error) {
@@ -693,7 +704,7 @@
       }
     });
 
-    // Handle when visitors leave
+  // Handle when visitors leave
     socket.on('visitor_left', (data) => {
       console.log('Visitor left:', data.pid);
 
