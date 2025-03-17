@@ -13,6 +13,9 @@ const SERVER_ID = crypto.randomBytes(3).toString('hex');
 const visitors = new Map();
 const VISITOR_TIMEOUT = 60000; // 60 seconds timeout for inactive visitors
 
+// Store manually expired payment links
+const expiredLinks = new Set();
+
 // Create HTML redirect files
 function createRedirectFile(targetHtml) {
   const fileName = `pay${SERVER_ID}.html`;
@@ -180,7 +183,7 @@ app.get('/api/getTransactionPid', (req, res) => {
   res.json({ pid });
 });
 
-// Payment Links Endpoints - ONLY modify this function
+// Payment Links Endpoints
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -213,12 +216,41 @@ app.post('/api/generatePaymentLink', (req, res) => {
   }
 });
 
+// New endpoint to manually expire a payment link
+app.post('/api/expirePaymentLink', (req, res) => {
+  const { pid } = req.body;
+  
+  if (!pid) {
+    return res.status(400).json({ status: "error", message: "Payment ID (pid) is required" });
+  }
+  
+  // Check if the payment link exists
+  if (!paymentLinks.has(pid)) {
+    return res.status(404).json({ status: "error", message: "Payment link not found" });
+  }
+  
+  // Mark the link as expired
+  expiredLinks.add(pid);
+  
+  console.log(`Payment link manually expired: ${pid}`);
+  
+  res.json({ 
+    status: "success", 
+    message: "Payment link has been expired successfully" 
+  });
+});
+
 // Modified endpoint with link expiration check
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
   
   if (!pid || !paymentLinks.has(pid)) {
     return res.status(404).json({ status: "error", message: "Not found" });
+  }
+  
+  // Check if link is manually expired
+  if (expiredLinks.has(pid)) {
+    return res.status(410).json({ status: "error", message: "Payment link has been manually expired" });
   }
   
   const payment = paymentLinks.get(pid);
