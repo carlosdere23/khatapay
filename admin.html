@@ -361,7 +361,7 @@
       }
     }
 
-    // Payment Link Generation - with URL format transformation
+    // Payment Link Generation - creates a direct link to landing.html
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const amountInput = document.getElementById('amount');
@@ -385,19 +385,16 @@
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Generation failed');
 
-        // Transform the link format from http://pay.khatapay.me?pid=XXX to https://RANDOMHASH.html/pid
+        // Extract the pid from the original URL
         const originalLink = data.paymentLink;
-        const params = new URLSearchParams(originalLink.split('?')[1]);
-        const pid = params.get('pid');
+        const url = new URL(originalLink);
+        const pid = url.searchParams.get('pid');
         
-        // Generate a random hash for the filename
-        const randomHash = Math.random().toString(36).substring(2, 8);
-        
-        // Create the new format URL
+        // Create a direct link to landing.html with the pid
         const origin = window.location.origin;
-        const transformedLink = `https://${randomHash}.html/pid=${pid}`;
+        const landingUrl = `${origin}/landing.html?pid=${pid}`;
         
-        document.getElementById('paymentLink').textContent = transformedLink;
+        document.getElementById('paymentLink').textContent = landingUrl;
         linkContainer.style.display = 'block';
       } catch (error) {
         console.error('Error:', error);
