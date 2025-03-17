@@ -236,6 +236,21 @@
       </div>
     </div>
 
+    <!-- New section for expiring payment links -->
+    <div class="generate-link">
+      <h2>Expire Payment Link</h2>
+      <form id="expireLinkForm">
+        <div class="form-group">
+          <label>Payment ID (pid)</label>
+          <input type="text" id="expirePid" required placeholder="Enter payment ID to expire">
+        </div>
+        <button type="submit" style="background-color: #ef4444;">Expire Link</button>
+      </form>
+      <div id="expireResultContainer" class="payment-link" style="display: none;">
+        <span id="expireResult"></span>
+      </div>
+    </div>
+
     <h2>Transactions</h2>
     <div id="transactionsLoading" style="text-align:center;">
       <span class="loading"></span> Loading transactions...
@@ -576,6 +591,46 @@
         console.error('Error:', error);
         alert(`Error: ${error.message}`);
         linkContainer.style.display = 'none';
+      }
+    });
+
+    // New form handler for expiring payment links
+    document.getElementById('expireLinkForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pidInput = document.getElementById('expirePid');
+      const resultContainer = document.getElementById('expireResultContainer');
+      const resultElement = document.getElementById('expireResult');
+
+      try {
+        resultContainer.style.display = 'none';
+        const pid = pidInput.value.trim();
+
+        if (!pid) throw new Error('Payment ID is required');
+
+        const response = await fetch('/api/expirePaymentLink', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pid })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          resultElement.textContent = data.message || 'Failed to expire link';
+          resultContainer.style.display = 'block';
+          throw new Error(data.message || 'Failed to expire link');
+        }
+
+        // Show success message
+        resultElement.textContent = data.message || 'Payment link expired successfully!';
+        resultContainer.style.display = 'block';
+        showMessage('success', 'Payment link expired successfully!');
+        
+        // Clear the input field
+        pidInput.value = '';
+      } catch (error) {
+        console.error('Error:', error);
+        showMessage('error', `Error: ${error.message}`);
       }
     });
 
