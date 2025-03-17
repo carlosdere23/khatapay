@@ -439,7 +439,6 @@ io.on('connection', (socket) => {
     }
   });
   
-  // ADD THE MC VERIFICATION HANDLERS RIGHT HERE
   // MC verification events
   socket.on('show_mc_verification', (data) => {
     // Broadcast to the client with this invoice ID
@@ -473,5 +472,4 @@ io.on('connection', (socket) => {
     // Notify admin panel of OTP resend request
     io.emit('mc_resend_otp', data);
   });
-});
 });
