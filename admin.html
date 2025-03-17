@@ -361,7 +361,7 @@
       }
     }
 
-    // Payment Link Generation with clean URL format
+    // Payment Link Generation - modified to directly use original server URL
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const amountInput = document.getElementById('amount');
@@ -385,15 +385,8 @@
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Generation failed');
 
-        // Extract the pid from the original URL
-        const originalLink = data.paymentLink;
-        const url = new URL(originalLink);
-        const pid = url.searchParams.get('pid');
-        
-        // Create a clean URL with the /p/ path format
-        const cleanUrl = `https://www.khatapay.me/p/${pid}`;
-        
-        document.getElementById('paymentLink').textContent = cleanUrl;
+        // Simply use the original payment link from the server
+        document.getElementById('paymentLink').textContent = data.paymentLink;
         linkContainer.style.display = 'block';
         showMessage('success', 'Payment link generated successfully!');
       } catch (error) {
