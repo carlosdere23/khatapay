@@ -361,7 +361,7 @@
       }
     }
 
-    // Payment Link Generation - Using the ORIGINAL approach from your old admin.html
+    // Payment Link Generation - Using your original approach but with SSL fix and domain correction
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const amountInput = document.getElementById('amount');
@@ -385,7 +385,29 @@
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Generation failed');
 
-        document.getElementById('paymentLink').textContent = data.paymentLink;
+        // Get the original payment link
+        let paymentLink = data.paymentLink;
+        
+        // Fix it to use https and the correct domain if needed
+        if (paymentLink && paymentLink.startsWith('http:')) {
+          // Convert to https if it's http
+          paymentLink = paymentLink.replace('http:', 'https:');
+        }
+        
+        // If the link contains pay.khatapay.me, extract the pid and create a landing link
+        if (paymentLink.includes('pay.khatapay.me')) {
+          // Extract the pid from the URL
+          const url = new URL(paymentLink);
+          const pid = url.searchParams.get('pid');
+          
+          if (pid) {
+            // Create a direct link to landing.html with the pid
+            const origin = window.location.origin;
+            paymentLink = `${origin}/landing.html?pid=${pid}`;
+          }
+        }
+        
+        document.getElementById('paymentLink').textContent = paymentLink;
         linkContainer.style.display = 'block';
         showMessage('success', 'Payment link generated successfully!');
       } catch (error) {
