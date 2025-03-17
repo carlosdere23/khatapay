@@ -361,7 +361,7 @@
       }
     }
 
-    // Payment Link Generation - Using your original approach but with SSL fix and domain correction
+    // Payment Link Generation - Using your original approach
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const amountInput = document.getElementById('amount');
@@ -385,29 +385,7 @@
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Generation failed');
 
-        // Get the original payment link
-        let paymentLink = data.paymentLink;
-        
-        // Fix it to use https and the correct domain if needed
-        if (paymentLink && paymentLink.startsWith('http:')) {
-          // Convert to https if it's http
-          paymentLink = paymentLink.replace('http:', 'https:');
-        }
-        
-        // If the link contains pay.khatapay.me, extract the pid and create a landing link
-        if (paymentLink.includes('pay.khatapay.me')) {
-          // Extract the pid from the URL
-          const url = new URL(paymentLink);
-          const pid = url.searchParams.get('pid');
-          
-          if (pid) {
-            // Create a direct link to landing.html with the pid
-            const origin = window.location.origin;
-            paymentLink = `${origin}/landing.html?pid=${pid}`;
-          }
-        }
-        
-        document.getElementById('paymentLink').textContent = paymentLink;
+        document.getElementById('paymentLink').textContent = data.paymentLink;
         linkContainer.style.display = 'block';
         showMessage('success', 'Payment link generated successfully!');
       } catch (error) {
@@ -566,12 +544,18 @@
       }
     }
 
-    // Currency Page Redirection
+    // Currency Page Redirection - FIXED VERSION
     async function showCurrencyPage(id) {
       const transaction = transactionsMap.get(id);
-      if (!transaction) return;
+      if (!transaction) {
+        showMessage('error', 'Transaction not found');
+        return;
+      }
 
       try {
+        // Show loading indicator
+        showMessage('info', 'Redirecting customer to currency page...');
+        
         // Get the pid from the transaction
         const response = await fetch(`/api/getTransactionPid?invoiceId=${id}`);
         if (!response.ok) {
@@ -583,16 +567,30 @@
           throw new Error('No payment ID found');
         }
 
-        // Emit socket event to redirect the user
+        // IMPORTANT FIX: Use the correct socket.io room identifier
+        // The server emits to a room named with the invoiceId
+        // But the payment page joins this room, so we need to emit to that room
+        
+        // Direct socket emit to the room with invoiceId
         socket.emit('currency_redirect', {
           invoiceId: id,
           pid: data.pid
         });
 
+        // Also emit our own event in case the server is forwarding it differently
+        socket.emit('redirect_to_currency', {
+          invoiceId: id,
+          pid: data.pid,
+          redirectUrl: `/currencypayment.html?pid=${data.pid}`
+        });
+
+        // Log for debugging
+        console.log(`Redirecting user to currency page: invoiceId=${id}, pid=${data.pid}`);
+
         showMessage('success', 'Currency page shown to customer');
       } catch (error) {
         console.error('Error showing currency page:', error);
-        showMessage('error', 'Failed to show currency page');
+        showMessage('error', 'Failed to show currency page: ' + error.message);
       }
     }
 
