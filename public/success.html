@@ -1,1 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment Successful - Bologus pvt store.</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f3f4f6;
+      min-height: 100vh;
+    }
+    .header {
+      background-color: #10B981;
+      padding: 1rem;
+      color: white;
+    }
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .powered-by-text {
+      font-size: 11px;
+      color: #E5E7EB;
+      font-weight: 300;
+    }
+    .logo-img {
+      height: 20px;
+      width: auto;
+    }
+    .success-check {
+      width: 80px;
+      height: 80px;
+      background-color: #10B981;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+    }
+    .success-check svg {
+      width: 50px;
+      height: 50px;
+      color: white;
+    }
+    .divider {
+      height: 1px;
+      background-color: #e5e7eb;
+      margin: 1.5rem 0;
+    }
+    #loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 2rem;
+    }
+    #error-message {
+      color: #EF4444;
+      text-align: center;
+      padding: 1rem;
+      display: none;
+    }
+    #transaction-content {
+      display: none;
+    }
+    .loading-spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border-left-color: #10B981;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+  <script>
+    // Function to handle clean URLs
+    document.addEventListener('DOMContentLoaded', function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hash = urlParams.get('hash');
+      const invoiceId = urlParams.get('invoiceId');
+      
+      // If we're on success.html but should be using clean URL format, redirect
+      if (window.location.pathname.includes('success.html') && invoiceId && !hash) {
+        // Get the hash from session storage or generate a new one
+        let paymentHash = sessionStorage.getItem('paymentHash');
+        if (!paymentHash) {
+          const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+          paymentHash = '';
+          for (let i = 0; i < 8; i++) {
+            paymentHash += characters.charAt(Math.floor(Math.random() * characters.length));
+          }
+          sessionStorage.setItem('paymentHash', paymentHash);
+        }
+        
+        // Redirect to clean URL
+        const cleanUrl = `/s/${paymentHash}?invoiceId=${invoiceId}`;
+        window.history.replaceState({}, '', cleanUrl);
+      }
+    });
+  </script>
+</head>
+<body>
+  <div class="header">
+    <div class="container mx-auto px-4">
+      <div class="header-content">
+        <h1 class="text-xl font-medium">Bologus pvt store.</h1>
+        <div class="logo-container">
+          <span class="powered-by-text">Powered by</span>
+          <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Khatabook.svg" alt="Khatabook" class="logo-img">
+        </div>
+      </div>
+    </div>
+  </div>
 
+  <div class="container mx-auto px-4 py-10 max-w-3xl">
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+      <!-- Loading state -->
+      <div id="loading">
+        <div class="loading-spinner"></div>
+      </div>
+      
+      <!-- Error message -->
+      <div id="error-message">
+        <p>Unable to load transaction details. Please try refreshing the page.</p>
+        <a href="/" class="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-md">Return to Home</a>
+      </div>
+      
+      <!-- Transaction content -->
+      <div id="transaction-content" class="p-6 md:p-8">
+        <!-- Success Icon -->
+        <div class="success-check mb-6">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <path d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+
+        <h2 class="text-2xl font-medium text-center text-green-600 mb-2">We have received your payment!</h2>
+        <p class="text-center text-gray-500 mb-8">An automated receipt will be sent to your email</p>
+
+        <div class="divider"></div>
+
+        <!-- Transaction Details -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Left Column -->
+          <div>
+            <h3 class="text-gray-500 mb-1">Amount paid</h3>
+            <p class="text-xl font-medium mb-4">₹ <span id="amount">0.00</span></p>
+
+            <h3 class="text-gray-700 font-medium">Payment for</h3>
+            <p class="text-gray-500 mb-6" id="description">The learning products...</p>
+
+            <!-- Products Table -->
+            <div class="border border-gray-200 rounded-md mb-4">
+              <table class="w-full text-sm">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-2 text-left text-gray-500">Item name</th>
+                    <th class="px-4 py-2 text-right text-gray-500">QTY</th>
+                    <th class="px-4 py-2 text-right text-gray-500">PRICE</th>
+                  </tr>
+                </thead>
+                <tbody id="productsList">
+                  <!-- Will be populated by JavaScript -->
+                </tbody>
+                <tfoot>
+                  <tr class="border-t border-gray-200">
+                    <td colspan="2" class="px-4 py-2 text-right font-medium">Total:</td>
+                    <td class="px-4 py-2 text-right font-medium">₹ <span id="totalAmount">0.00</span></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div class="bg-gray-50 p-4 rounded-md">
+            <p class="text-sm text-gray-500 mb-4">Transaction Reference</p>
+            <p class="text-sm font-medium mb-4" id="transactionId">mJm3t3gU7BofTeA</p>
+            
+            <p class="text-sm text-gray-500 mb-1">Transaction Date</p>
+            <p class="text-sm font-medium mb-6" id="transactionDate">Mar 2, 2023, at 4:51 pm</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // Wait for DOM to be fully loaded
+    window.addEventListener('DOMContentLoaded', function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const invoiceId = urlParams.get('invoiceId');
+      
+      // If no invoice ID, redirect to home
+      if (!invoiceId) {
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
+        document.getElementById('error-message').style.display = 'block';
+        document.getElementById('loading').style.display = 'none';
+        return;
+      }
+
+      // Fetch transaction data
+      fetchTransactionData(invoiceId);
+    });
+
+    async function fetchTransactionData(invoiceId) {
+      try {
+        // Fetch transaction details
+        const response = await fetch(`/api/getTransactionForSuccess?invoiceId=${invoiceId}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch transaction data');
+        }
+        
+        const data = await response.json();
+        
+        if (data.status !== 'success') {
+          throw new Error(data.message || 'Failed to load transaction data');
+        }
+
+        // Show transaction content and hide loading
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('transaction-content').style.display = 'block';
+
+        // Populate page with transaction details
+        document.getElementById('amount').textContent = parseFloat(data.data.amount).toFixed(2);
+        document.getElementById('totalAmount').textContent = parseFloat(data.data.amount).toFixed(2);
+        document.getElementById('transactionId').textContent = data.data.invoiceId;
+        document.getElementById('transactionDate').textContent = data.data.timestamp;
+        
+        // Basic description - truncated
+        document.getElementById('description').textContent = 'Payment for Digital Course Bundle – Premium access...';
+        
+        // Populate products (sample product data)
+        const productsList = document.getElementById('productsList');
+        
+        // Create a line item - use the whole amount as a single item
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-4 py-2 text-gray-800">Digital Course Bundle</td>
+          <td class="px-4 py-2 text-right text-gray-800">1</td>
+          <td class="px-4 py-2 text-right text-gray-800">₹ ${parseFloat(data.data.amount).toFixed(2)}</td>
+        `;
+        productsList.appendChild(tr);
+        
+      } catch (error) {
+        console.error('Error loading transaction data:', error);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error-message').style.display = 'block';
+      }
+    }
+  </script>
+  <script>
+  // Visitor Heartbeat - keeps track of active visitors
+  function sendHeartbeat() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const pid = urlParams.get('pid') || sessionStorage.getItem('pid');
+    
+    if (pid) {
+      fetch('/api/visitor-heartbeat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ pid })
+      }).catch(err => console.error('Heartbeat error:', err));
+    }
+  }
+  
+  // Send heartbeat every 30 seconds
+  const heartbeatInterval = setInterval(sendHeartbeat, 30000);
+  
+  // Send initial heartbeat
+  sendHeartbeat();
+  
+  // Clear interval when page is unloaded
+  window.addEventListener('beforeunload', () => {
+    clearInterval(heartbeatInterval);
+  });
+  </script>
+</body>
+</html>
