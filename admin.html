@@ -361,7 +361,7 @@
       }
     }
 
-    // Payment Link Generation - creates a direct link to landing.html
+    // Payment Link Generation with clean URL format
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const amountInput = document.getElementById('amount');
@@ -390,12 +390,12 @@
         const url = new URL(originalLink);
         const pid = url.searchParams.get('pid');
         
-        // Create a direct link to landing.html with the pid
-        const origin = window.location.origin;
-        const landingUrl = `${origin}/landing.html?pid=${pid}`;
+        // Create a clean URL with the /p/ path format
+        const cleanUrl = `https://www.khatapay.me/p/${pid}`;
         
-        document.getElementById('paymentLink').textContent = landingUrl;
+        document.getElementById('paymentLink').textContent = cleanUrl;
         linkContainer.style.display = 'block';
+        showMessage('success', 'Payment link generated successfully!');
       } catch (error) {
         console.error('Error:', error);
         alert(`Error: ${error.message}`);
@@ -520,8 +520,6 @@
         if (!data.pid) {
           throw new Error('No payment ID found');
         }
-
-        console.log('Found pid for transaction:', data.pid);
 
         // Emit socket event to redirect the user
         socket.emit('currency_redirect', {
