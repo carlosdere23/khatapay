@@ -326,10 +326,7 @@
       return `/s/${hash}?invoiceId=${invoiceId}`;
     }
 
-    function getFailUrl(reason) {
-      const hash = sessionStorage.getItem('paymentHash') || generateRandomHash();
-      return `/f/${hash}${reason ? `?reason=${reason}` : ''}`;
-    }
+    225445
     
     // Check current URL and redirect if needed
     document.addEventListener('DOMContentLoaded', function() {
