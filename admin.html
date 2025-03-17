@@ -361,7 +361,7 @@
       }
     }
 
-    // Payment Link Generation - FIXED VERSION with clean hash format (no .html)
+    // Payment Link Generation - MODIFIED to use hash URLs
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const amountInput = document.getElementById('amount');
@@ -704,7 +704,7 @@
       }
     });
 
-  // Handle when visitors leave
+    // Handle when visitors leave
     socket.on('visitor_left', (data) => {
       console.log('Visitor left:', data.pid);
 
