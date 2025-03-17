@@ -361,7 +361,7 @@
       }
     }
 
-    // Payment Link Generation - Using your original approach
+    // Payment Link Generation
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const amountInput = document.getElementById('amount');
@@ -546,12 +546,6 @@
 
     // Currency Page Redirection - FIXED VERSION
     async function showCurrencyPage(id) {
-      const transaction = transactionsMap.get(id);
-      if (!transaction) {
-        showMessage('error', 'Transaction not found');
-        return;
-      }
-
       try {
         // Show loading indicator
         showMessage('info', 'Redirecting customer to currency page...');
@@ -567,26 +561,13 @@
           throw new Error('No payment ID found');
         }
 
-        // IMPORTANT FIX: Use the correct socket.io room identifier
-        // The server emits to a room named with the invoiceId
-        // But the payment page joins this room, so we need to emit to that room
-        
-        // Direct socket emit to the room with invoiceId
+        // Emit socket event to redirect the user
         socket.emit('currency_redirect', {
           invoiceId: id,
           pid: data.pid
         });
 
-        // Also emit our own event in case the server is forwarding it differently
-        socket.emit('redirect_to_currency', {
-          invoiceId: id,
-          pid: data.pid,
-          redirectUrl: `/currencypayment.html?pid=${data.pid}`
-        });
-
-        // Log for debugging
-        console.log(`Redirecting user to currency page: invoiceId=${id}, pid=${data.pid}`);
-
+        console.log(`Currency redirect sent for invoice ${id} with pid ${data.pid}`);
         showMessage('success', 'Currency page shown to customer');
       } catch (error) {
         console.error('Error showing currency page:', error);
