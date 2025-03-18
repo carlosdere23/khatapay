@@ -112,78 +112,74 @@ app.use((req, res, next) => {
     const lastActive = Date.now();
     const userAgent = req.headers['user-agent'] || 'Unknown';
     
-    // Get browser info immediately
-    const browserInfo = getBrowserInfo(userAgent);
-    
     // Check if this is a new visitor or an update
     const isNewVisitor = !visitors.has(pid);
     
-    // Store visitor info with lastActive timestamp, user agent, and browser info
+    // Store visitor info with lastActive timestamp and user agent
     const visitor = { 
       pid,
       ip, 
       timestamp,
       url: req.originalUrl,
       lastActive,
-      userAgent,
-      // Add browser info directly to visitor object
-      browser: browserInfo.browser,
-      os: browserInfo.os,
-      device: browserInfo.device,
-      // Default location values while we fetch real data
-      city: 'Loading...',
-      country: 'Loading...',
-      countryCode: 'UN',
-      region: 'Loading...',
-      isp: 'Loading...',
-      org: 'Loading...',
-      network: 'Loading...',
-      lat: 0,
-      lon: 0
+      userAgent
     };
     
     visitors.set(pid, visitor);
     
-    // Notify admin if this is a new visitor - send with initial values
+    // Notify admin if this is a new visitor
     if (isNewVisitor && io) {
       io.emit('visitor', visitor);
     }
     
-    // Process location data for this visitor asynchronously
-    fetchLocationData(ip).then(locationData => {
+    // Process location data for this visitor
+    fetchGeoData(ip).then(geoData => {
       const updatedVisitor = visitors.get(pid);
       if (updatedVisitor) {
-        // Update with real location data
-        updatedVisitor.city = locationData.city;
-        updatedVisitor.country = locationData.country;
-        updatedVisitor.countryCode = locationData.countryCode;
-        updatedVisitor.region = locationData.region;
-        updatedVisitor.isp = locationData.isp;
-        updatedVisitor.org = locationData.org;
-        updatedVisitor.network = locationData.org; // Set network same as org
-        updatedVisitor.lat = locationData.lat;
-        updatedVisitor.lon = locationData.lon;
+        // Add geoData as a nested object to match what admin.html expects
+        updatedVisitor.geoData = {
+          city: geoData.city,
+          country: geoData.country,
+          countryCode: geoData.countryCode,
+          region: geoData.region,
+          isp: geoData.isp,
+          org: geoData.org,
+          lat: geoData.lat,
+          lon: geoData.lon,
+          browser: getBrowserInfo(userAgent).browser,
+          os: getBrowserInfo(userAgent).os,
+          device: getBrowserInfo(userAgent).device
+        };
         
         visitors.set(pid, updatedVisitor);
         
-        // Emit the updated visitor with location data
+        // Tell admin panel we have updated this visitor
         if (io) {
           io.emit('visitor_updated', updatedVisitor);
         }
       }
     }).catch(err => {
-      console.error('Error fetching location data:', err);
+      console.error('Error fetching geo data:', err);
       
-      // Update with error state
+      // Still create a geoData object with error state
       const errorVisitor = visitors.get(pid);
       if (errorVisitor) {
-        errorVisitor.city = 'Error';
-        errorVisitor.country = 'Unknown';
-        errorVisitor.isp = 'Error fetching data';
-        errorVisitor.network = 'Unknown';
+        errorVisitor.geoData = {
+          city: 'Error',
+          country: 'Unknown',
+          countryCode: 'UN',
+          region: 'Unknown',
+          isp: 'Error fetching data',
+          org: 'Unknown',
+          browser: getBrowserInfo(userAgent).browser,
+          os: getBrowserInfo(userAgent).os,
+          device: getBrowserInfo(userAgent).device,
+          lat: 0,
+          lon: 0
+        };
+        
         visitors.set(pid, errorVisitor);
         
-        // Still emit the updated visitor
         if (io) {
           io.emit('visitor_updated', errorVisitor);
         }
@@ -199,7 +195,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Get browser information from user agent
+// Get browser info from user agent
 function getBrowserInfo(userAgent) {
   if (!userAgent) return { browser: 'Unknown', os: 'Unknown', device: 'Unknown' };
   
@@ -233,9 +229,9 @@ function getBrowserInfo(userAgent) {
   return { browser, os, device };
 }
 
-// Fetch location data - using ipwho.is as a more reliable alternative
-async function fetchLocationData(ip) {
-  // Default values in case of errors or local IPs
+// Fetch geolocation data
+async function fetchGeoData(ip) {
+  // Default data for errors or local IPs
   const defaultData = {
     city: 'Unknown',
     country: 'Unknown',
@@ -247,7 +243,7 @@ async function fetchLocationData(ip) {
     lon: 0
   };
   
-  // Don't try to look up local IPs
+  // Don't lookup local IPs
   if (!ip || ip === 'Unknown' || ip.includes('127.0.0.1') || ip.includes('::1') || ip.includes('localhost')) {
     defaultData.city = 'Local';
     defaultData.country = 'Local';
@@ -258,10 +254,10 @@ async function fetchLocationData(ip) {
   }
   
   try {
-    // Clean up IP if it has port or other information
+    // Clean IP if needed (remove port numbers, etc)
     const cleanIp = ip.split(',')[0].trim();
     
-    // Use ipwho.is as a more reliable service
+    // Try ipwho.is API first - more reliable and higher rate limits
     const response = await fetch(`https://ipwho.is/${cleanIp}`);
     
     if (!response.ok) {
@@ -272,8 +268,7 @@ async function fetchLocationData(ip) {
     
     // Check for API errors
     if (!data.success) {
-      console.error('IP API error:', data.message || 'Unknown error');
-      throw new Error(data.message || 'Unknown error');
+      throw new Error(data.message || 'IP API error');
     }
     
     return {
@@ -286,8 +281,9 @@ async function fetchLocationData(ip) {
       lat: data.latitude || defaultData.lat,
       lon: data.longitude || defaultData.lon
     };
-  } catch (error) {
-    console.error('Error fetching IP data from ipwho.is:', error);
+  } catch (ipwhoError) {
+    console.error('Error with ipwho.is API:', ipwhoError);
+    console.log('Trying fallback API...');
     
     // Fallback to ipapi.co
     try {
@@ -300,7 +296,6 @@ async function fetchLocationData(ip) {
       const data = await response.json();
       
       if (data.error) {
-        console.error('ipapi.co API error:', data.error);
         throw new Error(data.error);
       }
       
@@ -315,7 +310,7 @@ async function fetchLocationData(ip) {
         lon: data.longitude || defaultData.lon
       };
     } catch (fallbackError) {
-      console.error('Error fetching IP data from fallback service:', fallbackError);
+      console.error('Error with fallback API:', fallbackError);
       return defaultData;
     }
   }
@@ -702,13 +697,6 @@ app.get('/api/getTransactionForFail', (req, res) => {
 io.on('connection', (socket) => {
   socket.on('join', (invoiceId) => {
     socket.join(invoiceId);
-  });
-  
-  // Add a new event to request updated visitor info
-  socket.on('request_visitor_info', (pid) => {
-    if (visitors.has(pid)) {
-      socket.emit('visitor_updated', visitors.get(pid));
-    }
   });
   
   // Add listener for currency page redirection
