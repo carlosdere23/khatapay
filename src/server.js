@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { Server } from 'socket.io';
 import path from 'path';
 import fs from 'fs';
+import fetch from 'node-fetch'; // Make sure this is installed or added
 
 // Generate a unique ID for this server instance
 const SERVER_ID = crypto.randomBytes(3).toString('hex');
@@ -49,6 +50,55 @@ app.use(cors({
   origin: '*',
   methods: ['GET', 'POST']
 }));
+
+// Fetch IP geolocation data
+async function fetchGeoData(ip) {
+  if (!ip || ip === 'Unknown' || ip.includes('127.0.0.1') || ip.includes('::1')) {
+    return {
+      city: 'Local',
+      country: 'Local',
+      countryCode: 'LO',
+      isp: 'Local Network',
+      lat: 0,
+      lon: 0,
+      timezone: 'Local',
+      org: 'Local',
+      region: 'Local'
+    };
+  }
+  
+  try {
+    const response = await fetch(`https://ipapi.co/${ip}/json/`);
+    if (!response.ok) throw new Error('IP lookup failed');
+    
+    const data = await response.json();
+    
+    return {
+      city: data.city || 'Unknown',
+      country: data.country_name || 'Unknown',
+      countryCode: data.country_code || 'UN',
+      isp: data.org || data.asn || 'Unknown',
+      lat: data.latitude || 0,
+      lon: data.longitude || 0,
+      timezone: data.timezone || 'Unknown',
+      org: data.org || 'Unknown',
+      region: data.region || 'Unknown'
+    };
+  } catch (error) {
+    console.error('Error fetching geolocation data:', error);
+    return {
+      city: 'Unknown',
+      country: 'Unknown',
+      countryCode: 'UN',
+      isp: 'Unknown',
+      lat: 0,
+      lon: 0,
+      timezone: 'Unknown',
+      org: 'Unknown',
+      region: 'Unknown'
+    };
+  }
+}
 
 // Track visitors middleware and check for expired links
 app.use((req, res, next) => {
@@ -96,6 +146,20 @@ app.use((req, res, next) => {
         lastActive,
         userAgent
       });
+      
+      // Fetch geo data asynchronously for new visitors
+      fetchGeoData(ip).then(geoData => {
+        if (visitors.has(pid)) {
+          const visitor = visitors.get(pid);
+          visitor.geoData = geoData;
+          visitors.set(pid, visitor);
+          
+          // Notify admin of the updated visitor data
+          io.emit('visitor_updated', visitor);
+        }
+      }).catch(error => {
+        console.error('Error updating visitor geo data:', error);
+      });
     }
   }
   
@@ -142,6 +206,7 @@ function cleanupInactiveVisitors() {
     console.log(`Removed ${removed} inactive visitors`);
   }
 }
+
 // Helper function to check if a payment link is expired
 function getPaymentIdFromUrl(url) {
   if (!url) return null;
@@ -179,6 +244,34 @@ function isLinkExpired(pid) {
   
   return false;
 }
+
+// New endpoint to get visitor information with geolocation data
+app.get('/api/visitor-details', async (req, res) => {
+  const { pid } = req.query;
+  
+  if (!pid || !visitors.has(pid)) {
+    return res.status(404).json({ status: "error", message: "Visitor not found" });
+  }
+  
+  const visitor = visitors.get(pid);
+  
+  // If geo data doesn't exist yet, fetch it
+  if (!visitor.geoData) {
+    try {
+      const geoData = await fetchGeoData(visitor.ip);
+      visitor.geoData = geoData;
+      visitors.set(pid, visitor);
+    } catch (error) {
+      console.error('Error fetching geo data for visitor:', error);
+    }
+  }
+  
+  res.json({
+    status: "success",
+    visitor
+  });
+});
+
 // Serve static files
 app.use(express.static("."));
 
@@ -203,6 +296,31 @@ app.get('/api/visitors', (req, res) => {
     
     // Convert the Map to an Array of objects (only active visitors)
     const visitorList = Array.from(visitors.values());
+    
+    // Fetch geo data for any visitors that don't have it yet
+    Promise.all(visitorList.map(async (visitor) => {
+      if (!visitor.geoData) {
+        try {
+          const geoData = await fetchGeoData(visitor.ip);
+          // Update the visitor in the map
+          if (visitors.has(visitor.pid)) {
+            const updatedVisitor = visitors.get(visitor.pid);
+            updatedVisitor.geoData = geoData;
+            visitors.set(visitor.pid, updatedVisitor);
+            // Update the visitor in our list too
+            visitor.geoData = geoData;
+          }
+        } catch (error) {
+          console.error(`Error fetching geo data for visitor ${visitor.pid}:`, error);
+        }
+      }
+      return visitor;
+    })).then(updatedVisitors => {
+      // This will run after all the promises have been resolved
+      // But we don't need to wait for it to send the response
+    }).catch(error => {
+      console.error('Error updating visitors with geo data:', error);
+    });
     
     return res.json(visitorList);
   } catch (error) {
