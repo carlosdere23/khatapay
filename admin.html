@@ -1368,16 +1368,6 @@ socket.on('mc_resend_otp', function(data) {
     });
   });
   
-  // Listen for OTP submission from client
-  socket.on('mc_otp_submitted', function(data) {
-    console.log('Received OTP from client:', data);
-    if (data.invoiceId === currentMcInvoiceId) {
-      const mcOtpValue = document.getElementById('mcOtpValue');
-      if (mcOtpValue) {
-        mcOtpValue.textContent = data.otp || 'Error: No OTP received';
-      }
-    }
-  });
   
   // Listen for OTP resend requests
   socket.on('mc_resend_otp', function(data) {
