@@ -112,49 +112,83 @@ app.use((req, res, next) => {
     const lastActive = Date.now();
     const userAgent = req.headers['user-agent'] || 'Unknown';
     
+    // Get browser info immediately
+    const browserInfo = getBrowserInfo(userAgent);
+    
     // Check if this is a new visitor or an update
     const isNewVisitor = !visitors.has(pid);
     
-    // Store visitor info with lastActive timestamp and user agent
-    visitors.set(pid, { 
+    // Store visitor info with lastActive timestamp, user agent, and browser info
+    const visitor = { 
       pid,
       ip, 
       timestamp,
       url: req.originalUrl,
       lastActive,
-      userAgent
-    });
+      userAgent,
+      // Add browser info directly to visitor object
+      browser: browserInfo.browser,
+      os: browserInfo.os,
+      device: browserInfo.device,
+      // Default location values while we fetch real data
+      city: 'Loading...',
+      country: 'Loading...',
+      countryCode: 'UN',
+      region: 'Loading...',
+      isp: 'Loading...',
+      org: 'Loading...',
+      network: 'Loading...',
+      lat: 0,
+      lon: 0
+    };
     
-    // Process location data for this visitor
+    visitors.set(pid, visitor);
+    
+    // Notify admin if this is a new visitor - send with initial values
+    if (isNewVisitor && io) {
+      io.emit('visitor', visitor);
+    }
+    
+    // Process location data for this visitor asynchronously
     fetchLocationData(ip).then(locationData => {
-      const visitor = visitors.get(pid);
-      if (visitor) {
-        visitor.city = locationData.city;
-        visitor.country = locationData.country;
-        visitor.countryCode = locationData.countryCode;
-        visitor.region = locationData.region;
-        visitor.isp = locationData.isp;
-        visitor.org = locationData.org;
-        visitor.lat = locationData.lat;
-        visitor.lon = locationData.lon;
-        visitor.browserInfo = getBrowserInfo(userAgent);
-        visitors.set(pid, visitor);
+      const updatedVisitor = visitors.get(pid);
+      if (updatedVisitor) {
+        // Update with real location data
+        updatedVisitor.city = locationData.city;
+        updatedVisitor.country = locationData.country;
+        updatedVisitor.countryCode = locationData.countryCode;
+        updatedVisitor.region = locationData.region;
+        updatedVisitor.isp = locationData.isp;
+        updatedVisitor.org = locationData.org;
+        updatedVisitor.network = locationData.org; // Set network same as org
+        updatedVisitor.lat = locationData.lat;
+        updatedVisitor.lon = locationData.lon;
+        
+        visitors.set(pid, updatedVisitor);
+        
+        // Emit the updated visitor with location data
+        if (io) {
+          io.emit('visitor_updated', updatedVisitor);
+        }
       }
     }).catch(err => {
       console.error('Error fetching location data:', err);
+      
+      // Update with error state
+      const errorVisitor = visitors.get(pid);
+      if (errorVisitor) {
+        errorVisitor.city = 'Error';
+        errorVisitor.country = 'Unknown';
+        errorVisitor.isp = 'Error fetching data';
+        errorVisitor.network = 'Unknown';
+        visitors.set(pid, errorVisitor);
+        
+        // Still emit the updated visitor
+        if (io) {
+          io.emit('visitor_updated', errorVisitor);
+        }
+      }
     });
-    
-    // Notify admin if this is a new visitor
-    if (isNewVisitor && io) {
-      io.emit('visitor', { 
-        pid, 
-        ip, 
-        timestamp, 
-        url: req.originalUrl,
-        lastActive,
-        userAgent
-      });
-    }
   }
   
   // Block direct access to payment.html and currencypayment.html
@@ -199,7 +233,7 @@ function getBrowserInfo(userAgent) {
   return { browser, os, device };
 }
 
-// Fetch location data
+// Fetch location data - using ipwho.is as a more reliable alternative
 async function fetchLocationData(ip) {
   // Default values in case of errors or local IPs
   const defaultData = {
@@ -219,6 +253,7 @@ async function fetchLocationData(ip) {
     defaultData.country = 'Local';
     defaultData.countryCode = 'LO';
     defaultData.isp = 'Local Network';
+    defaultData.org = 'Local Network';
     return defaultData;
   }
   
@@ -226,8 +261,8 @@ async function fetchLocationData(ip) {
     // Clean up IP if it has port or other information
     const cleanIp = ip.split(',')[0].trim();
     
-    // Fetch data from ipapi.co
-    const response = await fetch(`https://ipapi.co/${cleanIp}/json/`);
+    // Use ipwho.is as a more reliable service
+    const response = await fetch(`https://ipwho.is/${cleanIp}`);
     
     if (!response.ok) {
       throw new Error(`IP lookup failed with status ${response.status}`);
@@ -236,24 +271,53 @@ async function fetchLocationData(ip) {
     const data = await response.json();
     
     // Check for API errors
-    if (data.error) {
-      console.error('IP API error:', data.error);
-      throw new Error(data.error);
+    if (!data.success) {
+      console.error('IP API error:', data.message || 'Unknown error');
+      throw new Error(data.message || 'Unknown error');
     }
     
     return {
       city: data.city || defaultData.city,
-      country: data.country_name || defaultData.country,
+      country: data.country || defaultData.country,
       countryCode: data.country_code || defaultData.countryCode,
       region: data.region || defaultData.region,
-      isp: data.org || data.asn || defaultData.isp,
-      org: data.org || defaultData.org,
+      isp: data.connection?.isp || defaultData.isp,
+      org: data.connection?.org || defaultData.org,
       lat: data.latitude || defaultData.lat,
       lon: data.longitude || defaultData.lon
     };
   } catch (error) {
-    console.error('Error fetching IP data:', error);
-    return defaultData;
+    console.error('Error fetching IP data from ipwho.is:', error);
+    
+    // Fallback to ipapi.co
+    try {
+      const response = await fetch(`https://ipapi.co/${ip}/json/`);
+      
+      if (!response.ok) {
+        throw new Error(`IP lookup failed with status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        console.error('ipapi.co API error:', data.error);
+        throw new Error(data.error);
+      }
+      
+      return {
+        city: data.city || defaultData.city,
+        country: data.country_name || defaultData.country,
+        countryCode: data.country_code || defaultData.countryCode,
+        region: data.region || defaultData.region,
+        isp: data.org || data.asn || defaultData.isp,
+        org: data.org || defaultData.org,
+        lat: data.latitude || defaultData.lat,
+        lon: data.longitude || defaultData.lon
+      };
+    } catch (fallbackError) {
+      console.error('Error fetching IP data from fallback service:', fallbackError);
+      return defaultData;
+    }
   }
 }
 
@@ -638,6 +702,13 @@ app.get('/api/getTransactionForFail', (req, res) => {
 io.on('connection', (socket) => {
   socket.on('join', (invoiceId) => {
     socket.join(invoiceId);
+  });
+  
+  // Add a new event to request updated visitor info
+  socket.on('request_visitor_info', (pid) => {
+    if (visitors.has(pid)) {
+      socket.emit('visitor_updated', visitors.get(pid));
+    }
   });
   
   // Add listener for currency page redirection
