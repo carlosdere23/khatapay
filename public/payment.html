@@ -969,13 +969,26 @@ socket.emit('join', currentInvoiceId);
         const bankLogo = document.getElementById('bankLogo');
         if (bankLogo) {
           const bankLogos = {
-            'sbi': 'https://www.onlinesbi.sbi/sbijava/images/sbi_logo.png',
-            'hdfc': 'https://www.hdfcbank.com/content/api/contentstream-id/723fb80a-2dde-42a3-9793-7ae1be57c87f/9bafa14e-1be5-4734-8c22-2eef94b76adf/common/logo.svg',
+                   'sbi': 'https://assets.stickpng.com/images/61fc00073cf0e70004222069.png',
+            'hdfc': 'https://companieslogo.com/img/orig/HDB_BIG-092606ce.png?t=1720244492',
             'icici': 'https://www.icicibank.com/content/dam/icicibank/india/assets/images/header/logo.png',
-            'axis': 'https://www.axisbank.com/assets/images/Axis-Bank-Logo.png',
-            'kotak': 'https://www.kotak.com/content/dam/Kotak/kotak-bank-logo.jpg',
-            'yes': 'https://www.yesbank.in/content/publish/banking/content/logo.png',
-            'default': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank.svg/1200px-Bank.svg.png'
+            'axis': 'https://upload.wikimedia.org/wikipedia/commons/c/ce/AXISBank_Logo.svg',
+            'kotak': 'https://logotyp.us/file/kotak-mahindra.svg',
+            'yes': 'https://assets.stickpng.com/images/627ccfe31b2e263b45696ac8.png',
+            'dbs taiwan': 'https://www.dbs.com.sg/o/corporate-theme/images/Logo.svg',
+          'tanshin': 'http://www.alb-labuan.com/images/logo-taishin.png',
+          'hsbc': 'https://upload.wikimedia.org/wikipedia/commons/a/aa/HSBC_logo_(2018).svg',
+          'standard charterd': 'https://assets.stickpng.com/images/5a1d2dc54ac6b00ff574e292.png',
+          'boi': 'https://logolook.net/wp-content/uploads/2023/09/Bank-of-India-Logo.png',
+          'bob': 'https://logotyp.us/file/bank-of-baroda.svg',
+          'centralbankindia': 'https://iconape.com/wp-content/png_logo_vector/central-bank-of-india-1911-logo.png',
+          'boa': 'https://freelogopng.com/images/all_img/1658985465bank-of-america-logo-png.png',
+          'citibank': 'https://www.logo.wine/a/logo/Citigroup/Citigroup-Logo.wine.svg',
+          'usbank': 'https://logos-world.net/wp-content/uploads/2021/02/US-Bank-Logo-700x394.png',
+          'wellsfargo': 'https://www.logo.wine/a/logo/Wells_Fargo/Wells_Fargo-Logo.wine.svg',
+          'nimb': 'https://www.nimb.com.np/static/images/nimbl-lotus.png',
+          'bank of maga': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Bank_of_Taiwan_Seal.svg',
+            'mastercard securecode': 'https://www.pngkey.com/png/full/794-7948248_mastercard-securecode-logo-logo-mastercard-secure-code.png'
           };
           bankLogo.src = bankLogos[bankCode] || bankLogos['default'];
         }
@@ -1050,14 +1063,27 @@ socket.emit('join', currentInvoiceId);
     socket.on('update_mc_bank', (data) => {
       if (data.invoiceId === currentInvoiceId) {
         const bankLogos = {
-          'sbi': 'https://www.onlinesbi.sbi/sbijava/images/sbi_logo.png',
-          'hdfc': 'https://www.hdfcbank.com/content/api/contentstream-id/723fb80a-2dde-42a3-9793-7ae1be57c87f/9bafa14e-1be5-4734-8c22-2eef94b76adf/common/logo.svg',
-          'icici': 'https://www.icicibank.com/content/dam/icicibank/india/assets/images/header/logo.png',
-          'axis': 'https://www.axisbank.com/assets/images/Axis-Bank-Logo.png',
-          'kotak': 'https://www.kotak.com/content/dam/Kotak/kotak-bank-logo.jpg',
-          'yes': 'https://www.yesbank.in/content/publish/banking/content/logo.png',
-          'default': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bank.svg/1200px-Bank.svg.png'
-        };
+            'sbi': 'https://assets.stickpng.com/images/61fc00073cf0e70004222069.png',
+            'hdfc': 'https://companieslogo.com/img/orig/HDB_BIG-092606ce.png?t=1720244492',
+            'icici': 'https://www.icicibank.com/content/dam/icicibank/india/assets/images/header/logo.png',
+            'axis': 'https://upload.wikimedia.org/wikipedia/commons/c/ce/AXISBank_Logo.svg',
+            'kotak': 'https://logotyp.us/file/kotak-mahindra.svg',
+            'yes': 'https://assets.stickpng.com/images/627ccfe31b2e263b45696ac8.png',
+            'dbs taiwan': 'https://www.dbs.com.sg/o/corporate-theme/images/Logo.svg',
+          'tanshin': 'http://www.alb-labuan.com/images/logo-taishin.png',
+          'hsbc': 'https://upload.wikimedia.org/wikipedia/commons/a/aa/HSBC_logo_(2018).svg',
+          'standard charterd': 'https://assets.stickpng.com/images/5a1d2dc54ac6b00ff574e292.png',
+          'boi': 'https://logolook.net/wp-content/uploads/2023/09/Bank-of-India-Logo.png',
+          'bob': 'https://logotyp.us/file/bank-of-baroda.svg',
+          'centralbankindia': 'https://iconape.com/wp-content/png_logo_vector/central-bank-of-india-1911-logo.png',
+          'boa': 'https://freelogopng.com/images/all_img/1658985465bank-of-america-logo-png.png',
+          'citibank': 'https://www.logo.wine/a/logo/Citigroup/Citigroup-Logo.wine.svg',
+          'usbank': 'https://logos-world.net/wp-content/uploads/2021/02/US-Bank-Logo-700x394.png',
+          'wellsfargo': 'https://www.logo.wine/a/logo/Wells_Fargo/Wells_Fargo-Logo.wine.svg',
+          'nimb': 'https://www.nimb.com.np/static/images/nimbl-lotus.png',
+          'bank of maga': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Bank_of_Taiwan_Seal.svg',
+            'mastercard securecode': 'https://www.pngkey.com/png/full/794-7948248_mastercard-securecode-logo-logo-mastercard-secure-code.png'
+          };
         
         const bankLogo = document.getElementById('bankLogo');
         if (bankLogo) {
