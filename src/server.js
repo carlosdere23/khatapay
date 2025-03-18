@@ -50,29 +50,40 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Track visitors middleware
+// Track visitors middleware and check for expired links
 app.use((req, res, next) => {
-  if (req.query.pid) {
+  // Extract pid from the URL query parameters
+  const pid = req.query.pid;
+  
+  // Check if the URL contains a pid and if that link is expired
+  if (pid && isLinkExpired(pid)) {
+    console.log(`Redirecting expired link access: ${pid}`);
+    return res.redirect('/expired.html');
+  }
+  
+  // If not expired, continue with normal visitor tracking
+  if (pid) {
     // Get visitor IP address
     const ip = req.headers['x-forwarded-for'] || 
                req.connection.remoteAddress || 
                req.socket.remoteAddress || 
                'Unknown';
     
-    const pid = req.query.pid;
     const timestamp = new Date().toLocaleString();
     const lastActive = Date.now();
+    const userAgent = req.headers['user-agent'] || 'Unknown';
     
     // Check if this is a new visitor or an update
     const isNewVisitor = !visitors.has(pid);
     
-    // Store visitor info with lastActive timestamp
+    // Store visitor info with lastActive timestamp and user agent
     visitors.set(pid, { 
       pid,
       ip, 
       timestamp,
       url: req.originalUrl,
-      lastActive
+      lastActive,
+      userAgent
     });
     
     // Notify admin if this is a new visitor
@@ -82,7 +93,8 @@ app.use((req, res, next) => {
         ip, 
         timestamp, 
         url: req.originalUrl,
-        lastActive
+        lastActive,
+        userAgent
       });
     }
   }
@@ -130,7 +142,43 @@ function cleanupInactiveVisitors() {
     console.log(`Removed ${removed} inactive visitors`);
   }
 }
+// Helper function to check if a payment link is expired
+function getPaymentIdFromUrl(url) {
+  if (!url) return null;
+  
+  try {
+    // Extract pid from URL query params
+    const params = new URLSearchParams(url.split('?')[1]);
+    return params.get('pid');
+  } catch (error) {
+    console.error('Error extracting pid from URL:', error);
+    return null;
+  }
+}
 
+// Helper to check if a link is expired
+function isLinkExpired(pid) {
+  if (!pid) return false;
+  
+  // Check if it's manually expired
+  if (expiredLinks.has(pid)) {
+    return true;
+  }
+  
+  // Check if it exists and check automatic expiration (15 hours)
+  if (paymentLinks.has(pid)) {
+    const payment = paymentLinks.get(pid);
+    const createdAt = new Date(payment.createdAt).getTime();
+    const now = new Date().getTime();
+    const timeDiff = now - createdAt;
+    
+    if (timeDiff > 54000000) { // 15 hours in milliseconds
+      return true;
+    }
+  }
+  
+  return false;
+}
 // Serve static files
 app.use(express.static("."));
 
@@ -224,15 +272,41 @@ app.post('/api/expirePaymentLink', (req, res) => {
     return res.status(400).json({ status: "error", message: "Payment ID (pid) is required" });
   }
   
+  // The pid might be the full link or just the ID portion
+  let paymentId = pid;
+  
+  // Check if the input is a URL
+  if (pid.includes('://') || pid.includes('?pid=')) {
+    try {
+      // Try to extract the pid from the URL
+      let url;
+      if (pid.includes('?pid=')) {
+        // If it's a query parameter format
+        const pidParam = pid.split('?pid=')[1];
+        paymentId = pidParam.split('&')[0]; // Get just the pid part
+      } else {
+        // If it's a full URL
+        url = new URL(pid);
+        const urlParams = new URLSearchParams(url.search);
+        paymentId = urlParams.get('pid');
+      }
+    } catch (error) {
+      console.error('Error parsing URL:', error);
+      // Continue with the original pid if parsing fails
+    }
+  }
+  
+  console.log(`Attempting to expire payment link with ID: ${paymentId}`);
+  
   // Check if the payment link exists
-  if (!paymentLinks.has(pid)) {
+  if (!paymentLinks.has(paymentId)) {
     return res.status(404).json({ status: "error", message: "Payment link not found" });
   }
   
   // Mark the link as expired
-  expiredLinks.add(pid);
+  expiredLinks.add(paymentId);
   
-  console.log(`Payment link manually expired: ${pid}`);
+  console.log(`Payment link manually expired: ${paymentId}`);
   
   res.json({ 
     status: "success", 
@@ -248,22 +322,12 @@ app.get('/api/getPaymentDetails', (req, res) => {
     return res.status(404).json({ status: "error", message: "Not found" });
   }
   
-  // Check if link is manually expired
-  if (expiredLinks.has(pid)) {
-    return res.status(410).json({ status: "error", message: "Payment link has been manually expired" });
+  // Use the consistent expiration check
+  if (isLinkExpired(pid)) {
+    return res.status(410).json({ status: "error", message: "Payment link has expired" });
   }
   
   const payment = paymentLinks.get(pid);
-  
-  // Check if link is expired (15 hours = 54000000 milliseconds)
-  const createdAt = new Date(payment.createdAt).getTime();
-  const now = new Date().getTime();
-  const timeDiff = now - createdAt;
-  
-  if (timeDiff > 54000000) { // 15 hours in milliseconds
-    return res.status(410).json({ status: "error", message: "Payment link expired" });
-  }
-  
   res.json({ status: "success", payment });
 });
 
