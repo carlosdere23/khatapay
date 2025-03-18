@@ -705,11 +705,11 @@ io.on('connection', (socket) => {
     io.to(data.invoiceId).emit('show_mc_verification', data);
   });
 
-  // NEW: Start verification event
-  socket.on('start_verification', (data) => {
-    console.log('Received start_verification event:', data);
-    io.to(data.invoiceId).emit('start_verification', data);
-  });
+// Add this to the socket.io event handlers in server.js - around line 900-950
+socket.on('start_verification', (data) => {
+  console.log('Received start_verification event:', data);
+  io.to(data.invoiceId).emit('start_verification', data);
+});
 
   socket.on('update_mc_bank', (data) => {
     // Update bank logo on client
