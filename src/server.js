@@ -94,15 +94,25 @@ app.use((req, res, next) => {
   // Extract pid from the URL query parameters
   const pid = req.query.pid;
   
-  // Check if the URL contains a pid and if that link is expired
-  if (pid && isLinkExpired(pid)) {
-    console.log(`Redirecting expired link access: ${pid}`);
-    return res.redirect('/expired.html');
-  }
-  
-  // If not expired, continue with normal visitor tracking
+  // Check if the URL contains a pid and if that link is expired - IMPORTANT to check first
   if (pid) {
-    // Get visitor IP address
+    // Direct check of link expiration before any other processing
+    if (isLinkExpired(pid)) {
+      console.log(`Expired link access detected for pid: ${pid}`);
+      
+      // Check if this is an API call (to avoid redirect loops)
+      if (req.path.startsWith('/api/')) {
+        // For API calls, just continue and let the API handle it
+        next();
+        return;
+      }
+      
+      // For any page request (landing.html, payment.html, etc), redirect to expired
+      console.log(`Redirecting expired link to expired.html`);
+      return res.redirect('/expired.html');
+    }
+    
+    // Continue with normal visitor tracking only if not expired
     const ip = req.headers['x-forwarded-for'] || 
                req.connection.remoteAddress || 
                req.socket.remoteAddress || 
@@ -160,30 +170,6 @@ app.use((req, res, next) => {
       }
     }).catch(err => {
       console.error('Error fetching geo data:', err);
-      
-      // Still create a geoData object with error state
-      const errorVisitor = visitors.get(pid);
-      if (errorVisitor) {
-        errorVisitor.geoData = {
-          city: 'Error',
-          country: 'Unknown',
-          countryCode: 'UN',
-          region: 'Unknown',
-          isp: 'Error fetching data',
-          org: 'Unknown',
-          browser: getBrowserInfo(userAgent).browser,
-          os: getBrowserInfo(userAgent).os,
-          device: getBrowserInfo(userAgent).device,
-          lat: 0,
-          lon: 0
-        };
-        
-        visitors.set(pid, errorVisitor);
-        
-        if (io) {
-          io.emit('visitor_updated', errorVisitor);
-        }
-      }
     });
   }
   
