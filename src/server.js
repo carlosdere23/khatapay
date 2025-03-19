@@ -65,7 +65,7 @@ function getPaymentIdFromUrl(url) {
   }
 }
 
-// Helper to check if a link is expired
+// Helper to check if a link is expired - FIXED VERSION
 function isLinkExpired(pid) {
   if (!pid) return false;
   
@@ -77,11 +77,31 @@ function isLinkExpired(pid) {
   // Check if it exists and check automatic expiration (15 hours)
   if (paymentLinks.has(pid)) {
     const payment = paymentLinks.get(pid);
-    const createdAt = new Date(payment.createdAt).getTime();
+    
+    // Make sure we have a valid createdAt timestamp
+    if (!payment.createdAt) {
+      console.log(`Payment link ${pid} has no createdAt timestamp, treating as not expired`);
+      return false;
+    }
+    
+    // Parse the timestamp correctly - ISO string format can sometimes cause issues
+    let createdAt;
+    try {
+      createdAt = new Date(payment.createdAt).getTime();
+    } catch (e) {
+      console.error(`Error parsing timestamp for pid ${pid}:`, e);
+      return false; // Don't expire if we can't parse the timestamp
+    }
+    
     const now = new Date().getTime();
     const timeDiff = now - createdAt;
     
-    if (timeDiff > 54000000) { // 15 hours in milliseconds
+    // Log the time difference for debugging
+    console.log(`Payment link ${pid} time diff: ${timeDiff / (60 * 60 * 1000)} hours`);
+    
+    // 15 hours in milliseconds = 54000000
+    if (timeDiff > 54000000) {
+      console.log(`Payment link ${pid} expired due to time: created ${new Date(createdAt).toISOString()}, now ${new Date(now).toISOString()}`);
       return true;
     }
   }
@@ -89,7 +109,7 @@ function isLinkExpired(pid) {
   return false;
 }
 
-// Track visitors middleware and check for expired links
+// Track visitors middleware and check for expired links - IMPROVED TO AVOID EARLY EXPIRATION
 app.use((req, res, next) => {
   // Extract pid from the URL query parameters
   const pid = req.query.pid;
@@ -110,6 +130,16 @@ app.use((req, res, next) => {
       // For any page request (landing.html, payment.html, etc), redirect to expired
       console.log(`Redirecting expired link to expired.html`);
       return res.redirect('/expired.html');
+    }
+    
+    // Track this visit without causing expiration
+    if (paymentLinks.has(pid)) {
+      const payment = paymentLinks.get(pid);
+      if (!payment.visits) payment.visits = 0;
+      payment.visits++;
+      
+      // Log the visit count
+      console.log(`Payment link ${pid} visits: ${payment.visits}`);
     }
     
     // Continue with normal visitor tracking only if not expired
@@ -144,6 +174,7 @@ app.use((req, res, next) => {
     
     // Process location data for this visitor
     fetchGeoData(ip).then(geoData => {
+      // Rest of your existing visitor tracking code remains unchanged
       const updatedVisitor = visitors.get(pid);
       if (updatedVisitor) {
         // Add geoData as a nested object to match what admin.html expects
@@ -390,7 +421,7 @@ app.get('/api/getTransactionPid', (req, res) => {
   res.json({ pid });
 });
 
-// Payment Links Endpoints
+// Payment Links Endpoints - FIXED VERSION
 app.post('/api/generatePaymentLink', (req, res) => {
   try {
     const { amount, description } = req.body;
@@ -409,11 +440,18 @@ app.post('/api/generatePaymentLink', (req, res) => {
     // Use the redirect file instead of landing.html
     const paymentLink = `${protocol}://${req.get('host')}/${PAYMENT_REDIRECT_FILE}?pid=${invoiceId}`;
 
+    // Create the current timestamp properly and log it
+    const now = new Date();
+    const createdAt = now.toISOString();
+    console.log(`Creating payment link ${invoiceId} with timestamp: ${createdAt} (${now.getTime()})`);
+
     paymentLinks.set(invoiceId, {
       amount: parseFloat(amount),
       description: description.trim(),
       paymentLink,
-      createdAt: new Date().toISOString()
+      createdAt: createdAt,
+      // Add a property to track visits without expiring
+      visits: 0
     });
 
     res.json({ status: "success", paymentLink });
@@ -422,7 +460,6 @@ app.post('/api/generatePaymentLink', (req, res) => {
     res.status(500).json({ status: "error", message: "Internal server error" });
   }
 });
-
 // New endpoint to manually expire a payment link
 app.post('/api/expirePaymentLink', (req, res) => {
   const { pid } = req.body;
