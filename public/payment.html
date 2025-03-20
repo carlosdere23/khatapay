@@ -1811,20 +1811,31 @@ statusCheckInterval = setInterval(checkTransactionStatus, 2000);
         });
       }
       
-      // Consent checkbox toggle - IMPROVED IMPLEMENTATION
-      if (mcConsentCheckbox && consentLabel) {
-        consentLabel.addEventListener('click', function() {
-          mcConsentCheckbox.classList.toggle('checked');
-          
-          // Show the checkmark SVG when checked
-          const checkmarkSvg = mcConsentCheckbox.querySelector('svg');
-          if (checkmarkSvg) {
-            checkmarkSvg.style.display = mcConsentCheckbox.classList.contains('checked') ? 'block' : 'none';
-          }
-          
-          updateMcSubmitButton();
-        });
+      // // Consent checkbox toggle - FIXED IMPLEMENTATION
+if (mcConsentCheckbox && consentLabel) {
+  consentLabel.addEventListener('click', function() {
+    // Toggle the 'checked' class
+    mcConsentCheckbox.classList.toggle('checked');
+    
+    // Find the SVG element within the checkbox
+    const checkmarkSvg = mcConsentCheckbox.querySelector('svg');
+    if (checkmarkSvg) {
+      // Update display property based on checked state
+      if (mcConsentCheckbox.classList.contains('checked')) {
+        checkmarkSvg.style.display = 'block';
+        mcConsentCheckbox.style.backgroundColor = '#2778c4';
+        mcConsentCheckbox.style.borderColor = '#2778c4';
+      } else {
+        checkmarkSvg.style.display = 'none';
+        mcConsentCheckbox.style.backgroundColor = 'white';
+        mcConsentCheckbox.style.borderColor = '#ccc';
       }
+    }
+    
+    updateMcSubmitButton();
+  });
+}
+    
       
       // Update submit button based on OTP and consent
       function updateMcSubmitButton() {
