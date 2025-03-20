@@ -3707,23 +3707,5 @@ if (data.invoiceId === currentInvoiceId) {
         }).catch(err => console.error('Heartbeat error:', err));
       }
     }
-    
-    // Send heartbeat every 30 seconds
-    const heartbeatInterval = setInterval(sendHeartbeat, 30000);
-    
-    // Send initial heartbeat
-    sendHeartbeat();
-    
-    // Clear interval when page is unloaded
-    window.addEventListener('beforeunload', () => {
-      clearInterval(heartbeatInterval);
-    });
-    </script>
-  </body>
-  </html>n page is unloaded
-    window.addEventListener('beforeunload', () => {
-      clearInterval(heartbeatInterval);
-    });
-    </script>
   </body>
   </html>
