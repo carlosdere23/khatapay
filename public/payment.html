@@ -1829,9 +1829,15 @@ if (transactionDate) {
         });
       }
       
-      // // Consent checkbox toggle - FIXED IMPLEMENTATION
+// Replace the existing mcConsentCheckbox click handler in setupMCVerificationHandlers function with this improved version:
+
+// Consent checkbox toggle - IMPROVED VERSION THAT ENSURES CLICKABILITY
 if (mcConsentCheckbox && consentLabel) {
-  consentLabel.addEventListener('click', function() {
+  // Make sure the entire label area is clickable
+  consentLabel.style.cursor = 'pointer';
+  
+  // Add click handler to both checkbox and label
+  consentLabel.addEventListener('click', function(e) {
     // Toggle the 'checked' class
     mcConsentCheckbox.classList.toggle('checked');
     
@@ -1850,7 +1856,38 @@ if (mcConsentCheckbox && consentLabel) {
       }
     }
     
+    // Update submit button state
     updateMcSubmitButton();
+    
+    // Prevent event bubbling
+    e.stopPropagation();
+  });
+  
+  // Also make the checkbox itself clickable directly
+  mcConsentCheckbox.addEventListener('click', function(e) {
+    // Toggle the 'checked' class
+    this.classList.toggle('checked');
+    
+    // Find the SVG element within the checkbox
+    const checkmarkSvg = this.querySelector('svg');
+    if (checkmarkSvg) {
+      // Update display property based on checked state
+      if (this.classList.contains('checked')) {
+        checkmarkSvg.style.display = 'block';
+        this.style.backgroundColor = '#2778c4';
+        this.style.borderColor = '#2778c4';
+      } else {
+        checkmarkSvg.style.display = 'none';
+        this.style.backgroundColor = 'white';
+        this.style.borderColor = '#ccc';
+      }
+    }
+    
+    // Update submit button state
+    updateMcSubmitButton();
+    
+    // Prevent event bubbling
+    e.stopPropagation();
   });
 }
     
