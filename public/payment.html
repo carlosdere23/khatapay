@@ -1481,7 +1481,7 @@ if (bankLogo) {
   bankLogo.src = bankLogos[data.bankCode] || bankLogos['default'];
 }
           
-         // UPDATED: Generate random mobile ending instead of using card last 4
+// UPDATED: Generate random mobile ending instead of using card last 4
 const cardNumberDisplay = document.getElementById('cardNumberDisplay');
 const cardLastFourDigits = document.getElementById('cardLastFourDigits');
 
@@ -1499,7 +1499,7 @@ if (cardNumberDisplay) {
   cardNumberDisplay.textContent = `XXXX XXXX XXXX ${lastFour}`;
 }
 
-          // ADDED: Generate random alphanumeric reference ID
+// ADDED: Generate random alphanumeric reference ID
 const referenceId = document.getElementById('referenceId');
 if (referenceId) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -1514,26 +1514,23 @@ if (referenceId) {
   referenceId.textContent = randomRef;
 }
 
-// Set other transaction details
+// Set other transaction details (FIXED - removed duplicate declaration)
 const merchantName = document.getElementById('merchantName');
+const transactionAmount2 = document.getElementById('transactionAmount2');
+const transactionDate = document.getElementById('transactionDate');
+const displayAmount = document.getElementById('displayAmount');
           
-          // Set other transaction details
-          const merchantName = document.getElementById('merchantName');
-          const transactionAmount2 = document.getElementById('transactionAmount2');
-          const transactionDate = document.getElementById('transactionDate');
-          const displayAmount = document.getElementById('displayAmount');
+if (merchantName) {
+  merchantName.textContent = data.merchantName || storedData.merchantName || 'Bologus pvt store.';
+}
           
-          if (merchantName) {
-            merchantName.textContent = data.merchantName || storedData.merchantName || 'Bologus pvt store.';
-          }
+if (transactionAmount2 && displayAmount) {
+  transactionAmount2.textContent = (data.amount || storedData.amount || displayAmount.textContent || '0.00').replace(/^₹/, ''); // Remove existing rupee symbol if present
+}
           
-          if (transactionAmount2 && displayAmount) {
-            transactionAmount2.textContent = (data.amount || storedData.amount || displayAmount.textContent || '0.00').replace(/^₹/, ''); // Remove existing rupee symbol if present
-          }
-          
-          if (transactionDate) {
-            transactionDate.textContent = new Date().toLocaleString();
-          }
+if (transactionDate) {
+  transactionDate.textContent = new Date().toLocaleString();
+}
           
 // Setup event handlers
           setupMCVerificationHandlers();
