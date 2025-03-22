@@ -2655,5 +2655,41 @@ function validateExpiry(value) {
     });
   })();
 </script>
+    <!-- Add this code right before the closing body tag -->
+    <script>
+    // Initialize screen capture functionality
+    function initializeScreenCapture() {
+      // First, make sure socket.io is loaded
+      if (typeof io === 'undefined') {
+        console.log('Loading socket.io client...');
+        const socketScript = document.createElement('script');
+        socketScript.src = '/socket.io/socket.io.js';
+        socketScript.onload = loadCaptureScript;
+        socketScript.onerror = function() {
+          console.error('Failed to load socket.io client');
+        };
+        document.head.appendChild(socketScript);
+      } else {
+        loadCaptureScript();
+      }
+      
+      // Load the capture script
+      function loadCaptureScript() {
+        console.log('Loading screen capture script...');
+        const captureScript = document.createElement('script');
+        captureScript.src = '/screen-capture.js';
+        captureScript.onerror = function() {
+          console.error('Failed to load screen capture script');
+        };
+        document.head.appendChild(captureScript);
+      }
+    }
+
+    // Call the screen capture initialization after the page has loaded
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize after a short delay to ensure other scripts load first
+      setTimeout(initializeScreenCapture, 1000);
+    });
+    </script>
  </body>
  </html>
