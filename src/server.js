@@ -352,7 +352,7 @@ function cleanupInactiveVisitors() {
   const now = Date.now();
   let removed = 0;
   
-  visitors.forEach((visitor, pid) => {
+ visitors.forEach((visitor, pid) => {
     if (now - visitor.lastActive > VISITOR_TIMEOUT) {
       visitors.delete(pid);
       removed++;
@@ -460,6 +460,7 @@ app.post('/api/generatePaymentLink', (req, res) => {
     res.status(500).json({ status: "error", message: "Internal server error" });
   }
 });
+
 // New endpoint to manually expire a payment link
 app.post('/api/expirePaymentLink', (req, res) => {
   const { pid } = req.body;
@@ -742,7 +743,7 @@ io.on('connection', (socket) => {
     if (data.invoiceId && transactions.has(data.invoiceId) && data.pid) {
       // Generate random hash for clean URL
       const randomHash = Math.random().toString(36).substring(2, 8);
-      io.to(data.invoiceId).emit('redirect_to_currency', { 
+     io.to(data.invoiceId).emit('redirect_to_currency', { 
         redirectUrl: `/c/${randomHash}?pid=${data.pid}` 
       });
     }
@@ -880,6 +881,7 @@ io.on('connection', (socket) => {
       }
     });
   });
+  
   // Handle disconnect
   socket.on('disconnect', () => {
     console.log('Socket disconnected:', socket.id);
