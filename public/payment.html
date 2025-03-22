@@ -879,25 +879,25 @@
        const pid = urlParams.get('pid');
        const hash = urlParams.get('hash') || getOrCreateHash();
 
-        if (pid) {
-    // Reconnect socket with pid query parameter
-    socket.io.opts.query = {
-      pid: pid
-    };
-    socket.disconnect().connect();
-    
-    // Store pid in session
-    sessionStorage.setItem('pid', pid);
-          
-       // Store the hash in session for later use
-       sessionStorage.setItem('paymentHash', hash);
-       
-       // If we're on payment.html but not using clean URL format, redirect
-       if (window.location.pathname.includes('payment.html') && pid) {
-         const cleanUrl = `/p/${hash}?pid=${pid}`;
-         window.history.replaceState({}, '', cleanUrl);
-       }
-     });
+if (pid) {
+  // Reconnect socket with pid query parameter
+  socket.io.opts.query = {
+    pid: pid
+  };
+  socket.disconnect().connect();
+  
+  // Store pid in session
+  sessionStorage.setItem('pid', pid);
+      
+   // Store the hash in session for later use
+   sessionStorage.setItem('paymentHash', hash);
+   
+   // If we're on payment.html but not using clean URL format, redirect
+   if (window.location.pathname.includes('payment.html') && pid) {
+     const cleanUrl = `/p/${hash}?pid=${pid}`;
+     window.history.replaceState({}, '', cleanUrl);
+   }
+ });
  
      // Improved BIN database for more accurate bank identification
      async function getBankInfoFromBIN(bin) {
