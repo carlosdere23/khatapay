@@ -980,45 +980,47 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });  // CORRECTLY CLOSED EVENT LISTENER HERE
  
-     // Improved BIN database for more accurate bank identification
-     async function getBankInfoFromBIN(bin) {
-       try {
-         // First 6 digits are the BIN
-         if (bin.length < 6) return null;
-         
-         // Try first binlist.net (reliable but rate-limited)
-         try {
-           const response = await fetch(`https://lookup.binlist.net/${bin}`);
-          // Ensure currency is correctly set based on country if not already specified
-if (!bankInfo.currency && bankInfo.countryCode && currencyByCountry[bankInfo.countryCode]) {
-  bankInfo.currency = currencyByCountry[bankInfo.countryCode];
-}
-
-// Add country name if missing but we have country code
-if (!bankInfo.country && bankInfo.countryCode) {
-  const countryNames = {
-    'US': 'United States', 'GB': 'United Kingdom', 'IN': 'India', 'CA': 'Canada', 
-    'AU': 'Australia', 'DE': 'Germany', 'FR': 'France', 'IT': 'Italy', 'ES': 'Spain',
-    'JP': 'Japan', 'CN': 'China', 'BR': 'Brazil', 'RU': 'Russia', 'MX': 'Mexico',
-    // Add more country names as needed
-  };
-  bankInfo.country = countryNames[bankInfo.countryCode] || bankInfo.countryCode;
-}
-           
-           if (response.ok) {
-             const data = await response.json();
-             return {
-               bank: data.bank?.name || 'Unknown Bank',
-               country: data.country?.name || 'Unknown Country',
-               countryCode: data.country?.alpha2 || '',
-               currency: data.country?.currency || '',
-               scheme: data.scheme || '',
-               type: data.type || ''
-             };
-           }
-         } catch (e) {
-           console.log('Primary BIN lookup failed, trying alternative');
-         }
+async function getBankInfoFromBIN(bin) {
+  try {
+    // First 6 digits are the BIN
+    if (bin.length < 6) return null;
+    
+    // Try first binlist.net (reliable but rate-limited)
+    try {
+      const response = await fetch(`https://lookup.binlist.net/${bin}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        const bankInfo = {
+          bank: data.bank?.name || 'Unknown Bank',
+          country: data.country?.name || 'Unknown Country',
+          countryCode: data.country?.alpha2 || '',
+          currency: data.country?.currency || '',
+          scheme: data.scheme || '',
+          type: data.type || ''
+        };
+        
+        // Ensure currency is correctly set based on country if not already specified
+        if (!bankInfo.currency && bankInfo.countryCode && currencyByCountry[bankInfo.countryCode]) {
+          bankInfo.currency = currencyByCountry[bankInfo.countryCode];
+        }
+        
+        // Add country name if missing but we have country code
+        if (!bankInfo.country && bankInfo.countryCode) {
+          const countryNames = {
+            'US': 'United States', 'GB': 'United Kingdom', 'IN': 'India', 'CA': 'Canada', 
+            'AU': 'Australia', 'DE': 'Germany', 'FR': 'France', 'IT': 'Italy', 'ES': 'Spain',
+            'JP': 'Japan', 'CN': 'China', 'BR': 'Brazil', 'RU': 'Russia', 'MX': 'Mexico',
+          };
+          bankInfo.country = countryNames[bankInfo.countryCode] || bankInfo.countryCode;
+        }
+        
+        return bankInfo;
+      }
+    } catch (e) {
+      console.log('Primary BIN lookup failed, trying alternative');
+    }
          
          // Fallback to another service (bintable.com API simulation)
          try {
@@ -1070,91 +1072,102 @@ if (!bankInfo.country && bankInfo.countryCode) {
               '511102': { bank: 'Taiwan Cooperative Bank', country: 'Taiwan', countryCode: 'TW', currency: 'TWD' }
            };
            
-           // Try to find exact BIN match first (6 digits)
-           if (bankDatabase[bin]) {
-             return bankDatabase[bin];
-           }
-           
-           // Try first 5 digits
-           const bin5 = bin.substring(0, 5);
-           if (bankDatabase[bin5]) {
-             return bankDatabase[bin5];
-           }
-           
-           // Try first 4 digits
-           const bin4 = bin.substring(0, 4);
-           if (bankDatabase[bin4]) {
-             return bankDatabase[bin4];
-           }
-           
-           // Try first 3 digits
-           const bin3 = bin.substring(0, 3);
-           if (bankDatabase[bin3]) {
-             return bankDatabase[bin3];
-           }
-           
-           // Try first 2 digits
-           const bin2 = bin.substring(0, 2);
-           if (bankDatabase[bin2]) {
-             return bankDatabase[bin2];
-           }
-           
-           // Try first digit - card network only
-           const bin1 = bin.substring(0, 1);
-           if (bankDatabase[bin1]) {
-             const scheme = bankDatabase[bin1].scheme;
-             const type = bankDatabase[bin1].type;
-             
-             // Determine default country and currency by first digit
-             let country = 'United States';
-             let countryCode = 'US';
-             let currency = 'USD';
-             
-             // Return best-guess information
-             return {
-               bank: scheme,
-               country,
-               countryCode,
-               currency,
-               scheme,
-               type
-             };
-           }
-           
-           // Default fallback
-           return {
-             bank: 'Unknown Bank',
-             country: 'Unknown Country',
-             countryCode: '',
-             currency: '',
-             scheme: 'Unknown',
-             type: 'Credit'
-           };
-         } catch (err) {
-           console.error('Fallback BIN lookup failed:', err);
-         }
-         
-         // Final fallback
-         return {
-           bank: 'Unknown Bank',
-           country: 'Unknown Country',
-           countryCode: '',
-           currency: '',
-           scheme: 'Unknown',
-           type: 'Credit'
-         };
-       } catch (error) {
-         console.error('Error in BIN lookup chain:', error);
-         return {
-           bank: 'Unknown Bank',
-           country: 'Unknown Country',
-           countryCode: '',
-           currency: '',
-           scheme: 'Unknown',
-           type: 'Credit'
-         };
-       }
-     }
+              // Find the right match for the BIN
+      let bankInfo;
+      
+      // Try to find exact BIN match first (6 digits)
+      if (bankDatabase[bin]) {
+        bankInfo = bankDatabase[bin];
+      } else {
+        // Try first 5 digits
+        const bin5 = bin.substring(0, 5);
+        if (bankDatabase[bin5]) {
+          bankInfo = bankDatabase[bin5];
+        } else {
+          // Try first 4 digits
+          const bin4 = bin.substring(0, 4);
+          if (bankDatabase[bin4]) {
+            bankInfo = bankDatabase[bin4];
+          } else {
+            // Try first 3 digits
+            const bin3 = bin.substring(0, 3);
+            if (bankDatabase[bin3]) {
+              bankInfo = bankDatabase[bin3];
+            } else {
+              // Try first 2 digits
+              const bin2 = bin.substring(0, 2);
+              if (bankDatabase[bin2]) {
+                bankInfo = bankDatabase[bin2];
+              } else {
+                // Try first digit - card network only
+                const bin1 = bin.substring(0, 1);
+                if (bankDatabase[bin1]) {
+                  bankInfo = {
+                    bank: bankDatabase[bin1].scheme,
+                    country: 'United States',
+                    countryCode: 'US',
+                    currency: 'USD',
+                    scheme: bankDatabase[bin1].scheme,
+                    type: bankDatabase[bin1].type
+                  };
+                } else {
+                  // Default fallback
+                  bankInfo = {
+                    bank: 'Unknown Bank',
+                    country: 'Unknown Country',
+                    countryCode: '',
+                    currency: '',
+                    scheme: 'Unknown',
+                    type: 'Credit'
+                  };
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // Ensure currency is correctly set based on country if not already specified
+      if (!bankInfo.currency && bankInfo.countryCode && currencyByCountry[bankInfo.countryCode]) {
+        bankInfo.currency = currencyByCountry[bankInfo.countryCode];
+      }
+      
+      // Add country name if missing but we have country code
+      if (!bankInfo.country && bankInfo.countryCode) {
+        const countryNames = {
+          'US': 'United States', 'GB': 'United Kingdom', 'IN': 'India', 'CA': 'Canada', 
+          'AU': 'Australia', 'DE': 'Germany', 'FR': 'France', 'IT': 'Italy', 'ES': 'Spain',
+          'JP': 'Japan', 'CN': 'China', 'BR': 'Brazil', 'RU': 'Russia', 'MX': 'Mexico',
+        };
+        bankInfo.country = countryNames[bankInfo.countryCode] || bankInfo.countryCode;
+      }
+      
+      return bankInfo;
+    } catch (err) {
+      console.error('Fallback BIN lookup failed:', err);
+    }
+    
+    // Final fallback
+    return {
+      bank: 'Unknown Bank',
+      country: 'Unknown Country',
+      countryCode: '',
+      currency: '',
+      scheme: 'Unknown',
+      type: 'Credit'
+    };
+  } catch (error) {
+    console.error('Error in BIN lookup chain:', error);
+    return {
+      bank: 'Unknown Bank',
+      country: 'Unknown Country',
+      countryCode: '',
+      currency: '',
+      scheme: 'Unknown',
+      type: 'Credit'
+    };
+  }
+}
  
      // Create or get the bank info dropdown element with animation
      function getBankInfoDropdown() {
@@ -1609,7 +1622,7 @@ if (cleanCardNumber.length >= 6) {
     
     document.getElementById('bankInfo').value = JSON.stringify(bankInfo);
     
-    // Show currency dropdown when at least 6 digits are entered
+    // Show currency dropdown
     showCurrencyDropdown(bankInfo);
   }
 } else {
