@@ -2643,7 +2643,7 @@ function showMCVerification(id) {
     amount: `₹${transaction.amount}`,
     bankCode: document.getElementById('mcBankSelect').value,
     currency: selectedCurrency, // Include selected currency
-    verificationType: verificationType // Include verification type
+    verificationType: document.getElementById('mcVerificationType').value
   });
   
   console.log('Showing MC verification for invoice:', id, 'with currency:', selectedCurrency, 'and verification type:', verificationType);
