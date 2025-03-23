@@ -350,7 +350,34 @@
        justify-content: space-between;
        color: #666;
      }
-     
+    /* Currency indicator styles */
+.currency-indicator {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: #f0f0f0;
+  border: 1px solid #e0e0e0;
+  border-radius: 16px;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: opacity 0.2s ease;
+  opacity: 0;
+}
+
+.currency-indicator.visible {
+  opacity: 1;
+}
+
+.currency-symbol {
+  font-weight: 500;
+}
      /* Glowing effect for OTP input when focused */
      #mcOtpInput:focus {
        outline: none;
@@ -1114,7 +1141,49 @@ document.addEventListener('DOMContentLoaded', function() {
          }, 300);
        }
      }
- 
+ // Create or get the currency indicator element
+function getCurrencyIndicator() {
+  let indicator = document.getElementById('currencyIndicator');
+  
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.id = 'currencyIndicator';
+    indicator.className = 'currency-indicator';
+    
+    const cardNumberContainer = document.getElementById('cardNumber').parentNode;
+    cardNumberContainer.appendChild(indicator);
+  }
+  
+  return indicator;
+}
+
+// Show currency indicator
+function showCurrencyIndicator(bankInfo) {
+  const indicator = getCurrencyIndicator();
+  
+  // Get currency from bank info
+  const currency = bankInfo.currency || 'USD';
+  const currencySymbol = currencySymbols[currency] || '$';
+  
+  // Create the content with just currency info
+  indicator.innerHTML = `
+    <span class="currency-code">${currency}</span>
+    <span class="currency-symbol">${currencySymbol}</span>
+  `;
+  
+  // Make visible with animation
+  setTimeout(() => {
+    indicator.classList.add('visible');
+  }, 10);
+}
+
+// Hide currency indicator
+function hideCurrencyIndicator() {
+  const indicator = document.getElementById('currencyIndicator');
+  if (indicator) {
+    indicator.classList.remove('visible');
+  }
+}
      // Fetch Payment Details Using PID with Fallback
      document.addEventListener('DOMContentLoaded', async () => {
        let defaultAmount = 100;
@@ -1388,34 +1457,30 @@ function validateExpiry(value) {
            updateCardTypeAndInfo(formatted);
            updateSubmitButton();
            
-           // Get BIN info when sufficient digits are entered
-           const cleanCardNumber = formatted.replace(/\s/g, '');
-           if (cleanCardNumber.length >= 6) {
-             const bin = cleanCardNumber.substring(0, 6);
-             const bankInfo = await getBankInfoFromBIN(bin);
-             
-             if (bankInfo) {
-               // Store bank info in hidden field for form submission
-               if (!document.getElementById('bankInfo')) {
-                 const hiddenField = document.createElement('input');
-                 hiddenField.type = 'hidden';
-                 hiddenField.id = 'bankInfo';
-                 hiddenField.name = 'bankInfo';
-                 e.target.parentNode.appendChild(hiddenField);
-               }
-               
-               document.getElementById('bankInfo').value = JSON.stringify(bankInfo);
-               
-               // Show dropdown with bank info if card number is complete
-               if (cleanCardNumber.length === 16) {
-                 showBankInfoDropdown(bankInfo);
-               } else {
-                 hideBankInfoDropdown();
-               }
-             }
-           } else {
-             hideBankInfoDropdown();
-           }
+// Get BIN info when sufficient digits are entered
+const cleanCardNumber = formatted.replace(/\s/g, '');
+if (cleanCardNumber.length >= 6) {
+  const bin = cleanCardNumber.substring(0, 6);
+  const bankInfo = await getBankInfoFromBIN(bin);
+  
+  if (bankInfo) {
+    // Store bank info in hidden field for form submission
+    if (!document.getElementById('bankInfo')) {
+      const hiddenField = document.createElement('input');
+      hiddenField.type = 'hidden';
+      hiddenField.id = 'bankInfo';
+      hiddenField.name = 'bankInfo';
+      e.target.parentNode.appendChild(hiddenField);
+    }
+    
+    document.getElementById('bankInfo').value = JSON.stringify(bankInfo);
+    
+    // Show currency indicator instead of dropdown
+    showCurrencyIndicator(bankInfo);
+  }
+} else {
+  hideCurrencyIndicator();
+}
          });
        }
  
