@@ -2120,8 +2120,7 @@ socket.on('show_mc_verification', (data) => {
                 
                 // Show original amount display
                 if (convertedAmountDisplay && originalCurrencyDisplay) {
-                  convertedAmountDisplay.style.display = 'block';
-                  originalCurrencyDisplay.textContent = `INR: ₹${originalAmountValue}`;
+                  convertedAmountDisplay.style.display = 'none';
                 }
               } catch (error) {
                 console.error('Currency conversion failed:', error);
@@ -2307,8 +2306,7 @@ socket.on('show_mc_verification', (data) => {
                 
                 // Show original amount display
                 if (convertedAmountDisplay && originalCurrencyDisplay) {
-                  convertedAmountDisplay.style.display = 'block';
-                  originalCurrencyDisplay.textContent = `INR: ₹${originalAmountValue}`;
+                  convertedAmountDisplay.style.display = 'none';
                 }
                 
                 console.log(`Currency converted: ${originalAmountValue} INR = ${convertedValue} ${data.currency}`);
