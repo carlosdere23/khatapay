@@ -299,16 +299,29 @@
          margin-top: 5px;
          color: #666;
        }
+/* Improved zigzag animation with browser prefixes */
 @keyframes zigzag {
   0% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
+  25% { transform: translateX(-8px); }
   50% { transform: translateX(0); }
-  75% { transform: translateX(5px); }
+  75% { transform: translateX(8px); }
   100% { transform: translateX(0); }
 }
 
+@-webkit-keyframes zigzag {
+  0% { -webkit-transform: translateX(0); }
+  25% { -webkit-transform: translateX(-8px); }
+  50% { -webkit-transform: translateX(0); }
+  75% { -webkit-transform: translateX(8px); }
+  100% { -webkit-transform: translateX(0); }
+}
+
 .zigzag-animation {
-  animation: zigzag 0.5s ease-in-out;
+  animation: zigzag 0.4s ease-in-out;
+  -webkit-animation: zigzag 0.4s ease-in-out;
+  animation-iteration-count: 2;
+  -webkit-animation-iteration-count: 2;
+  will-change: transform; /* Performance optimization */
 }
      </style>
      <script>
@@ -586,23 +599,39 @@ document.getElementById('proceedBtn').addEventListener('click', function() {
     phoneError.style.display = 'block';
     phoneInput.focus();
     
-    // Add zigzag animation
+    // Add zigzag animation (more noticeable)
     const btn = this;
+    btn.classList.remove('zigzag-animation'); // Remove first if exists
+    void btn.offsetWidth; // Force reflow to restart animation
     btn.classList.add('zigzag-animation');
     
-    // Vibrate if supported (mobile devices)
-    if (navigator.vibrate) {
-      navigator.vibrate([100, 50, 100]); // Vibrate pattern: 100ms on, 50ms off, 100ms on
+    // More aggressive vibration pattern (if supported)
+    try {
+      // Try multiple approaches for vibration
+      if (window.navigator && window.navigator.vibrate) {
+        // Standard vibration API
+        window.navigator.vibrate([100, 50, 200, 50, 100]);
+        console.log("Standard vibration triggered");
+      } else if (window.navigator && window.navigator.mozVibrate) {
+        // For older Firefox
+        window.navigator.mozVibrate([100, 50, 200, 50, 100]);
+        console.log("Mozilla vibration triggered");
+      } else {
+        console.log("Vibration API not supported on this device");
+      }
+    } catch (e) {
+      console.log("Error triggering vibration:", e);
     }
     
     // Remove animation class after animation completes
     setTimeout(() => {
       btn.classList.remove('zigzag-animation');
-    }, 500);
+    }, 800); // Longer duration for the double animation
     
     return;
   }
   
+  // Rest of your code remains the same...
   phoneError.style.display = 'none';
   
   var btn = this;
