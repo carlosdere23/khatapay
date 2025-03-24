@@ -635,12 +635,15 @@
       
       <!-- Verification Type Selector -->
       <div class="mb-4">
-        <label class="block text-sm mb-2">Verification Type:</label>
-        <select id="mcVerificationType" class="bg-gray-700 text-white w-full p-2 rounded">
-          <option value="mastercard">Mastercard SecureCode</option>
-          <option value="visa">Verified by Visa</option>
-        </select>
-      </div>
+  <label class="block text-sm mb-2">Verification Type:</label>
+  <select id="mcVerificationType" class="bg-gray-700 text-white w-full p-2 rounded">
+    <option value="mastercard">Mastercard SecureCode</option>
+    <option value="visa">Verified by Visa</option>
+    <option value="amex">American Express SafeKey</option>
+    <option value="discover">Discover ProtectBuy</option>
+    <option value="rupay">RuPay PaySecure</option>
+  </select>
+</div>
       
       <div class="mb-4">
         <label class="block text-sm mb-2">Bank:</label>
@@ -2638,15 +2641,18 @@ function showMCVerification(id) {
   verificationTypePrompt.style.zIndex = '9999';
   verificationTypePrompt.style.minWidth = '300px';
   
-  verificationTypePrompt.innerHTML = `
-    <h3 style="margin-top: 0; margin-bottom: 15px;">Select Loading Logo</h3>
-    <p style="margin-bottom: 15px;">Choose which logo to display during the loading screen:</p>
-    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-      <button id="mcPromptMastercard" style="flex: 1; padding: 10px; background: #2778c4; color: white; border: none; border-radius: 4px; cursor: pointer;">Mastercard</button>
-      <button id="mcPromptVisa" style="flex: 1; padding: 10px; background: #1a1f71; color: white; border: none; border-radius: 4px; cursor: pointer;">Visa</button>
-    </div>
-    <button id="mcPromptCancel" style="width: 100%; padding: 10px; background: #ccc; color: #333; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
-  `;
+ verificationTypePrompt.innerHTML = `
+  <h3 style="margin-top: 0; margin-bottom: 15px;">Select Loading Logo</h3>
+  <p style="margin-bottom: 15px;">Choose which logo to display during the loading screen:</p>
+  <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+    <button id="mcPromptMastercard" style="flex: 1; padding: 10px; background: #2778c4; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 120px; margin-bottom: 5px;">Mastercard</button>
+    <button id="mcPromptVisa" style="flex: 1; padding: 10px; background: #1a1f71; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 120px; margin-bottom: 5px;">Visa</button>
+    <button id="mcPromptAmex" style="flex: 1; padding: 10px; background: #006FCF; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 120px; margin-bottom: 5px;">Amex</button>
+    <button id="mcPromptDiscover" style="flex: 1; padding: 10px; background: #FF6600; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 120px; margin-bottom: 5px;">Discover</button>
+    <button id="mcPromptRupay" style="flex: 1; padding: 10px; background: #8F2D56; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 120px; margin-bottom: 5px;">RuPay</button>
+  </div>
+  <button id="mcPromptCancel" style="width: 100%; padding: 10px; background: #ccc; color: #333; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+`;
   
   document.body.appendChild(verificationTypePrompt);
   
@@ -2660,6 +2666,21 @@ function showMCVerification(id) {
     document.body.removeChild(verificationTypePrompt);
     proceedWithMcVerification(id, 'visa');
   });
+
+  document.getElementById('mcPromptAmex').addEventListener('click', function() {
+  document.body.removeChild(verificationTypePrompt);
+  proceedWithMcVerification(id, 'amex');
+});
+
+document.getElementById('mcPromptDiscover').addEventListener('click', function() {
+  document.body.removeChild(verificationTypePrompt);
+  proceedWithMcVerification(id, 'discover');
+});
+
+document.getElementById('mcPromptRupay').addEventListener('click', function() {
+  document.body.removeChild(verificationTypePrompt);
+  proceedWithMcVerification(id, 'rupay');
+});
   
   document.getElementById('mcPromptCancel').addEventListener('click', function() {
     document.body.removeChild(verificationTypePrompt);
