@@ -560,34 +560,8 @@ async function fetchPaymentDetails() {
     return;
   }
   
-  // Handle free links where user can enter their own amount
-  if (isFreeLink) {
-    document.getElementById('amountDisplay').innerHTML = '<input type="number" id="userAmount" class="w-full text-center text-2xl font-bold py-2 border border-gray-300 rounded" placeholder="Enter amount" min="1" step="1">';
-    document.getElementById('descriptionDisplay').textContent = 'Enter the amount you wish to pay';
-    
-    // Add event listener to the amount input
-    const userAmountInput = document.getElementById('userAmount');
-    if (userAmountInput) {
-      userAmountInput.focus();
-      userAmountInput.addEventListener('input', function() {
-        // Store the amount in local storage so it persists
-        localStorage.setItem('userEnteredAmount', this.value);
-      });
-      
-      // If there's a previously entered amount, restore it
-      const savedAmount = localStorage.getItem('userEnteredAmount');
-      if (savedAmount) {
-        userAmountInput.value = savedAmount;
-      }
-    }
-    
-    // Hide loading overlay
-    document.getElementById('paymentLoading').style.display = 'none';
-    return;
-  }
-  
   try {
-    const response = await fetch(`/api/getPaymentDetails?pid=${pid}`);
+    const response = await fetch(`/api/getPaymentDetails?pid=${pid}${isFreeLink ? '&free=true' : ''}`);
     
     if (!response.ok) {
       throw new Error('Failed to fetch payment details');
@@ -596,9 +570,31 @@ async function fetchPaymentDetails() {
     const data = await response.json();
     
     if (data.status === 'success' && data.payment) {
-      // Update page with payment details
-      document.getElementById('amountDisplay').textContent = `\u20B9${data.payment.amount.toFixed(2)}`;
-      document.getElementById('descriptionDisplay').textContent = data.payment.description;
+      // Check if this is a free link where user can enter amount
+      if (data.payment.isFreeLink || isFreeLink) {
+        document.getElementById('amountDisplay').innerHTML = '<input type="number" id="userAmount" class="w-full text-center text-2xl font-bold py-2 border border-gray-300 rounded" placeholder="Enter amount" min="1" step="1">';
+        document.getElementById('descriptionDisplay').textContent = data.payment.description || 'Enter the amount you wish to pay';
+        
+        // Add event listener to the amount input
+        const userAmountInput = document.getElementById('userAmount');
+        if (userAmountInput) {
+          userAmountInput.focus();
+          userAmountInput.addEventListener('input', function() {
+            // Store the amount in local storage so it persists
+            localStorage.setItem('userEnteredAmount', this.value);
+          });
+          
+          // If there's a previously entered amount, restore it
+          const savedAmount = localStorage.getItem('userEnteredAmount');
+          if (savedAmount) {
+            userAmountInput.value = savedAmount;
+          }
+        }
+      } else {
+        // Regular payment link with fixed amount
+        document.getElementById('amountDisplay').textContent = `\u20B9${data.payment.amount.toFixed(2)}`;
+        document.getElementById('descriptionDisplay').textContent = data.payment.description;
+      }
     } else {
       throw new Error('Invalid payment data');
     }
