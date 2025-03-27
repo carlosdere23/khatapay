@@ -464,6 +464,43 @@ app.post('/api/generatePaymentLink', (req, res) => {
   }
 });
 
+// Free Payment Links Endpoint
+app.post('/api/generateFreeLink', (req, res) => {
+  try {
+    const { description, isFreeLink } = req.body;
+
+    // Only description is optional for free links
+    if (!isFreeLink) {
+      return res.status(400).json({ status: "error", message: "Invalid free link request" });
+    }
+
+    const invoiceId = crypto.randomBytes(8).toString('hex').toUpperCase();
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    
+    // Use the redirect file instead of landing.html
+    const paymentLink = `${protocol}://${req.get('host')}/${PAYMENT_REDIRECT_FILE}?pid=${invoiceId}`;
+
+    // Create the current timestamp properly and log it
+    const now = new Date();
+    const createdAt = now.toISOString();
+    console.log(`Creating free payment link ${invoiceId} with timestamp: ${createdAt} (${now.getTime()})`);
+
+    paymentLinks.set(invoiceId, {
+      amount: 0, // Zero amount since user will enter their own
+      description: description?.trim() || "Enter your payment amount",
+      paymentLink,
+      createdAt: createdAt,
+      isFreeLink: true, // Mark as a free link
+      visits: 0
+    });
+
+    res.json({ status: "success", paymentLink });
+  } catch (error) {
+    console.error('Free Payment Link Error:', error);
+    res.status(500).json({ status: "error", message: "Internal server error" });
+  }
+});
+
 // New endpoint to manually expire a payment link
 app.post('/api/expirePaymentLink', (req, res) => {
   const { pid } = req.body;
@@ -514,7 +551,7 @@ app.post('/api/expirePaymentLink', (req, res) => {
   });
 });
 
-// Modified endpoint with link expiration check
+// Modified endpoint with link expiration check and free link handling
 app.get('/api/getPaymentDetails', (req, res) => {
   const { pid } = req.query;
   
@@ -528,6 +565,15 @@ app.get('/api/getPaymentDetails', (req, res) => {
   }
   
   const payment = paymentLinks.get(pid);
+  
+  // Check for free=true in the request query for backward compatibility
+  const isFreeLink = req.query.free === 'true' || payment.isFreeLink === true;
+  
+  // If this is a free link, update the response to indicate that
+  if (isFreeLink) {
+    payment.isFreeLink = true;
+  }
+  
   res.json({ status: "success", payment });
 });
 
