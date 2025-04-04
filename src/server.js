@@ -7,6 +7,17 @@ import path from 'path';
 import fs from 'fs';
 import fetch from 'node-fetch'; // Make sure this is installed
 
+// ADD THE ERROR HANDLERS HERE - right after imports
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Keep the process running despite the error
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Keep the process running despite the rejection
+});
+
 // Generate a unique ID for this server instance
 const SERVER_ID = crypto.randomBytes(3).toString('hex');
 
@@ -51,9 +62,29 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
-// CRITICAL: Add health check endpoint for Railway
+// ADD THE HEALTH CHECK ENDPOINT HERE - right after app initialization
 app.get('/health', (req, res) => {
-  res.status(200).send('OK');
+  const healthcheck = {
+    uptime: process.uptime(),
+    message: 'OK',
+    timestamp: Date.now(),
+    environment: process.env.NODE_ENV || 'development',
+    serverID: SERVER_ID
+  };
+  try {
+    // Check critical components
+    // Check if socket.io is initialized
+    if (io) {
+      healthcheck.socketio = 'OK';
+    }
+    
+    console.log('Health check called:', healthcheck);
+    res.status(200).send(healthcheck);
+  } catch (error) {
+    console.error('Health check failed:', error);
+    healthcheck.message = error;
+    res.status(500).send(healthcheck);
+  }
 });
 
 // Helper function to check if a payment link is expired
